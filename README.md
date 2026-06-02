@@ -122,6 +122,7 @@ docker run --env-file .env -p 8000:8000 polaris-desk
 本 repo 已跑過 `specify init`，規格與指令隨 repo 走（推上 GitHub 後組員都拿得到）：
 
 - **`docs/spec-kit/`** — 專題 spec + 7 角色 spec + `Spec Kit 導讀.html` + demo 場景草稿（**權威版**）
+- **`docs/協作開發環境_SOP_v1.md`** — GCP／BigQuery 協作環境建置 + onboarding + 成本護欄 SOP（**R4 建置、全員 onboarding 必讀**）
 - **`.specify/memory/constitution.md`** — 專題憲法（`/speckit-*` 指令會讀）
 - **slash 指令**（Claude Code / Cursor）：`/speckit-constitution`、`/speckit-specify`、`/speckit-plan`、`/speckit-tasks`、`/speckit-implement`（選用 `/speckit-clarify`、`/speckit-analyze`、`/speckit-checklist`）
 
