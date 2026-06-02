@@ -1,8 +1,11 @@
-# Polaris Desk 協作開發環境 SOP v1
+# Polaris Desk 協作開發環境 SOP v1.1
 
 **目的**：讓 7 位成員在「同一份可信資料」上協同開發，且把成本壓在 GCP 免費額度內。
 **適用範圍**：4 週 MVP 開發期（W1 ~ W4）。
 **文件擁有者**：角色 1（PM）。**基礎設施擁有者**：角色 4（資料工程師）。
+
+> **基礎設施現況（2026-06-02）**：GCP 專案 **`polaris-desk-team`**（Project ID = `polaris-desk-team`）已由 PM 建立並連結計費帳戶。Phase 1（§3）以後由角色 4 執行，**從 §3.1 開始**。
+> **本團隊用個人 `@gmail.com` 帳號、無 Google Workspace 網域**，故權限以個別 `user:` 綁定（見 §3.4），不使用 Google Group。
 
 ---
 
@@ -19,7 +22,7 @@
 
 | 角色 | 權責 | 對 `polaris_core` 權限 |
 | --- | --- | --- |
-| 角色 1（PM） | 維護本 SOP、設定預算告警、核准 schema 變更 PR | READER |
+| 角色 1（PM） | 維護本 SOP、建立專案、設定預算告警、核准 schema 變更 PR | READER |
 | 角色 4（資料工程師） | 建置基礎設施、唯一可寫入 canonical 的人、跑 ingestion | OWNER／WRITER |
 | 角色 2（AI 架構師） | 審查 schema migration、retrieval 設定 | READER |
 | 其餘開發者 | 讀 core、在自己的 scratch 做實驗 | READER |
@@ -48,13 +51,15 @@ polaris-desk-team
 | `REGION` | `asia-east1`（台灣，低延遲與資料落地） |
 | `RAW_BUCKET` | `gs://polaris-desk-raw` |
 | `CORE_DATASET` | `polaris_core` |
-| `TEAM_GROUP` | `polaris-team@yourdomain.com` |
+| 團隊成員 | 7 位成員的個人 `@gmail.com`（IAM 以 `user:` 個別綁定，見 §3.4） |
 
 > **注意**：建立 VECTOR INDEX 前，請角色 4 先確認所選 REGION 支援 BigQuery `CREATE VECTOR INDEX`。若不支援，改用支援的鄰近區域並同步更新本表。
 
 ---
 
 ## 3. Phase 1：一次性基礎設施建置（角色 4 執行，約 30 分鐘）
+
+> **Phase 0 已完成**：專案 `polaris-desk-team` 與計費已就緒。角色 4 直接從 §3.1 開始。
 
 以下用 `gcloud`／`bq` 指令快速建置。建議事後由角色 4 把同一份設定補成 Terraform（PRD §23.3）以便重建。
 
@@ -83,29 +88,47 @@ bq --location=asia-east1 mk --dataset \
   polaris-desk-team:polaris_core
 ```
 
-### 3.4 設定權限（IAM）
+### 3.4 設定權限（IAM）— 個別 user 綁定
+
+本團隊無 Workspace 網域，**逐一綁定 7 位成員的 gmail**（不使用 Google Group）。
 
 ```bash
-# 全團可在 project 內跑查詢（執行 job 的權限）
-gcloud projects add-iam-policy-binding polaris-desk-team \
-  --member="group:polaris-team@yourdomain.com" \
-  --role="roles/bigquery.jobUser"
+# 把 7 位成員的 gmail 填進來
+MEMBERS=(
+  "member1@gmail.com"
+  "member2@gmail.com"
+  "member3@gmail.com"
+  "member4@gmail.com"
+  "member5@gmail.com"
+  "member6@gmail.com"
+  "member7@gmail.com"
+)
+
+# 每人都能在 project 內跑查詢（執行 job 的權限）
+for m in "${MEMBERS[@]}"; do
+  gcloud projects add-iam-policy-binding polaris-desk-team \
+    --member="user:$m" \
+    --role="roles/bigquery.jobUser"
+done
 ```
 
-把團隊群組設為 `polaris_core` 的唯讀 READER：
+把每位成員設為 `polaris_core` 的唯讀 READER：
 
 ```bash
-# 1. 匯出現有 access 設定
+# 1. 匯出現有 access 設定（此檔含真實 email/ACL，已在 .gitignore，不要 commit）
 bq show --format=prettyjson polaris-desk-team:polaris_core > core_access.json
 
-# 2. 在 core_access.json 的 "access" 陣列加入一筆：
-#    { "role": "READER", "groupByEmail": "polaris-team@yourdomain.com" }
+# 2. 在 core_access.json 的 "access" 陣列，每位成員加一筆：
+#    { "role": "READER", "userByEmail": "member1@gmail.com" }
+#    { "role": "READER", "userByEmail": "member2@gmail.com" }
+#    ...（共 7 筆）
 
 # 3. 套用
 bq update --source=core_access.json polaris-desk-team:polaris_core
 ```
 
 > 應用程式用的 service account 採最小權限，金鑰存進 Secret Manager，**不進版控**。
+> 新增／移除成員時，記得同步更新 `bigquery.jobUser` 綁定與 `polaris_core` 的 READER 名單。
 
 ### 3.5 設定成本護欄（重要）
 
@@ -151,6 +174,9 @@ CREATE VECTOR INDEX chunks_emb_idx
 ON polaris_core.chunks(embedding)
 OPTIONS(index_type = 'IVF', distance_type = 'COSINE');
 ```
+
+> ⚠️ **兩個前提**：①`asia-east1` 須支援 `CREATE VECTOR INDEX`（建前先確認，否則改鄰近區域並更新 §2）。
+> ②**BigQuery 不會在少於 5,000 列的表上建立向量索引**。100 份法說稿切 chunk 後若不足 5,000 列，索引不會生成，`VECTOR_SEARCH` 會自動退回暴力搜尋（demo 仍可用，但要知道）。
 
 ### 4.3 跑一次 ingestion
 
@@ -257,26 +283,28 @@ bq query --use_legacy_sql=false \
 
 | 現象 | 最可能原因 | 第一步排查 |
 | --- | --- | --- |
-| 查 core 報 permission denied | 不在 `TEAM_GROUP` 或缺 jobUser | 確認帳號已加入 polaris-team 群組 |
+| 查 core 報 permission denied | 你的 gmail 沒被綁定，或缺 jobUser | 確認帳號已加入 §3.4 的 `user:` 名單（READER + jobUser） |
 | 查詢費用異常高 | 沒帶 partition filter，全表掃描 | 加 `published_at` 範圍與 `stock_id` 條件，先 dry-run |
 | 寫入失敗 | 誤把目標設成 `polaris_core` | 確認寫入目標是 `polaris_dev_<name>` |
 | 大家資料對不上 | 有人在 scratch 改了卻當成 canonical | 一律以 `polaris_core` 為準，scratch 只是個人實驗 |
-| VECTOR INDEX 建立失敗 | REGION 不支援 | 改用支援的鄰近區域，更新 §2 占位符表 |
+| VECTOR INDEX 建立失敗 | REGION 不支援，或表 < 5,000 列 | 改用支援的鄰近區域（更新 §2）；列數不足則等資料補足或接受暴力搜尋 |
+| `project not found` / 設不了 project | 用到了顯示名稱而非 Project ID | 一律用 Project ID `polaris-desk-team` |
 
 ---
 
 ## 10. 啟動檢查清單（Definition of Ready）
 
-- [ ] 單一團隊 project `polaris-desk-team` 已建立並開啟計費
+- [x] 單一團隊 project `polaris-desk-team` 已建立並開啟計費
 - [ ] 預算告警與 per-user 配額已設定
 - [ ] `gs://polaris-desk-raw` 已建立
-- [ ] `polaris_core` 已建立，`TEAM_GROUP` 為 READER
+- [ ] `polaris_core` 已建立，7 位成員（`user:`）為 READER + `bigquery.jobUser`
 - [ ] canonical（chunks / embeddings / VECTOR INDEX / 財務指標 / ontology）已 ingest 一次
 - [ ] 7 位成員各自建立 scratch dataset 並通過讀取驗證
 - [ ] config 模組（`PROJECT_ID` / `CORE_DATASET`）已進版控
 
-> 全部勾選後，協作開發環境即就緒。
+> 全部勾選後，協作開發環境即就緒。目前只完成第 1 項，其餘為角色 4 的 Phase 1／2 工作。
 
 ---
 
-_版本：v1　|　對應 PRD：§13.4（向量檢索）、§23（部署）、§24（成本）_
+_版本：v1.1　|　對應 PRD：§13.4（向量檢索）、§23（部署）、§24（成本）_
+_v1.1 變更：專案改用乾淨 Project ID `polaris-desk-team`；IAM 從 Google Group 改為個別 `user:` 綁定（團隊用個人 gmail、無 Workspace 網域）；補上 Phase 0 現況、向量索引 region／5,000 列前提，與 Project ID vs 顯示名稱排查。_
