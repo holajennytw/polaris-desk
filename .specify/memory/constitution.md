@@ -133,6 +133,7 @@ Demo Day 正餐跑**雲端**（Cloud Run + BigQuery + Vercel），但**必須有
 
 ---
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-31 | **Last Amended**: 2026-06-02
+**Version**: 2.0.0 | **Ratified**: 2026-05-31 | **Last Amended**: 2026-06-03
 
-> **v1.1.0（2026-06-02）**：原則 III「本地優先」→「雲端協作優先」（決策 Q-03 更新：開發預設後端改為 BigQuery 共用 canonical `polaris_core`，pgvector 保留為 fallback）；§Additional Constraints 向量庫預設、G1/G2 同步調整。**待 PM (R1) + Tech Lead (R2) 雙簽確認**（見 Governance；若認定為原則重定義，版號改 2.0.0）。
+> **v2.0.0（2026-06-03，已雙簽）**：原則 III「本地優先」→「雲端協作優先」（決策 Q-03 更新：開發預設後端改為 BigQuery 共用 canonical `polaris_core`，pgvector 保留為 fallback）；§Additional Constraints 向量庫預設、G1/G2 同步調整。屬**原則重定義**，依 Governance 升 **MAJOR (2.0.0)**。
+> **✅ Sign-off（Governance 雙簽）**：PM (R1) 郝家銘 + Tech Lead (R2) 施惠棋，2026-06-03（已記錄於 `01_PM_Notion匯入/決策追蹤.csv` Q-03）。
