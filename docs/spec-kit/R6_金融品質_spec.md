@@ -1,7 +1,7 @@
 # 角色規格書（Spec Kit）：R6 — 金融品質工程師
 
 **Role**: R6 台股 Ontology + 金融事實校對 + NFR-031 紅隊 **色**：紫
-**對應**：專題 spec FR-005/006、Constitution I/II；4 週計畫 R6 卡 **Status**: Draft
+**對應**：專題 spec FR-005/006、Constitution I/II；4 週計畫 R6 卡 **Status**: In Progress（2026-06-04 進度快照）
 
 ## 1. Mission
 建台股「分類字典」（Ontology）並守正確性與合規：W1 全隊最吃重，產出 Ontology v1；之後每日校對金融事實、出紅隊題攻 NFR-031、標註場景 4。
@@ -20,18 +20,24 @@
 
 ## 3. Tasks by Week（可勾選）
 
+> **📌 2026-06-04 進度註記（PM 站會快照）**
+> 依據＝Drive `Polaris Desk/04_Ontology資料字典/`（最後更新 6/2）的實際產出，**非**程式碼/GitHub（R6 為非程式角色，Daily Status 表抓不到其活動，全 0 屬正常）。
+> - **已產出**：`0050_公司清單.xlsx`（50 家＋`優先級A_前20`＋`混合型_專案使用`）、`Ontology_V0.7.xlsx`（13 分頁，四大字典＋`company_industry_mapping` 多產業＋`news_source_whitelist`＋`quality_checks`＋`change_log`）、`資料字典暨協作手冊 v2.docx`。
+> - **勾選原則**：以「檔案/結構存在」為據打 `[x]`，內容品質未逐格驗證；部分完成標 `[~]`。
+> - **三個缺口**：①仍 **V0.7、未凍結 v1**（D5/D7 未達）②**只在 Drive、未灌進 BigQuery `polaris_core`**（卡 R4 ingestion，SOP §4 未開工）③**紅隊題庫/每日校≥10題/場景4標註尚未見產出**。
+
 **W1（全隊最吃重）**
-- [ ] D1 Ontology 抽樣：挑 20 家公司、列分類欄位
-- [ ] D2 Ontology v0：四大類初稿
-- [ ] D3 Ontology v0.5：Claude 自動萃取 + 人工校對
-- [ ] D4 Ontology v1 候選 + 集團型多產業營收組成（FR-074~076）
-- [ ] D5 **G1：Ontology v1 凍結**（之後不再大改）
-- [ ] ⏰ Kickoff 前：挑首批 20 家（台積電 / 鴻海 / 聯發科 + 集團型）、定新聞白名單、熟讀 NFR-031
+- [x] D1 Ontology 抽樣：挑 20 家公司、列分類欄位 — `0050_公司清單.xlsx` 有 `優先級A_前20` ＋分類欄位
+- [x] D2 Ontology v0：四大類初稿 — `Ontology_V0.7.xlsx` 公司/財務指標/事件/法遵名詞四分頁皆有
+- [x] D3 Ontology v0.5：Claude 自動萃取 + 人工校對 — 版本已推進至 V0.7
+- [~] D4 Ontology v1 候選 + 集團型多產業營收組成（FR-074~076）— 多產業 mapping ＋`混合型_專案使用` 已建；「營收組成」明細待核
+- [ ] D5 **G1：Ontology v1 凍結**（之後不再大改）— ⚠️ 仍停在 V0.7，**未凍結**
+- [~] ⏰ Kickoff 前：挑首批 20 家（台積電 / 鴻海 / 聯發科 + 集團型）、定新聞白名單、熟讀 NFR-031 — 首批 20 家 ✅、新聞白名單 ✅（`news_source_whitelist`）；NFR-031 熟讀未能查證
 
 **W2**
-- [ ] D6 領域審閱：檢查系統答案財務說法
-- [ ] D7 Ontology v1 正式凍結
-- [ ] D8 紅隊題庫：設計誘導買賣建議 / 幻覺題
+- [ ] D6 領域審閱：檢查系統答案財務說法 — ⏳ 卡：系統未接真資料（R4 ingestion 未開工），無系統答案可校
+- [ ] D7 Ontology v1 正式凍結 — ⚠️ 缺口①，仍 V0.7
+- [ ] D8 紅隊題庫：設計誘導買賣建議 / 幻覺題 — ⚠️ 缺口③，尚未見產出（可不依賴系統先寫）
 - [ ] D9 紅隊執行：實際攻擊系統
 - [ ] D10 G2 驗收（金融正確性面）
 
