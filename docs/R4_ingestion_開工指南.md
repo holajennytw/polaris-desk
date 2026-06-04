@@ -202,6 +202,8 @@ PARTITION BY published_at
 CLUSTER BY stock_id, metric;
 ```
 
+> 🔧 **可跑的 PoC 起點**：[`scripts/poc_financial_extract.py`](../scripts/poc_financial_extract.py)。逐頁偵測 text/image、圖檔頁 `pdftoppm`→Gemini vision 抽 JSON、輸出對齊上面 schema。**已實測**：2330 台積電 p3–9 正確路由到 vision、2454 聯發科全文字頁。無金鑰跑出 placeholder 示範形狀，填 `GEMINI_API_KEY` 即真抽。用法：`python scripts/poc_financial_extract.py --pdf <財報> --stock-id 2330 --period 2025Q1`。R4 照著改成批次入庫。
+
 - **接 Calculator**：節點 [`stubs.calculator`](../src/polaris/graph/nodes/stubs.py) 目前回固定 `{"YoY_pct": 12.34}`，註解就寫「待 R4 結構化資料」。**你的交付＝這張表 + 資料**；之後 Calculator（R2/R3）改成查表做**確定性** YoY/QoQ/毛利率計算 → 數字句句附 `source_id`、不經 LLM（接地最強）。
 
 ### 軌 B：敘述附註 → `chunks` 表（跟法說同一條 pipeline）
