@@ -1,7 +1,7 @@
 # 角色規格書（Spec Kit）：R3 — Agent 工程師
 
 **Role**: R3 4-way 檢索 + Writer 引用 + Watchdog Agent **色**：冰藍
-**對應**：專題 spec FR-002/003/004/006；4 週計畫 R3 卡 **Status**: Draft
+**對應**：專題 spec FR-002/003/004/006；4 週計畫 R3 卡 **Status**: 尚未開工（2026-06-04；開工指南已備）
 
 ## 1. Mission
 做出「會找資料的搜尋員」（4-way 檢索）、讓答案逐句有憑有據（Writer 引用 + Calc grounding），W3 主導第二個真 Agent（Watchdog 事件驅動合規）。
@@ -19,6 +19,12 @@
 | 新聞評估卡 | FR-006 | 只描述 / 標證據 / 標矛盾，**不得出買賣建議**（NFR-031）|
 
 ## 3. Tasks by Week（可勾選）
+
+> **📌 2026-06-04 進度快照（PM 站會）**
+> GitHub 0 commit；Retriever/Writer/Compliance/LLMLingua/Deep Research 目前是 R2 代寫的骨架，**R3 招牌 Watchdog Agent 尚未開始**。
+> - **開工指南已備**：[`../R3_watchdog_開工指南.md`](../R3_watchdog_開工指南.md)——用 mock MOPS 事件、**不必等 R4**。
+> - **本週就做**：接 Watchdog Agent（鏡像 `deep_research/agent.py`、接 `compliance_agent.review`、與 R7 定事件 JSON 契約）。
+> - 下方任務維持未勾（尚無產出）。
 
 **W1**
 - [ ] D1 Agent 開發環境、能呼叫 Gemini（`google-genai`）

@@ -1,7 +1,7 @@
 # 角色規格書（Spec Kit）：R4 — 資料工程師
 
 **Role**: R4 Ingestion + 向量庫（BigQuery 為主，pgvector fallback）+ ColPali + 新聞 **色**：草綠
-**對應**：專題 spec FR-001/002/005；4 週計畫 R4 卡 **Status**: Draft
+**對應**：專題 spec FR-001/002/005；4 週計畫 R4 卡 **Status**: In Progress（語料蒐齊，ingestion 待開工，2026-06-04）
 
 ## 1. Mission
 把倉庫蓋好、把貨搬進去：把 100 份法說稿入 **BigQuery 共用 canonical `polaris_core`**（embedding 算一次、全員共用）；W3 上 ColPali + 新聞第 5 路 + 餵 Watchdog 事件；W4 部署 + 離線備援（pgvector）。
@@ -20,6 +20,12 @@
 | 離線備援資料集 | SC-005/G4 | demo 用乾淨資料集 + mock ReAct trace JSON，斷網可跑 |
 
 ## 3. Tasks by Week（可勾選）
+
+> **📌 2026-06-04 進度快照（PM 站會）— 全案關鍵路徑**
+> **語料已蒐齊**（Drive `07_ConferenceCall/` 102 份 + `06_Financial_Report/` 15 份）、**GCP 專案/bucket/`polaris_core` 已備**（PM 代建）；但 **ingestion 程式 0 行、SOP §4 未開工** → 語料未進向量庫，**R3 檢索/R5 真分/R6 上線/R2 雲端 demo 全等這步**。
+> - **開工指南 + 2 支實測 PoC 已備**：[`../R4_ingestion_開工指南.md`](../R4_ingestion_開工指南.md)（法說單軌 + 財報兩軌 §10）、`scripts/poc_transcript_ingest.py`（法說）、`scripts/poc_financial_extract.py`（財報圖檔頁→vision）。
+> - **本週就做（最高優先）**：把 100 份法說灌進 `polaris_core`、`make bq-smoke` 轉綠 → 通知全隊解鎖。
+> - 下方任務待 ingestion 完成才勾。
 
 **W1**
 - [ ] D1 **BigQuery `polaris_core` 建表**（依 SOP §4：分區 + cluster + 向量索引）；pgvector fallback 設定留待離線備援

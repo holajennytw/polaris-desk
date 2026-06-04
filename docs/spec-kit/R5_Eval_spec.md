@@ -1,7 +1,7 @@
 # 角色規格書（Spec Kit）：R5 — AI 品質 · Eval Lead
 
 **Role**: R5 Ragas + 三方 Judge + 130 題 ≥ 80% **色**：紅
-**對應**：專題 spec SC-001/002/003；4 週計畫 R5 卡 **Status**: Draft
+**對應**：專題 spec SC-001/002/003；4 週計畫 R5 卡 **Status**: 尚未開工（2026-06-04；開工指南已備、可即刻動）
 
 ## 1. Mission
 當「考官」：架好 Ragas 自動評分、累積題庫到 130 題、接 CI 每日跑分、導入三方 Judge 投票，W3 把 Eval 衝到 ≥ 80%（G3 硬門檻）。
@@ -20,6 +20,12 @@
 | Eval 報告 | G4 | 130 題 + 場景 4 成績、圖表、解讀；含買賣建議 = 0 的證據 |
 
 ## 3. Tasks by Week（可勾選）
+
+> **📌 2026-06-04 進度快照（PM 站會）**
+> Ragas pipeline / 130 題題庫 / 評分 CI **Drive+repo 查無**（若在 Notion/gsheet 請本人補）；**Eval ≥80% 是 G3 硬門檻**。
+> - **可即刻開工、不必等 R4**：系統 fallback 模式已能端到端跑（`build_workflow().invoke()` 直接收 answer/contexts/golden 四件套）。開工指南 [`../R5_eval_開工指南.md`](../R5_eval_開工指南.md)。
+> - **本週就做**：fallback 跑通 Ragas + 起 25 題題庫（題目借 R6 Ontology + R1 場景）。
+> - 下方任務維持未勾（W1 分數為煙測分、非真分）。
 
 **W1**
 - [ ] D1 Ragas 環境、能對假答案打分

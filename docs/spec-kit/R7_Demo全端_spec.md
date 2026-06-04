@@ -1,7 +1,7 @@
 # 角色規格書（Spec Kit）：R7 — Demo & 全端工程師
 
 **Role**: R7 前端 + 引用 UI + ReAct trace + 上雲部署 **色**：暖橘
-**對應**：專題 spec SC-004/005/007；4 週計畫 R7 卡 **Status**: Draft
+**對應**：專題 spec SC-004/005/007；4 週計畫 R7 卡 **Status**: 尚未開工（2026-06-04；開工指南已備、可即刻動）
 
 ## 1. Mission
 把產品的「臉」做出來並做到能上台：對話 / 引用 UI、報告檢視、Alert Inbox、ReAct trace 視覺化；W4 前端上雲（Vercel 接 Cloud Run）+ Landing + Demo 備援影片。
@@ -20,6 +20,12 @@
 | 前端上雲 + 影片 | G4/SC-005 | 前端部署 Vercel + 接雲端後端；Demo 備援影片定稿、現場切換演練過 |
 
 ## 3. Tasks by Week（可勾選）
+
+> **📌 2026-06-04 進度快照（PM 站會）**
+> repo 無前端碼、`05_Demo資料` 空 → **尚未開工**。
+> - **可即刻開工、不必等後端**：前端吃固定 JSON、用 mock 先行。開工指南 [`../R7_frontend_開工指南.md`](../R7_frontend_開工指南.md)（含三個真實 JSON 契約 + Chainlit/Next.js 選型）。
+> - **本週就做**：起 Chainlit 骨架 + mock JSON 做對話/引用 UI。**依賴**：需 thin FastAPI 包 `build_workflow().invoke`（跟 R2 敲，不擋 mock 開發）。
+> - 下方任務維持未勾。
 
 **W1**
 - [ ] D1 前端骨架（Next.js）能開頁面
