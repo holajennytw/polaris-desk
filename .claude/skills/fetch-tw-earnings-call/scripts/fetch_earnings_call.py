@@ -2,7 +2,7 @@
 """抓台股法說會簡報/逐字稿（中英），跨股票代號。
 
 混合來源：vendor adapter（TodayIR…）+ MOPS 法人說明會一覽表底層 → md5 去重合併。
-繞過 MOPS 反爬：直接打公司 IR 權威來源。輸出 data/<stock_id>_<name>/ + manifest.json。
+繞過 MOPS 反爬：直接打公司 IR 權威來源。輸出 data/<ticker>_<name>/ + manifest.json。
 本檔含可單元測的純邏輯（dedupe / assign_filenames）與 I/O 編排（main）。
 """
 from __future__ import annotations
@@ -96,22 +96,22 @@ def event_date_from_pdf(pdf_bytes: bytes) -> tuple[str, str]:
     return (iso, "pdf_first_page") if iso else ("", "unknown")
 
 
-def resolve_docs(stock_id: str, years: list[int]) -> tuple[str, list[Doc]]:
+def resolve_docs(ticker: str, years: list[int]) -> tuple[str, list[Doc]]:
     """跑命中的 vendor adapter + MOPS 底層，回 (company_name, docs)。"""
-    info = ec_companies.lookup(stock_id)
+    info = ec_companies.lookup(ticker)
     docs: list[Doc] = []
-    company = info["name"] if info else stock_id
+    company = info["name"] if info else ticker
     for ad in ADAPTERS:
-        if info and ad.supports(stock_id, info):
-            docs += ad.fetch(stock_id, years, http_get, info)
-    docs += ec_mops.fetch(stock_id, years, http_get)
+        if info and ad.supports(ticker, info):
+            docs += ad.fetch(ticker, years, http_get, info)
+    docs += ec_mops.fetch(ticker, years, http_get)
     return company, docs
 
 
-def run(stock_id: str, years: list[int], out_dir: Path) -> list[dict]:
-    company, docs = resolve_docs(stock_id, years)
+def run(ticker: str, years: list[int], out_dir: Path) -> list[dict]:
+    company, docs = resolve_docs(ticker, years)
     if not docs:
-        print(f"查無 {stock_id} 的法說會記錄（已試 vendor adapter + MOPS 底層）。", file=sys.stderr)
+        print(f"查無 {ticker} 的法說會記錄（已試 vendor adapter + MOPS 底層）。", file=sys.stderr)
         return []
     blobs = {d.source_url: http_get(d.source_url) for d in {d.source_url: d for d in docs}.values()}
     # 補 event_date（adapter 來源沒日期者，用 PDF 首頁）
@@ -133,7 +133,7 @@ def run(stock_id: str, years: list[int], out_dir: Path) -> list[dict]:
         (out_dir / fname).write_bytes(data)
         n_transcript += d.doc_type == "transcript"
         manifest.append({
-            "file": fname, "stock_id": d.stock_id, "company": company,
+            "file": fname, "ticker": d.ticker, "company": company,
             "doc_type": d.doc_type, "fiscal_period": d.fiscal_period, "lang": d.lang,
             "event_date": d.event_date, "date_source": d.date_source,
             "source_url": d.source_url, "source_page": d.source_page,
@@ -144,22 +144,22 @@ def run(stock_id: str, years: list[int], out_dir: Path) -> list[dict]:
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"下載 {len(manifest)} 份到 {out_dir}/（presentation {len(manifest)-n_transcript}、transcript {n_transcript}）")
     if n_transcript == 0:
-        print(f"註：{company}（{stock_id}）無公開 transcript，manifest 僅列簡報。")
+        print(f"註：{company}（{ticker}）無公開 transcript，manifest 僅列簡報。")
     return manifest
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--stock-id", required=True)
+    ap.add_argument("--ticker", required=True)
     ap.add_argument("--from", dest="y_from", type=int, default=2021)
     ap.add_argument("--to", dest="y_to", type=int, default=date.today().year)
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
     years = list(range(args.y_from, args.y_to + 1))
-    info = ec_companies.lookup(args.stock_id)
-    name = info["name"] if info else args.stock_id
-    out = Path(args.out) if args.out else Path("data") / f"{args.stock_id}_{name}"
-    run(args.stock_id, years, out)
+    info = ec_companies.lookup(args.ticker)
+    name = info["name"] if info else args.ticker
+    out = Path(args.out) if args.out else Path("data") / f"{args.ticker}_{name}"
+    run(args.ticker, years, out)
     return 0
 
 

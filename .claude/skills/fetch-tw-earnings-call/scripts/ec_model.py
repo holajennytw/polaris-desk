@@ -13,7 +13,7 @@ _WEST_DATE = re.compile(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
 
 @dataclass(frozen=True)
 class Doc:
-    stock_id: str
+    ticker: str
     company: str
     doc_type: str        # "presentation" | "transcript"
     fiscal_period: str   # "2026Q1"
@@ -53,6 +53,6 @@ def build_filename(d: Doc, seq: int, ext: str = "pdf") -> str:
     date_token = d.event_date.replace("-", "") if d.event_date else "00000000"
     flag = LANG_FLAG[d.lang]
     return (
-        f"{d.stock_id}_{date_token}{flag}{seq:03d}_"
+        f"{d.ticker}_{date_token}{flag}{seq:03d}_"
         f"{d.fiscal_period}_concall_{d.doc_type}.{ext}"
     )

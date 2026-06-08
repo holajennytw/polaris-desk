@@ -36,7 +36,7 @@ def test_parse_roc_date_none():
 
 def test_build_filename_zh_presentation():
     d = Doc(
-        stock_id="2891", company="中信金控", doc_type="presentation",
+        ticker="2891", company="中信金控", doc_type="presentation",
         fiscal_period="2026Q1", lang="zh", event_date="2026-05-19",
         date_source="pdf_first_page", source_url="u", source_page="p",
     )
@@ -45,7 +45,7 @@ def test_build_filename_zh_presentation():
 
 def test_build_filename_en_transcript_seq2():
     d = Doc(
-        stock_id="2330", company="台積電", doc_type="transcript",
+        ticker="2330", company="台積電", doc_type="transcript",
         fiscal_period="2025Q4", lang="en", event_date="2026-01-16",
         date_source="source_listing", source_url="u", source_page="p",
     )
@@ -54,7 +54,7 @@ def test_build_filename_en_transcript_seq2():
 
 def test_build_filename_unknown_date():
     d = Doc(
-        stock_id="2891", company="中信金控", doc_type="presentation",
+        ticker="2891", company="中信金控", doc_type="presentation",
         fiscal_period="2026Q1", lang="zh", event_date="",
         date_source="unknown", source_url="u", source_page="p",
     )

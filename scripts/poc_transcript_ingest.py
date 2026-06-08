@@ -14,7 +14,7 @@ R4 的「照著改」起點，對應 docs/R4_ingestion_開工指南.md §3（法
 用法：
     python scripts/poc_transcript_ingest.py \\
         --pdf "/path/07_ConferenceCall/2330_TSMC/...Transcript....pdf" \\
-        --stock-id 2330 --period 2024Q3 --doc-type transcript
+        --ticker 2330 --period 2024Q3 --doc-type transcript
 """
 from __future__ import annotations
 
@@ -58,24 +58,24 @@ def embed(text: str, client) -> tuple[list[float], bool]:
 
 
 def build_documents(
-    chunks: list[str], *, stock_id: str, period: str, doc_type: str, client
+    chunks: list[str], *, ticker: str, period: str, doc_type: str, client
 ) -> tuple[list[Document], bool]:
     docs: list[Document] = []
     real = False
     for i, raw in enumerate(chunks):
         content = sanitize_text(raw)                       # 入庫前淨化
-        issues = validate_for_ingestion(f"{stock_id}-{i}", content)
+        issues = validate_for_ingestion(f"{ticker}-{i}", content)
         if issues:                                         # 空/過長 → skip
             continue
         vec, is_real = embed(content, client)
         real = real or is_real
-        chunk_id = f"{stock_id}_{period}_{doc_type}_{i:04d}"
+        chunk_id = f"{ticker}_{period}_{doc_type}_{i:04d}"
         docs.append(
             Document(
                 id=chunk_id,
                 content=content,
                 embedding=vec,
-                company=stock_id,
+                company=ticker,
                 period=period,
                 metadata={
                     "doc_type": doc_type,
@@ -90,7 +90,7 @@ def build_documents(
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="法說稿 PoC：PDF → chunks（文字軌）")
     ap.add_argument("--pdf", required=True, help="法說 PDF 路徑")
-    ap.add_argument("--stock-id", required=True, help="股票代號，如 2330")
+    ap.add_argument("--ticker", required=True, help="股票代號，如 2330")
     ap.add_argument("--period", required=True, help="季別，如 2024Q3（對齊 temporal.py）")
     ap.add_argument("--doc-type", default="transcript", help="transcript / presentation")
     args = ap.parse_args(argv)
@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     chunks = chunk_text(raw)
     client = active_llm()
     docs, real = build_documents(
-        chunks, stock_id=args.stock_id, period=args.period, doc_type=args.doc_type, client=client
+        chunks, ticker=args.ticker, period=args.period, doc_type=args.doc_type, client=client
     )
 
     print(f"== 法說 PoC：{Path(args.pdf).name} ==")
@@ -113,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
 
     for d in docs[:2]:  # 示範前 2 筆 → 對齊 chunks 表欄位
         print(f"  chunk_id={d.id}")
-        print(f"    stock_id={d.company}  fiscal_period={d.period}  doc_type={d.metadata['doc_type']}")
+        print(f"    ticker={d.company}  fiscal_period={d.period}  doc_type={d.metadata['doc_type']}")
         print(f"    chunk_text={d.content[:50]}…")
         print(f"    embedding[:4]={[round(x, 4) for x in d.embedding[:4]]}（len={len(d.embedding)}）\n")
 

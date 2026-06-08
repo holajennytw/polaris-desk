@@ -151,7 +151,7 @@ bq update --source=core_access.json polaris-desk-team:polaris_core
 ```sql
 CREATE TABLE polaris_core.chunks (
   chunk_id      STRING,
-  stock_id      STRING,
+  ticker      STRING,
   doc_type      STRING,
   fiscal_period STRING,
   published_at  DATE,
@@ -159,10 +159,10 @@ CREATE TABLE polaris_core.chunks (
   embedding     ARRAY<FLOAT64>
 )
 PARTITION BY published_at
-CLUSTER BY stock_id, doc_type;
+CLUSTER BY ticker, doc_type;
 ```
 
-> 所有查詢都應帶 `published_at` 範圍與 `stock_id` 條件，才能命中 partition／cluster，把掃描量壓到最小。
+> 所有查詢都應帶 `published_at` 範圍與 `ticker` 條件，才能命中 partition／cluster，把掃描量壓到最小。
 
 ### 4.2 建立向量索引（對齊 PRD §15）
 
@@ -238,7 +238,7 @@ bq query --use_legacy_sql=false \
 
 1. **讀 `polaris_core`，寫 `polaris_dev_<name>`**。任何寫入操作的目標 dataset 一律是自己的 scratch。
 2. 禁止對 `polaris_core` 做 ingestion、重建 index、改 schema。需要新資料或新欄位，走第 7 章流程。
-3. 每次查詢必帶 partition filter（`published_at` 範圍）與 `stock_id` 條件。
+3. 每次查詢必帶 partition filter（`published_at` 範圍）與 `ticker` 條件。
 4. 大查詢前先 dry-run 估成本：
 
    ```bash

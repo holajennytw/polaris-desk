@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a `fetch-tw-earnings-call` skill that downloads Taiwan-listed companies' earnings-call (法說會) presentations and transcripts (中/英) for any stock id, bypassing MOPS anti-crawling by hitting authoritative sources directly.
+**Goal:** Build a `fetch-tw-earnings-call` skill that downloads Taiwan-listed companies' earnings-call (法說會) presentations and transcripts (中/英) for any ticker, bypassing MOPS anti-crawling by hitting authoritative sources directly.
 
-**Architecture:** Hybrid source resolution — a per-vendor adapter (TodayIR first, richer: zh+en presentation + transcript when published) plus a centralized MOPS 法人說明會一覽表 base that works for any stock id. Results merge by `(fiscal_period, doc_type, lang)` and dedupe by content md5. All skill scripts are stdlib-only and self-contained so the skill can be copied to `~/.claude/skills/` and run in any project. Network access is dependency-injected (`http_get`) so unit tests run against saved HTML fixtures with zero network.
+**Architecture:** Hybrid source resolution — a per-vendor adapter (TodayIR first, richer: zh+en presentation + transcript when published) plus a centralized MOPS 法人說明會一覽表 base that works for any ticker. Results merge by `(fiscal_period, doc_type, lang)` and dedupe by content md5. All skill scripts are stdlib-only and self-contained so the skill can be copied to `~/.claude/skills/` and run in any project. Network access is dependency-injected (`http_get`) so unit tests run against saved HTML fixtures with zero network.
 
 **Tech Stack:** Python 3.13 (stdlib: `urllib`, `re`, `hashlib`, `json`, `subprocess`, `dataclasses`), `pdftotext` (poppler, already installed) for event-date extraction, pytest, ruff (line-length 100).
 
@@ -18,7 +18,7 @@
 └─ scripts/
    ├─ fetch_earnings_call.py      # CLI entry: resolve → merge → dedupe → download → manifest
    ├─ ec_model.py                 # Doc dataclass, period/date helpers, filename builder
-   ├─ ec_companies.py             # stock_id → {name, vendor, page_tmpl} registry
+   ├─ ec_companies.py             # ticker → {name, vendor, page_tmpl} registry
    ├─ ec_todayir.py               # TodayIR adapter (supports/fetch)
    └─ ec_mops.py                  # MOPS 法人說明會一覽表 base source
 tests/
@@ -32,12 +32,12 @@ tests/
 
 Module responsibilities (each independently testable):
 - `ec_model` — pure value logic: normalize period, parse ROC date string, build filename. No I/O.
-- `ec_companies` — static dict + `lookup(stock_id)`. No I/O.
-- `ec_todayir` — `supports(stock_id, registry)`, `fetch(stock_id, years, http_get, registry) -> list[Doc]`. I/O via injected `http_get`.
-- `ec_mops` — `fetch(stock_id, years, http_get) -> list[Doc]`. I/O via injected `http_get`.
+- `ec_companies` — static dict + `lookup(ticker)`. No I/O.
+- `ec_todayir` — `supports(ticker, registry)`, `fetch(ticker, years, http_get, registry) -> list[Doc]`. I/O via injected `http_get`.
+- `ec_mops` — `fetch(ticker, years, http_get) -> list[Doc]`. I/O via injected `http_get`.
 - `fetch_earnings_call` — orchestration: `merge_dedupe(docs, blobs)`, download loop, manifest writer, `main()`.
 
-Adapter convention (duck-typed, no ABC needed): a source module exposes `fetch(stock_id, years, http_get, ...) -> list[Doc]`; an adapter additionally exposes `supports(stock_id, registry) -> bool`.
+Adapter convention (duck-typed, no ABC needed): a source module exposes `fetch(ticker, years, http_get, ...) -> list[Doc]`; an adapter additionally exposes `supports(ticker, registry) -> bool`.
 
 ---
 
@@ -53,30 +53,30 @@ Adapter convention (duck-typed, no ABC needed): a source module exposes `fetch(s
 ```markdown
 ---
 name: fetch-tw-earnings-call
-description: Download Taiwan-listed companies' earnings-call (法說會) presentations and transcripts (Chinese + English) by stock id. Use when the user wants to fetch 法說會/法人說明會 簡報 or 逐字稿 for a TWSE/TPEx ticker (e.g. 2891 中信金, 2330 台積電), or mentions 公開資訊觀測站/MOPS being blocked for crawling. Bypasses MOPS anti-crawling by hitting authoritative IR sources directly.
+description: Download Taiwan-listed companies' earnings-call (法說會) presentations and transcripts (Chinese + English) by ticker. Use when the user wants to fetch 法說會/法人說明會 簡報 or 逐字稿 for a TWSE/TPEx ticker (e.g. 2891 中信金, 2330 台積電), or mentions 公開資訊觀測站/MOPS being blocked for crawling. Bypasses MOPS anti-crawling by hitting authoritative IR sources directly.
 ---
 
 # Fetch Taiwan Earnings-Call Materials
 
 Downloads 法說會 (investor conference) **presentations** and **transcripts** for a given
-stock id, Chinese and English, into `data/<stock_id>_<name>/` with a `manifest.json`
+ticker, Chinese and English, into `data/<ticker>_<name>/` with a `manifest.json`
 that carries source provenance (引用接地, R4).
 
 ## Why not MOPS scraping
 公開資訊觀測站 (MOPS) blocks aggressive crawling. This skill instead hits **authoritative
 sources**: the company's IR site via a per-vendor adapter (richer — zh+en + transcript when
-published) plus the MOPS 法人說明會一覽表 as a generic base that works for any stock id.
+published) plus the MOPS 法人說明會一覽表 as a generic base that works for any ticker.
 Results merge and dedupe by content md5.
 
 ## Usage
 ```bash
 python .claude/skills/fetch-tw-earnings-call/scripts/fetch_earnings_call.py \
-    --stock-id 2891 --from 2021 --to 2026
+    --ticker 2891 --from 2021 --to 2026
 # output: data/2891_中信金控/<files>.pdf + manifest.json
 ```
 
-Options: `--stock-id` (required), `--from`/`--to` (year range, default 2021..current),
-`--out` (default `data/<stock_id>_<name>`).
+Options: `--ticker` (required), `--from`/`--to` (year range, default 2021..current),
+`--out` (default `data/<ticker>_<name>`).
 
 ## Output naming
 `<ticker>_<yyyymmdd><L><nnn>_<period>_concall_<doctype>.pdf`
@@ -87,7 +87,7 @@ Options: `--stock-id` (required), `--from`/`--to` (year range, default 2021..cur
 
 ## Coverage
 Companies in the registry (`ec_companies.py`) with a vendor adapter get zh+en + transcript.
-Other stock ids fall back to the MOPS base (presentation only). To add a company, extend the
+Other tickers fall back to the MOPS base (presentation only). To add a company, extend the
 registry and (if a new IR vendor) add an adapter under `scripts/`.
 
 ## Notes
@@ -183,7 +183,7 @@ def test_parse_roc_date_none():
 
 def test_build_filename_zh_presentation():
     d = Doc(
-        stock_id="2891", company="中信金控", doc_type="presentation",
+        ticker="2891", company="中信金控", doc_type="presentation",
         fiscal_period="2026Q1", lang="zh", event_date="2026-05-19",
         date_source="pdf_first_page", source_url="u", source_page="p",
     )
@@ -192,7 +192,7 @@ def test_build_filename_zh_presentation():
 
 def test_build_filename_en_transcript_seq2():
     d = Doc(
-        stock_id="2330", company="台積電", doc_type="transcript",
+        ticker="2330", company="台積電", doc_type="transcript",
         fiscal_period="2025Q4", lang="en", event_date="2026-01-16",
         date_source="source_listing", source_url="u", source_page="p",
     )
@@ -201,7 +201,7 @@ def test_build_filename_en_transcript_seq2():
 
 def test_build_filename_unknown_date():
     d = Doc(
-        stock_id="2891", company="中信金控", doc_type="presentation",
+        ticker="2891", company="中信金控", doc_type="presentation",
         fiscal_period="2026Q1", lang="zh", event_date="",
         date_source="unknown", source_url="u", source_page="p",
     )
@@ -231,7 +231,7 @@ _WEST_DATE = re.compile(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
 
 @dataclass(frozen=True)
 class Doc:
-    stock_id: str
+    ticker: str
     company: str
     doc_type: str        # "presentation" | "transcript"
     fiscal_period: str   # "2026Q1"
@@ -271,7 +271,7 @@ def build_filename(d: Doc, seq: int, ext: str = "pdf") -> str:
     date_token = d.event_date.replace("-", "") if d.event_date else "00000000"
     flag = LANG_FLAG[d.lang]
     return (
-        f"{d.stock_id}_{date_token}{flag}{seq:03d}_"
+        f"{d.ticker}_{date_token}{flag}{seq:03d}_"
         f"{d.fiscal_period}_concall_{d.doc_type}.{ext}"
     )
 ```
@@ -295,7 +295,7 @@ git commit -m "feat(skill): ec_model period/date/filename helpers (TDD)"
 
 ---
 
-## Task 3: `ec_companies` — stock_id → vendor registry
+## Task 3: `ec_companies` — ticker → vendor registry
 
 **Files:**
 - Create: `.claude/skills/fetch-tw-earnings-call/scripts/ec_companies.py`
@@ -327,7 +327,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'ec_companies'`.
 - [ ] **Step 3: Implement ec_companies.py**
 
 ```python
-"""stock_id → 公司名 + IR 廠商 + 頁面樣板 的小註冊表。
+"""ticker → 公司名 + IR 廠商 + 頁面樣板 的小註冊表。
 
 只列已知 vendor adapter 可處理的公司；未列者由 MOPS 底層處理。
 固定 5 檔（2308/2317/2330/2454/3034）的 vendor 待各自確認後補上（先留 None）。
@@ -343,8 +343,8 @@ _REGISTRY: dict[str, dict] = {
 }
 
 
-def lookup(stock_id: str) -> dict | None:
-    return _REGISTRY.get(stock_id)
+def lookup(ticker: str) -> dict | None:
+    return _REGISTRY.get(ticker)
 ```
 
 - [ ] **Step 4: Run to verify pass**
@@ -415,7 +415,7 @@ def test_fetch_extracts_q1_presentation():
     assert all(d.doc_type == "presentation" for d in q1)
     assert all(d.lang == "zh" for d in q1)               # CTBC 檔名 _tc → 中文
     assert all(d.source_url.endswith(".pdf") for d in q1)
-    assert all(d.stock_id == "2891" and d.company == "中信金控" for d in q1)
+    assert all(d.ticker == "2891" and d.company == "中信金控" for d in q1)
 ```
 
 - [ ] **Step 3: Run to verify fail**
@@ -446,7 +446,7 @@ _LINK = re.compile(
 )
 
 
-def supports(stock_id: str, registry: dict | None) -> bool:
+def supports(ticker: str, registry: dict | None) -> bool:
     return bool(registry) and registry.get("vendor") == "todayir"
 
 
@@ -462,7 +462,7 @@ def _doc_type_of(label: str) -> str:
 
 
 def fetch(
-    stock_id: str,
+    ticker: str,
     years: Iterable[int],
     http_get: Callable[[str], bytes],
     registry: dict,
@@ -479,7 +479,7 @@ def fetch(
                 continue
             seen.add(url)
             out.append(Doc(
-                stock_id=stock_id,
+                ticker=ticker,
                 company=company,
                 doc_type=_doc_type_of(label),
                 fiscal_period=to_period(int(yr), cn_quarter_num(q_cn)),
@@ -572,7 +572,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'fetch_earnings_call'`
 """抓台股法說會簡報/逐字稿（中英），跨股票代號。
 
 混合來源：vendor adapter（TodayIR…）+ MOPS 法人說明會一覽表底層 → md5 去重合併。
-繞過 MOPS 反爬：直接打公司 IR 權威來源。輸出 data/<stock_id>_<name>/ + manifest.json。
+繞過 MOPS 反爬：直接打公司 IR 權威來源。輸出 data/<ticker>_<name>/ + manifest.json。
 本檔含可單元測的純邏輯（dedupe / assign_filenames）與 I/O 編排（main）。
 """
 from __future__ import annotations
@@ -649,7 +649,7 @@ git commit -m "feat(skill): orchestration core dedupe + filename sequencing (TDD
 > Note: this step imports `ec_mops` (Task 6) at module top. Until Task 6 lands, run the
 > Task-5 tests with `ec_mops` stubbed: create a temporary
 > `.claude/skills/fetch-tw-earnings-call/scripts/ec_mops.py` containing
-> `def fetch(stock_id, years, http_get): return []` and replace it in Task 6.
+> `def fetch(ticker, years, http_get): return []` and replace it in Task 6.
 > Create that stub now as part of Step 3.
 
 ---
@@ -671,7 +671,7 @@ git commit -m "feat(skill): orchestration core dedupe + filename sequencing (TDD
 
 Open `https://mops.twse.com.tw/mops/#/web/t100sb02_1` in a browser (or the agent-browser
 skill), pick a company, and capture the XHR the page issues (DevTools → Network). Record:
-the request URL, method, headers, and POST body (stock id `2891`, year as 民國, e.g. `115`).
+the request URL, method, headers, and POST body (ticker `2891`, year as 民國, e.g. `115`).
 Then reproduce it with curl, e.g.:
 
 ```bash
@@ -707,7 +707,7 @@ def test_fetch_returns_presentation_docs():
     docs = ec_mops.fetch("2891", [2026], _fake_http_get)
     assert docs, "should parse at least one record from the fixture"
     d = docs[0]
-    assert d.stock_id == "2891"
+    assert d.ticker == "2891"
     assert d.doc_type == "presentation"
     assert d.fiscal_period.endswith(("Q1", "Q2", "Q3", "Q4"))
     assert d.source_url.startswith("http")
@@ -743,23 +743,23 @@ from ec_model import Doc, month_to_quarter, parse_roc_date, to_period
 _ENDPOINT = "<DISCOVERED_URL>"
 
 
-def _build_body(stock_id: str, roc_year: int) -> str:
+def _build_body(ticker: str, roc_year: int) -> str:
     # 對齊 Step 1 實測的 POST body 欄位名。
-    return json.dumps({"companyId": stock_id, "year": str(roc_year)})
+    return json.dumps({"companyId": ticker, "year": str(roc_year)})
 
 
-def fetch(stock_id: str, years: Iterable[int], http_get: Callable[[str], bytes]) -> list[Doc]:
+def fetch(ticker: str, years: Iterable[int], http_get: Callable[[str], bytes]) -> list[Doc]:
     out: list[Doc] = []
     for y in years:
         roc = y - 1911
         # http_get 在測試時被替換為回 fixture；正式時編排層傳入會 POST 的 client。
-        raw = http_get(_ENDPOINT)  # 正式 client 需帶 _build_body(stock_id, roc)
-        records = _parse(raw, stock_id)
+        raw = http_get(_ENDPOINT)  # 正式 client 需帶 _build_body(ticker, roc)
+        records = _parse(raw, ticker)
         out.extend(records)
     return out
 
 
-def _parse(raw: bytes, stock_id: str) -> list[Doc]:
+def _parse(raw: bytes, ticker: str) -> list[Doc]:
     data = json.loads(raw.decode("utf-8", "replace"))
     rows = data["result"]["data"]          # <-- EXTRACTION POINT 1: 依實測 JSON path 調整
     docs: list[Doc] = []
@@ -773,7 +773,7 @@ def _parse(raw: bytes, stock_id: str) -> list[Doc]:
         else:
             period = ""
         docs.append(Doc(
-            stock_id=stock_id, company=row.get("companyName", ""),
+            ticker=ticker, company=row.get("companyName", ""),
             doc_type="presentation", fiscal_period=period, lang="zh",
             event_date=date_iso, date_source="source_listing" if date_iso else "unknown",
             source_url=url, source_page=_ENDPOINT,
@@ -827,22 +827,22 @@ def event_date_from_pdf(pdf_bytes: bytes) -> tuple[str, str]:
     return (iso, "pdf_first_page") if iso else ("", "unknown")
 
 
-def resolve_docs(stock_id: str, years: list[int]) -> tuple[str, list[Doc]]:
+def resolve_docs(ticker: str, years: list[int]) -> tuple[str, list[Doc]]:
     """跑命中的 vendor adapter + MOPS 底層，回 (company_name, docs)。"""
-    info = ec_companies.lookup(stock_id)
+    info = ec_companies.lookup(ticker)
     docs: list[Doc] = []
-    company = info["name"] if info else stock_id
+    company = info["name"] if info else ticker
     for ad in ADAPTERS:
-        if info and ad.supports(stock_id, info):
-            docs += ad.fetch(stock_id, years, http_get, info)
-    docs += ec_mops.fetch(stock_id, years, http_get)
+        if info and ad.supports(ticker, info):
+            docs += ad.fetch(ticker, years, http_get, info)
+    docs += ec_mops.fetch(ticker, years, http_get)
     return company, docs
 
 
-def run(stock_id: str, years: list[int], out_dir: Path) -> list[dict]:
-    company, docs = resolve_docs(stock_id, years)
+def run(ticker: str, years: list[int], out_dir: Path) -> list[dict]:
+    company, docs = resolve_docs(ticker, years)
     if not docs:
-        print(f"查無 {stock_id} 的法說會記錄（已試 vendor adapter + MOPS 底層）。", file=sys.stderr)
+        print(f"查無 {ticker} 的法說會記錄（已試 vendor adapter + MOPS 底層）。", file=sys.stderr)
         return []
     blobs = {d.source_url: http_get(d.source_url) for d in {d.source_url: d for d in docs}.values()}
     # 補 event_date（adapter 來源沒日期者，用 PDF 首頁）
@@ -863,7 +863,7 @@ def run(stock_id: str, years: list[int], out_dir: Path) -> list[dict]:
         (out_dir / fname).write_bytes(data)
         n_transcript += d.doc_type == "transcript"
         manifest.append({
-            "file": fname, "stock_id": d.stock_id, "company": company,
+            "file": fname, "ticker": d.ticker, "company": company,
             "doc_type": d.doc_type, "fiscal_period": d.fiscal_period, "lang": d.lang,
             "event_date": d.event_date, "date_source": d.date_source,
             "source_url": d.source_url, "source_page": d.source_page,
@@ -874,22 +874,22 @@ def run(stock_id: str, years: list[int], out_dir: Path) -> list[dict]:
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"下載 {len(manifest)} 份到 {out_dir}/（presentation {len(manifest)-n_transcript}、transcript {n_transcript}）")
     if n_transcript == 0:
-        print(f"註：{company}（{stock_id}）無公開 transcript，manifest 僅列簡報。")
+        print(f"註：{company}（{ticker}）無公開 transcript，manifest 僅列簡報。")
     return manifest
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--stock-id", required=True)
+    ap.add_argument("--ticker", required=True)
     ap.add_argument("--from", dest="y_from", type=int, default=2021)
     ap.add_argument("--to", dest="y_to", type=int, default=date.today().year)
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
     years = list(range(args.y_from, args.y_to + 1))
-    info = ec_companies.lookup(args.stock_id)
-    name = info["name"] if info else args.stock_id
-    out = Path(args.out) if args.out else Path("data") / f"{args.stock_id}_{name}"
-    run(args.stock_id, years, out)
+    info = ec_companies.lookup(args.ticker)
+    name = info["name"] if info else args.ticker
+    out = Path(args.out) if args.out else Path("data") / f"{args.ticker}_{name}"
+    run(args.ticker, years, out)
     return 0
 
 
@@ -902,7 +902,7 @@ if __name__ == "__main__":
 Run:
 ```bash
 python .claude/skills/fetch-tw-earnings-call/scripts/fetch_earnings_call.py \
-  --stock-id 2891 --from 2025 --to 2026 --out /tmp/ec_smoke
+  --ticker 2891 --from 2025 --to 2026 --out /tmp/ec_smoke
 ls /tmp/ec_smoke && python3 -c "import json; m=json.load(open('/tmp/ec_smoke/manifest.json')); print(len(m), m[0]['file'])"
 ```
 Expected: PDFs named like `2891_20260519M001_2026Q1_concall_presentation.pdf`, manifest entries
@@ -966,6 +966,6 @@ git commit -m "chore(skill): install personal copy + deprecate single-company sc
   → Tasks 2–6; §7 packaging → Tasks 1,8.
 - **Known soft spot:** Task 6 MOPS extraction points depend on live discovery (documented, with
   graceful `[]` fallback so the skill still ships value via TodayIR).
-- **Type consistency:** `Doc` field names and `http_get(url)->bytes`, `fetch(stock_id, years, http_get[, registry])`,
-  `supports(stock_id, registry)` signatures are used identically across Tasks 4–7.
+- **Type consistency:** `Doc` field names and `http_get(url)->bytes`, `fetch(ticker, years, http_get[, registry])`,
+  `supports(ticker, registry)` signatures are used identically across Tasks 4–7.
 ```

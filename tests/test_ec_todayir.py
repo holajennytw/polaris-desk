@@ -30,4 +30,4 @@ def test_fetch_extracts_q1_presentation():
     assert all(d.doc_type == "presentation" for d in q1)
     assert all(d.lang == "zh" for d in q1)
     assert all(d.source_url.endswith(".pdf") for d in q1)
-    assert all(d.stock_id == "2891" and d.company == "中信金控" for d in q1)
+    assert all(d.ticker == "2891" and d.company == "中信金控" for d in q1)

@@ -14,7 +14,7 @@ R4 的「照著改」起點，對應 docs/R4_ingestion_開工指南.md §10 軌 
 
 用法：
     python scripts/poc_financial_extract.py \\
-        --pdf "/path/06_Financial_Report/2330_202503.pdf" --stock-id 2330 --period 2025Q1
+        --pdf "/path/06_Financial_Report/2330_202503.pdf" --ticker 2330 --period 2025Q1
 """
 from __future__ import annotations
 
@@ -116,15 +116,15 @@ def extract_via_vision(png_path: str, *, api_key: str | None) -> list[dict]:
     return _parse_json_array(resp.text)
 
 
-def _to_metric_row(stock_id: str, period: str, page: int, m: dict) -> dict:
+def _to_metric_row(ticker: str, period: str, page: int, m: dict) -> dict:
     """對齊 docs §10 的 financial_metrics long-format schema。"""
     return {
-        "stock_id": stock_id,
+        "ticker": ticker,
         "fiscal_period": period,
         "metric": m.get("metric"),
         "value": m.get("value"),
         "unit": m.get("unit"),
-        "source_id": f"{stock_id}_{period}_fin_p{page}",  # grounding（FR-003）
+        "source_id": f"{ticker}_{period}_fin_p{page}",  # grounding（FR-003）
         "published_at": None,  # R4：填季末日（Q1→{年}-03-31…）
     }
 
@@ -132,7 +132,7 @@ def _to_metric_row(stock_id: str, period: str, page: int, m: dict) -> dict:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="財報 PoC：圖檔頁偵測 + vision 抽數字")
     ap.add_argument("--pdf", required=True, help="財報 PDF 路徑")
-    ap.add_argument("--stock-id", required=True, help="股票代號，如 2330")
+    ap.add_argument("--ticker", required=True, help="股票代號，如 2330")
     ap.add_argument("--period", required=True, help="季別，如 2025Q1")
     ap.add_argument("--max-pages", type=int, default=12, help="只掃前 N 頁（財報表多在前段）")
     args = ap.parse_args(argv)
@@ -154,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
             with tempfile.TemporaryDirectory() as td:
                 png = render_page_png(args.pdf, p, td)
                 metrics = extract_via_vision(png, api_key=api_key) if png else []
-            rows.extend(_to_metric_row(args.stock_id, args.period, p, m) for m in metrics)
+            rows.extend(_to_metric_row(args.ticker, args.period, p, m) for m in metrics)
             print(f"  p{p}: 🖼️  image → vision（抽到 {len(metrics)} 筆）")
         else:
             print(f"  p{p}: 📝 text  → 文字解析（軌 B 附註切塊；文字財報表可 regex）")

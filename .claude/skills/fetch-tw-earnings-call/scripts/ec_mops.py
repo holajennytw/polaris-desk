@@ -25,10 +25,10 @@ _SUBJ_Q = re.compile(r"(\d{2,3})\s*年(?:度)?\s*第\s*([一二三四1-4])\s*季
 _CN_Q = {"一": 1, "二": 2, "三": 3, "四": 4, "1": 1, "2": 2, "3": 3, "4": 4}
 
 
-def _query(stock_id: str, roc_year: int) -> str:
+def _query(ticker: str, roc_year: int) -> str:
     return ENDPOINT + "?" + urlencode({
         "encodeURIComponent": 1, "step": 1, "firstin": 1, "off": 1,
-        "TYPEK": "all", "co_id": stock_id, "year": roc_year,
+        "TYPEK": "all", "co_id": ticker, "year": roc_year,
     })
 
 
@@ -41,8 +41,8 @@ def _period_from_subject(subject: str) -> str:
     return to_period(1911 + int(m.group(1)), _CN_Q[m.group(2)]) if m else ""
 
 
-def _parse(html_text: str, stock_id: str) -> list[Doc]:
-    file_re = re.compile(rf"({re.escape(stock_id)})(\d{{8}})([ME])(\d{{3}})\.pdf")
+def _parse(html_text: str, ticker: str) -> list[Doc]:
+    file_re = re.compile(rf"({re.escape(ticker)})(\d{{8}})([ME])(\d{{3}})\.pdf")
     best: dict[str, Doc] = {}  # filename -> Doc（優先保留能解析季別者）
     for row in _TR.findall(html_text):
         cells = [t for t in (_cell_text(c) for c in _TD.findall(row)) if t]
@@ -52,7 +52,7 @@ def _parse(html_text: str, stock_id: str) -> list[Doc]:
         for m in file_re.finditer(row):
             fname, ymd, flag = m.group(0), m.group(2), m.group(3)
             doc = Doc(
-                stock_id=stock_id, company=company, doc_type="presentation",
+                ticker=ticker, company=company, doc_type="presentation",
                 fiscal_period=period, lang="zh" if flag == "M" else "en",
                 event_date=f"{ymd[:4]}-{ymd[4:6]}-{ymd[6:8]}",
                 date_source="source_listing",
@@ -64,9 +64,9 @@ def _parse(html_text: str, stock_id: str) -> list[Doc]:
     return [d for d in best.values() if d.fiscal_period]
 
 
-def fetch(stock_id: str, years: Iterable[int], http_get: Callable[[str], bytes]) -> list[Doc]:
+def fetch(ticker: str, years: Iterable[int], http_get: Callable[[str], bytes]) -> list[Doc]:
     out: list[Doc] = []
     for y in years:
-        html_text = http_get(_query(stock_id, y - 1911)).decode("utf-8", "replace")
-        out.extend(_parse(html_text, stock_id))
+        html_text = http_get(_query(ticker, y - 1911)).decode("utf-8", "replace")
+        out.extend(_parse(html_text, ticker))
     return out

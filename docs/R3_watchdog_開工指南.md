@@ -37,7 +37,7 @@ R7 的 Alert Inbox 要消費你的**輸出**；你要消費 mock 事件**輸入*
 // 輸入：mock MOPS 事件（R4 之後接真實爬蟲；放 tests/fixtures/watchdog_events.json）
 {
   "event_id": "mops-2330-20260315-001",
-  "stock_id": "2330",
+  "ticker": "2330",
   "published_at": "2026-03-15",
   "doc_type": "重大訊息",            // 重大訊息 / 法說公告 / 財報公告
   "title": "本公司董事會決議...",
@@ -48,7 +48,7 @@ R7 的 Alert Inbox 要消費你的**輸出**；你要消費 mock 事件**輸入*
 // 輸出：WatchdogAlert（R7 Alert Inbox 渲染這個）
 {
   "event_id": "mops-2330-20260315-001",
-  "stock_id": "2330",
+  "ticker": "2330",
   "summary": "事件合規判斷摘要（已過 compliance.review，0 買賣建議）",
   "compliance_status": "passed",     // passed / blocked
   "evidence": [{"source_id": "mops-2330-...", "snippet": "...", "origin": "news"}],

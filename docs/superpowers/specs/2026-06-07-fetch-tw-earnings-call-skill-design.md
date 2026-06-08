@@ -13,7 +13,7 @@
 ## 1. 目標與非目標
 
 **目標**
-- 給定 `stock_id`（與選用年份範圍），下載該公司法說會**簡報**與**逐字稿**（有則抓），中英文皆收。
+- 給定 `ticker`（與選用年份範圍），下載該公司法說會**簡報**與**逐字稿**（有則抓），中英文皆收。
 - 跨股票代號可用：未在 vendor 註冊表內的代號，仍能透過集中式來源拿到簡報。
 - 每份檔案產出可溯源 metadata（manifest），供 R4 ingestion 後續灌入語料庫。
 
@@ -37,11 +37,11 @@
    │  └─ adapters/
    │     ├─ base.py             # Adapter 介面（協定）
    │     └─ todayir.py          # 第一個 vendor adapter（中信金等 TodayIR 站）
-   └─ companies.py              # stock_id → {name, vendor, ir_config} 小註冊表
+   └─ companies.py              # ticker → {name, vendor, ir_config} 小註冊表
 ```
 
 ### 解析流程
-給定 `stock_id`：
+給定 `ticker`：
 1. **Vendor adapter（richer，若註冊表命中）**：如 `2891 → todayir`。拿中文+英文簡報、有則 transcript。
 2. **MOPS 底層（一律執行）**：法人說明會一覽表，補齊/交叉驗證；未知代號**只**走這層（仍拿得到簡報）。
 3. **合併**：以 `(fiscal_period, doc_type, lang)` 為鍵合併兩來源；**用內容 md5 去重**（解決「同檔列兩次」問題）。
@@ -53,7 +53,7 @@
 | `model.Doc` | 一筆下載目標的值物件（ticker/date/lang/period/doc_type/url…）+ 檔名產生 | 無 |
 | `model` 期別正規化 | `民國115/03`、`2026 第一季`、`1Q26` → `2026Q1` | 無 |
 | `sources.mops` | 查 MOPS 法人說明會一覽表 → `list[Doc]` | network |
-| `adapters.base` | `supports(stock_id)` / `fetch(stock_id, years) -> list[Doc]` 協定 | 無 |
+| `adapters.base` | `supports(ticker)` / `fetch(ticker, years) -> list[Doc]` 協定 | 無 |
 | `adapters.todayir` | 解析 `ir.ctbcholding.com/c/financial_analyst?year=` → `list[Doc]` | network |
 | `companies` | 代號→vendor 設定查表 | 無 |
 | `fetch_earnings_call` | 編排：解析→合併→去重→下載→manifest | 上述全部 |
@@ -63,7 +63,7 @@
 ## 3. 輸出與命名
 
 ```
-data/<stock_id>_<name>/
+data/<ticker>_<name>/
 ├─ <ticker>_<yyyymmdd><L><nnn>_<period>_concall_<doctype>.pdf
 └─ manifest.json
 ```
@@ -81,7 +81,7 @@ data/<stock_id>_<name>/
 ```json
 {
   "file": "2891_20260519M001_2026Q1_concall_presentation.pdf",
-  "stock_id": "2891",
+  "ticker": "2891",
   "company": "中信金控",
   "doc_type": "presentation",
   "fiscal_period": "2026Q1",

@@ -65,7 +65,7 @@ PDF → ① 解析文字 → ② sanitize → ③ 切塊(+metadata) → ④ embe
 2. **淨化**：每段過 `sanitize_text()`；`validate_for_ingestion(doc_id, content)` 回非空就 skip 該塊。
 3. **切塊**：中文約 **500–800 字/塊 + 10–15% overlap**；**每塊帶 metadata**（見 §5），且保留 `source_id`（FR-003 逐句引用要溯源）。
 4. **Embedding**：`GeminiClient().embed(text)`。**建議 batch**（`gemini.py` 已標 TODO：`embed_content(contents=[...])` 可一次多筆，省呼叫成本）。算完就存，**永不重算**。
-5. **組 Document**：`Document(id=chunk_id, content=chunk_text, embedding=vec, company=stock_id, period=fiscal_period, metadata={doc_type, published_at, source_id})`。
+5. **組 Document**：`Document(id=chunk_id, content=chunk_text, embedding=vec, company=ticker, period=fiscal_period, metadata={doc_type, published_at, source_id})`。
 6. **寫入**：`get_vector_store().add_documents(docs)` —— 即你下一步要實作的 `BigQueryStore.add_documents`。
 
 > **W1 不必做滿**：先把 **TSMC + 鴻海的法說逐字稿**（文字密、單軌）跑通端到端 1 份 → 再批次 100 份。**財報走 §10 的兩軌**（W1 後段或 W2）；ColPali 圖表、MOPS 爬蟲、新聞第 5 路是 W2–W3，別卡在這。
@@ -78,21 +78,21 @@ PDF → ① 解析文字 → ② sanitize → ③ 切塊(+metadata) → ④ embe
 
 | `base.Document` | → BigQuery `polaris_core.chunks`（SOP §4.1）| 來源 |
 |---|---|---|
-| `id` | `chunk_id` STRING | `{stock_id}_{fiscal_period}_{doc_type}_{序號}` |
-| `company` | `stock_id` STRING | 資料夾/檔名（2330, 2317…）|
+| `id` | `chunk_id` STRING | `{ticker}_{fiscal_period}_{doc_type}_{序號}` |
+| `company` | `ticker` STRING | 資料夾/檔名（2330, 2317…）|
 | `period` | `fiscal_period` STRING | 檔名季別（見 §5）|
 | `content` | `chunk_text` STRING | 切塊後文字 |
 | `embedding` | `embedding` ARRAY<FLOAT64> | `GeminiClient.embed()` |
 | `metadata["doc_type"]` | `doc_type` STRING | `transcript`/`presentation`/`financial_report` |
 | `metadata["published_at"]` | `published_at` DATE | 季末日或檔名日期（**partition key，務必填**）|
 
-R3 的 `Retriever` 會用 `filters={"company": "2330", "period": "2024Q3"}` 呼叫 `search()` → 你的 SQL 要轉成 `WHERE stock_id=@company AND fiscal_period=@period`，並盡量帶 `published_at` 範圍命中 partition。
+R3 的 `Retriever` 會用 `filters={"company": "2330", "period": "2024Q3"}` 呼叫 `search()` → 你的 SQL 要轉成 `WHERE ticker=@company AND fiscal_period=@period`，並盡量帶 `published_at` 範圍命中 partition。
 
 ---
 
 ## 5. metadata 怎麼推（從檔名/資料夾）
 
-- **stock_id**：`07_ConferenceCall/2330_TSMC/` → `2330`；`06_Financial_Report/2330_202503.pdf` → `2330`。
+- **ticker**：`07_ConferenceCall/2330_TSMC/` → `2330`；`06_Financial_Report/2330_202503.pdf` → `2330`。
 - **fiscal_period**：
   - 法說檔名 `1Q24` / `2Q25` / `3Q24` → `2024Q1` / `2025Q2` / `2024Q3`。
   - 財報檔名 `2330_202503` = `YYYYMM` → 月份對季：`03→Q1, 06→Q2, 09→Q3, 12→Q4`，即 `202503→2025Q1`。
@@ -115,7 +115,7 @@ def health_check(self) -> bool:
 def add_documents(self, docs):
     table = f"{self.settings.dev_dataset or self.settings.bq_dataset}.chunks"
     rows = [{
-        "chunk_id": d.id, "stock_id": d.company, "fiscal_period": d.period,
+        "chunk_id": d.id, "ticker": d.company, "fiscal_period": d.period,
         "doc_type": d.metadata.get("doc_type"),
         "published_at": d.metadata.get("published_at"),
         "chunk_text": d.content, "embedding": d.embedding,
@@ -125,7 +125,7 @@ def add_documents(self, docs):
 # search —— BigQuery VECTOR_SEARCH（cosine，對齊 768 維）
 def search(self, query_embedding, top_k=8, *, filters=None):
     # 用 VECTOR_SEARCH(TABLE {dataset}.chunks, 'embedding', (SELECT @q AS embedding),
-    #     top_k=>@k, distance_type=>'COSINE')；filters 轉 WHERE stock_id/fiscal_period
+    #     top_k=>@k, distance_type=>'COSINE')；filters 轉 WHERE ticker/fiscal_period
     # 回傳 map 成 SearchResult(id, content, score, company, period, metadata)
     ...
 ```
@@ -190,7 +190,7 @@ def search(self, query_embedding, top_k=8, *, filters=None):
 
 ```sql
 CREATE TABLE polaris_core.financial_metrics (
-  stock_id      STRING,
+  ticker      STRING,
   fiscal_period STRING,    -- 2025Q1
   metric        STRING,    -- "營收" / "毛利率" / "EPS" ...
   value         FLOAT64,
@@ -199,10 +199,10 @@ CREATE TABLE polaris_core.financial_metrics (
   published_at  DATE
 )
 PARTITION BY published_at
-CLUSTER BY stock_id, metric;
+CLUSTER BY ticker, metric;
 ```
 
-> 🔧 **可跑的 PoC 起點**：[`scripts/poc_financial_extract.py`](../scripts/poc_financial_extract.py)。逐頁偵測 text/image、圖檔頁 `pdftoppm`→Gemini vision 抽 JSON、輸出對齊上面 schema。**已實測**：2330 台積電 p3–9 正確路由到 vision、2454 聯發科全文字頁。無金鑰跑出 placeholder 示範形狀，填 `GEMINI_API_KEY` 即真抽。用法：`python scripts/poc_financial_extract.py --pdf <財報> --stock-id 2330 --period 2025Q1`。R4 照著改成批次入庫。
+> 🔧 **可跑的 PoC 起點**：[`scripts/poc_financial_extract.py`](../scripts/poc_financial_extract.py)。逐頁偵測 text/image、圖檔頁 `pdftoppm`→Gemini vision 抽 JSON、輸出對齊上面 schema。**已實測**：2330 台積電 p3–9 正確路由到 vision、2454 聯發科全文字頁。無金鑰跑出 placeholder 示範形狀，填 `GEMINI_API_KEY` 即真抽。用法：`python scripts/poc_financial_extract.py --pdf <財報> --ticker 2330 --period 2025Q1`。R4 照著改成批次入庫。
 
 - **接 Calculator**：節點 [`stubs.calculator`](../src/polaris/graph/nodes/stubs.py) 目前回固定 `{"YoY_pct": 12.34}`，註解就寫「待 R4 結構化資料」。**你的交付＝這張表 + 資料**；之後 Calculator（R2/R3）改成查表做**確定性** YoY/QoQ/毛利率計算 → 數字句句附 `source_id`、不經 LLM（接地最強）。
 

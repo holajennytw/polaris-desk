@@ -63,7 +63,7 @@ spec 寫「Next.js / Chainlit」二選一或混用。給你的建議：
 // 與 R3 約定的 WatchdogAlert（見 docs/R3_watchdog_開工指南.md §3）
 {
   "event_id": "mops-2330-20260315-001",
-  "stock_id": "2330",
+  "ticker": "2330",
   "summary": "事件合規判斷摘要（0 買賣建議）",
   "compliance_status": "passed",         // passed / blocked
   "evidence": [ { "source_id": "mops-2330-…", "snippet": "…", "origin": "news" } ],

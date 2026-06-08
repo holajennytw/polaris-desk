@@ -18,7 +18,7 @@ _LINK = re.compile(
 )
 
 
-def supports(stock_id: str, registry: dict | None) -> bool:
+def supports(ticker: str, registry: dict | None) -> bool:
     return bool(registry) and registry.get("vendor") == "todayir"
 
 
@@ -34,7 +34,7 @@ def _doc_type_of(label: str) -> str:
 
 
 def fetch(
-    stock_id: str,
+    ticker: str,
     years: Iterable[int],
     http_get: Callable[[str], bytes],
     registry: dict,
@@ -51,7 +51,7 @@ def fetch(
                 continue
             seen.add(url)
             out.append(Doc(
-                stock_id=stock_id,
+                ticker=ticker,
                 company=company,
                 doc_type=_doc_type_of(label),
                 fiscal_period=to_period(int(yr), cn_quarter_num(q_cn)),
