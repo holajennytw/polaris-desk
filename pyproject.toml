@@ -40,6 +40,13 @@ dev = [
 llmlingua = [
     "llmlingua>=0.2",
 ]
+# R5 Ragas eval（judge LLM 接 Gemini）。預設 / CI 不裝 → smoke-only（token=0）；
+# 跑 CP/Faithfulness/AR 時才 `uv pip install -e '.[eval]'`。
+eval = [
+    "ragas>=0.2",
+    "datasets>=3.0",
+    "langchain-google-genai>=2.0",
+]
 
 [build-system]
 requires = ["hatchling"]

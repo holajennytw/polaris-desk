@@ -29,7 +29,7 @@ dist/
 build/
 
 # 資料 / 暫存（法說會 PDF、向量等不進 git）
-data/
+/data/
 *.pdf
 *.parquet
 *.duckdb
