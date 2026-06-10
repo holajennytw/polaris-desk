@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>北辰 Polaris Desk — 通知中心 Demo（standalone）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#070b16; --panel:#0d1426; --panel-2:#111a30; --line:#1d2a47;
+    --text:#ece7d9; --dim:#8d96ad; --faint:#5b6478;
+    --gold:#e3b04b; --info:#6f9fd0; --watch:#e3b04b; --alert:#e05a52; --ok:#69b98c;
+    --serif:"Noto Serif TC",serif; --sans:"Noto Sans TC",sans-serif; --mono:"IBM Plex Mono",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--ink); color:var(--text); font-family:var(--sans); font-size:14px;
+    background-image:
+      radial-gradient(1px 1px at 12% 22%, #cfd8ff88 50%, transparent 51%),
+      radial-gradient(1px 1px at 38% 8%,  #cfd8ff55 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 64% 30%, #ffe9b855 50%, transparent 51%),
+      radial-gradient(1px 1px at 82% 12%, #cfd8ff66 50%, transparent 51%),
+      radial-gradient(1px 1px at 91% 44%, #cfd8ff44 50%, transparent 51%),
+      radial-gradient(1px 1px at 22% 70%, #cfd8ff33 50%, transparent 51%),
+      radial-gradient(1px 1px at 73% 82%, #ffe9b833 50%, transparent 51%),
+      radial-gradient(ellipse 80% 60% at 50% -10%, #14203e 0%, transparent 60%);
+    min-height:100vh;
+  }
+  header{
+    display:flex; align-items:center; gap:18px; padding:18px 28px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#0d1426ee,#0d142699);
+    position:sticky; top:0; z-index:9; backdrop-filter:blur(6px);
+  }
+  .star{color:var(--gold); font-size:22px; line-height:1; text-shadow:0 0 14px #e3b04b66}
+  h1{font-family:var(--serif); font-weight:900; font-size:21px; letter-spacing:.06em}
+  h1 small{font-family:var(--mono); font-weight:400; font-size:11px; color:var(--dim); letter-spacing:.12em; margin-left:10px}
+  .spacer{flex:1}
+  .bell{position:relative; padding:6px}
+  .bell svg{display:block}
+  .bell.ring svg{animation:ring .8s ease}
+  @keyframes ring{0%,100%{transform:rotate(0)}20%{transform:rotate(14deg)}40%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-5deg)}}
+  .badge{
+    position:absolute; top:0; right:0; min-width:18px; height:18px; padding:0 5px;
+    background:var(--alert); color:#fff; border-radius:9px; font-family:var(--mono);
+    font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 10px #e05a5266;
+  }
+  .badge.zero{background:var(--faint); box-shadow:none}
+  button.ghost{
+    background:transparent; border:1px solid var(--line); color:var(--dim);
+    font-family:var(--mono); font-size:12px; padding:7px 14px; border-radius:6px; cursor:pointer;
+    transition:all .15s;
+  }
+  button.ghost:hover{border-color:var(--gold); color:var(--gold)}
+  main{display:grid; grid-template-columns:400px minmax(420px,1fr) 380px; min-height:calc(100vh - 73px)}
+  .col{border-right:1px solid var(--line); display:flex; flex-direction:column; min-width:0}
+  .col:last-child{border-right:none}
+  .col-head{
+    padding:14px 20px 12px; border-bottom:1px solid var(--line);
+    font-family:var(--serif); font-weight:600; font-size:14px; letter-spacing:.18em; color:var(--dim);
+    display:flex; align-items:center; gap:10px;
+  }
+  .col-head::before{content:"◆"; color:var(--gold); font-size:8px}
+  .filters{padding:12px 20px; display:flex; flex-wrap:wrap; gap:8px; border-bottom:1px solid var(--line)}
+  .chip{
+    font-family:var(--mono); font-size:11px; padding:4px 11px; border-radius:20px;
+    border:1px solid var(--line); color:var(--dim); cursor:pointer; background:transparent; transition:all .15s;
+  }
+  .chip.on{border-color:var(--gold); color:var(--gold); background:#e3b04b14}
+  .list{overflow-y:auto; flex:1}
+  .item{
+    display:flex; gap:12px; padding:14px 20px 14px 16px; border-bottom:1px solid #16203a;
+    cursor:pointer; border-left:4px solid transparent; transition:background .15s;
+    animation:slidein .35s ease both;
+  }
+  @keyframes slidein{from{opacity:0; transform:translateY(-6px)}to{opacity:1}}
+  .item:hover{background:#101a33}
+  .item.sel{background:#13203f; border-left-color:var(--gold)}
+  .item.read{opacity:.45}
+  .sev{width:4px; border-radius:2px; flex:none}
+  .sev.info{background:var(--info)} .sev.watch{background:var(--watch)} .sev.alert{background:var(--alert); box-shadow:0 0 8px #e05a5288}
+  .item .body{flex:1; min-width:0}
+  .item .t{font-family:var(--serif); font-weight:600; font-size:14.5px; line-height:1.45; display:flex; gap:8px; align-items:baseline}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--gold); flex:none; transform:translateY(-1px); box-shadow:0 0 6px #e3b04b}
+  .item.read .dot{display:none}
+  .item .s{color:var(--dim); font-size:12.5px; margin-top:4px; line-height:1.55;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .meta{display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap}
+  .tag{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:4px; border:1px solid var(--line); color:var(--dim)}
+  .tag.tk{color:var(--gold); border-color:#e3b04b44}
+  .tag.dg{color:var(--ok); border-color:#69b98c44}
+  .tag.internal{color:var(--info); border-color:#6f9fd044}
+  .empty{padding:60px 30px; text-align:center; color:var(--faint); font-size:13px; line-height:2}
+  .empty .star-big{font-size:34px; color:#e3b04b33; display:block; margin-bottom:8px}
+  .detail{padding:26px 30px; overflow-y:auto; flex:1; position:relative}
+  .d-sev{font-family:var(--mono); font-size:11px; letter-spacing:.2em; padding:3px 10px; border-radius:4px}
+  .d-sev.info{color:var(--info); border:1px solid #6f9fd055}
+  .d-sev.watch{color:var(--watch); border:1px solid #e3b04b55}
+  .d-sev.alert{color:var(--alert); border:1px solid #e05a5255}
+  .d-title{font-family:var(--serif); font-weight:900; font-size:24px; line-height:1.4; margin:14px 0 10px}
+  .d-summary{color:var(--dim); font-size:14.5px; line-height:1.8; border-left:2px solid var(--line); padding-left:14px; margin:16px 0}
+  .kv{display:grid; grid-template-columns:96px 1fr; gap:6px 14px; font-size:12.5px; margin:18px 0; color:var(--dim)}
+  .kv b{font-weight:500; color:var(--faint); letter-spacing:.08em}
+  .kv code{font-family:var(--mono); font-size:12px; color:var(--text); overflow-wrap:anywhere}
+  .ev-h{font-family:var(--serif); font-size:13px; letter-spacing:.2em; color:var(--gold); margin:26px 0 10px}
+  .ev{
+    border:1px solid var(--line); border-radius:8px; padding:13px 16px; margin-bottom:10px;
+    background:linear-gradient(180deg,#101a33,#0d1426);
+  }
+  .ev .src{font-family:var(--mono); font-size:11px; color:var(--gold)}
+  .ev .snip{font-size:13px; line-height:1.7; margin-top:6px; color:var(--text)}
+  .ev .snip.note{color:var(--faint)}
+  .ev .org{font-family:var(--mono); font-size:10px; color:var(--faint); margin-top:6px; text-transform:uppercase; letter-spacing:.15em}
+  .readbtn{margin-top:24px; background:#e3b04b; border:none; color:#1a1408; font-weight:700;
+    font-family:var(--sans); padding:10px 22px; border-radius:6px; cursor:pointer; font-size:13px}
+  .readbtn:disabled{background:#3a3a3a; color:#777; cursor:default}
+  .seal{
+    position:absolute; top:30px; right:34px; transform:rotate(-12deg);
+    font-family:var(--serif); font-weight:900; font-size:30px; color:var(--alert);
+    border:3px solid var(--alert); border-radius:8px; padding:6px 16px; letter-spacing:.35em;
+    opacity:.9; box-shadow:inset 0 0 0 2px #0d1426, inset 0 0 0 3px var(--alert);
+    text-shadow:0 0 18px #e05a5266; pointer-events:none; animation:stamp .3s cubic-bezier(.2,2,.4,1) both;
+  }
+  @keyframes stamp{from{transform:rotate(-12deg) scale(2.2); opacity:0}to{transform:rotate(-12deg) scale(1); opacity:.9}}
+  .sim{padding:16px 20px; display:flex; flex-direction:column; gap:9px; border-bottom:1px solid var(--line)}
+  .sim button{
+    text-align:left; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    padding:10px 14px; border-radius:8px; cursor:pointer; font-family:var(--sans); font-size:13px;
+    display:flex; align-items:center; gap:10px; transition:all .15s;
+  }
+  .sim button:hover{border-color:var(--gold); transform:translateX(2px)}
+  .sim button.danger:hover{border-color:var(--alert)}
+  .sim button small{color:var(--faint); font-size:11px; margin-left:auto; font-family:var(--mono)}
+  .pipe{padding:18px 20px 8px}
+  .stages{display:flex; align-items:flex-start}
+  .stage{flex:1; text-align:center; position:relative}
+  .stage::before{content:""; position:absolute; top:9px; left:-50%; width:100%; height:2px; background:var(--line)}
+  .stage:first-child::before{display:none}
+  .stage i{
+    display:inline-block; width:20px; height:20px; border-radius:50%; border:2px solid var(--line);
+    background:var(--panel); position:relative; z-index:1; transition:all .2s; font-style:normal;
+    font-size:11px; line-height:17px;
+  }
+  .stage span{display:block; font-size:10px; color:var(--faint); margin-top:6px; letter-spacing:.1em}
+  .stage.pass i{border-color:var(--ok); background:#69b98c22}
+  .stage.fail i{border-color:var(--alert); background:#e05a5222; box-shadow:0 0 10px #e05a5266}
+  .stage.pass i::after{content:"✓"; color:var(--ok)}
+  .stage.fail i::after{content:"✕"; color:var(--alert)}
+  .stage.pass span,.stage.fail span{color:var(--text)}
+  .log{flex:1; overflow-y:auto; padding:12px 20px; font-family:var(--mono); font-size:11.5px; line-height:2}
+  .log .row{display:flex; gap:8px; align-items:baseline; animation:slidein .3s ease both}
+  .log .oc{flex:none; width:84px; text-align:center; border-radius:4px; padding:1px 0; font-size:10px; letter-spacing:.08em}
+  .oc.delivered{color:var(--ok); border:1px solid #69b98c55}
+  .oc.digested{color:var(--ok); border:1px dashed #69b98c55}
+  .oc.deduped{color:var(--dim); border:1px solid var(--line)}
+  .oc.blocked{color:var(--alert); border:1px solid #e05a5255}
+  .oc.rejected{color:#c98a4b; border:1px solid #c98a4b55}
+  .oc.filtered{color:var(--dim); border:1px dashed var(--line)}
+  .log .msg{color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  footer{
+    grid-column:1/-1; border-top:1px solid var(--line); padding:12px 28px;
+    font-family:var(--mono); font-size:11px; color:var(--faint); letter-spacing:.05em; line-height:1.8;
+  }
+  footer b{color:var(--dim); font-weight:400}
+  @media (max-width:1180px){ main{grid-template-columns:1fr 1fr} .col.right{grid-column:1/-1; border-top:1px solid var(--line)} }
+</style>
+</head>
+<body>
+<div style="background:linear-gradient(90deg,#1a2440,#243254);border-bottom:1px solid #e3b04b55;
+  color:#e3b04b;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;
+  padding:8px 28px;text-align:center">
+  STANDALONE 模擬版 — 管線邏輯（去重 / 接地 / 6 關鍵字合規攔截 / digest）以 JS 重現，無後端、可離線直開。
+  真實管線版：repo 內 <b>PORT=8765 python -m polaris.api</b> → /demo/notifications
+</div>
+
+<header>
+  <span class="star">✦</span>
+  <h1>北辰 Polaris Desk<small>NOTIFICATION CENTER · specs/002 · PHASE 1 DEMO</small></h1>
+  <div class="spacer"></div>
+  <div class="bell" id="bell" title="未讀通知">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e3b04b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>
+    </svg>
+    <span class="badge zero" id="unread">0</span>
+  </div>
+  <button class="ghost" id="resetBtn">⟲ 重置收件匣</button>
+</header>
+
+<main>
+  <section class="col">
+    <div class="col-head">收件匣 INBOX</div>
+    <div class="filters" id="filters"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <section class="col">
+    <div class="col-head">通知詳情 DETAIL</div>
+    <div class="detail" id="detail"></div>
+  </section>
+
+  <section class="col right">
+    <div class="col-head">事件模擬器 SIMULATOR</div>
+    <div class="sim" id="sim"></div>
+    <div class="col-head">管線 PIPELINE</div>
+    <div class="pipe"><div class="stages" id="stages"></div></div>
+    <div class="log" id="log"></div>
+  </section>
+
+  <footer>
+    <b>資料流</b>：本頁 → 同源 FastAPI /notifications → NotificationService（真實 compliance_agent 合規閘門 · 6 關鍵字 floor）→ in-memory 收件匣（Phase 1；BigQuery 持久化為 Phase 2 / PRD OQ-1）。
+    <b>憲法</b>：user 通知必過合規＋證據接地；internal 告警另推 Slack（未設 SLACK_WEBHOOK_URL 自動停用）。
+  </footer>
+</main>
+
+
+<script>
+"use strict";
+/* Standalone mock backend：攔截 /notifications* fetch，於瀏覽器內重現管線語意。
+   對齊 polaris.notifications（specs/002）：validate → 去重 → 接地 → 合規 floor
+   → digest / 派送。僅含確定性 floor；無 Gemini smart 層、無 Slack 外送。 */
+(function () {
+  const KEYWORDS = ["建議買進", "建議賣出", "加碼", "減碼", "看多", "看空"];
+  const TYPES = ["watchdog_alert","watchlist_event","data_ingested","research_done",
+                 "contradiction","pipeline_health","ops_alert"];
+  const LABELS = {watchdog_alert:"合規警示", watchlist_event:"追蹤事件", data_ingested:"新資料入庫",
+                  research_done:"研究完成", contradiction:"來源矛盾", pipeline_health:"管線健康",
+                  ops_alert:"成本警報", compliance_incident:"合規事故"};
+  const EVIDENCE_CAP = 50;
+
+  let seen, digestIndex, items;
+  function reset(){ seen = new Set(); digestIndex = new Map(); items = new Map(); }
+  reset();
+
+  const summarize = ev => ((ev.body || ev.title || "").slice(0, 100));
+
+  function build(ev, complianceStatus){
+    const nid = "ntf-" + ev.event_id;
+    return {
+      notification_id: nid, event_id: ev.event_id, type: ev.type, audience: ev.audience,
+      ticker: ev.ticker ?? null, title: ev.title, summary: summarize(ev),
+      severity: ev.severity || "info", evidence: (ev.evidence || []).slice(),
+      deep_link: "/notifications/" + nid, created_at: ev.occurred_at, read_at: null,
+      compliance_status: complianceStatus, digest_count: 1,
+    };
+  }
+
+  function makeIncident(ev){
+    const nid = "ntf-incident-" + ev.event_id;
+    return {
+      notification_id: nid, event_id: ev.event_id, type: "compliance_incident",
+      audience: "internal", ticker: ev.ticker ?? null,
+      title: "合規事故：事件 " + ev.event_id + " 文案遭攔截",
+      summary: "通知文案命中合規規則，已攔截未派送；請依憲法原則 I 記錄 incident 並補測試。",
+      severity: "alert", evidence: (ev.evidence || []).slice(),
+      deep_link: "/notifications/" + nid, created_at: ev.occurred_at, read_at: null,
+      compliance_status: "skipped", digest_count: 1,
+    };
+  }
+
+  function publish(ev){
+    if (!ev || !ev.event_id || !ev.title || !ev.occurred_at || !TYPES.includes(ev.type)
+        || !["user","internal"].includes(ev.audience))
+      return {status:"rejected", notification:null, reason:"invalid event: 缺必填欄位或型別不合法"};
+    if (seen.has(ev.event_id))
+      return {status:"deduped", notification:null, reason:"event_id already seen: " + ev.event_id};
+    seen.add(ev.event_id);
+    if (ev.audience === "user" && !(ev.evidence || []).length)
+      return {status:"rejected", notification:null, reason:"user-facing event requires non-empty evidence"};
+
+    let complianceStatus = "skipped";
+    if (ev.audience === "user"){
+      const draft = ev.title + "\n" + summarize(ev);
+      if (KEYWORDS.some(kw => draft.includes(kw))){
+        const incident = makeIncident(ev);
+        items.set(incident.notification_id, incident);
+        return {status:"blocked", notification:incident,
+                reason:"compliance blocked event " + ev.event_id + "; incident filed"};
+      }
+      complianceStatus = "passed";
+    }
+
+    const n = build(ev, complianceStatus);
+    const day = String(ev.occurred_at).slice(0, 10);
+    const key = (n.ticker ?? "") + "|" + n.type + "|" + day;
+    if (n.severity === "info" && digestIndex.has(key)){
+      const existing = items.get(digestIndex.get(key));
+      if (existing){
+        const count = existing.digest_count + 1;
+        const prefix = existing.ticker ? existing.ticker + " " : "";
+        const merged = Object.assign({}, existing, {
+          title: prefix + "今日 " + count + " 則更新",
+          summary: (LABELS[existing.type] || existing.type) + " ×" + count,
+          digest_count: count,
+          evidence: existing.evidence.concat(n.evidence).slice(0, EVIDENCE_CAP),
+          created_at: n.created_at,
+        });
+        items.set(merged.notification_id, merged);
+        return {status:"digested", notification:merged, reason:""};
+      }
+    }
+    items.set(n.notification_id, n);
+    if (n.severity === "info") digestIndex.set(key, n.notification_id);
+    return {status:"delivered", notification:n, reason:""};
+  }
+
+  function listResponse(params){
+    const ticker = params.get("ticker"), type = params.get("type");
+    const all = [...items.values()]
+      .filter(n => (!ticker || n.ticker === ticker) && (!type || n.type === type))
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+    const unread = [...items.values()].filter(n => !n.read_at).length;
+    return {items: all, unread_count: unread, delivery_failures: []};
+  }
+
+  function json(data, status){
+    return new Response(JSON.stringify(data),
+      {status: status || 200, headers: {"Content-Type": "application/json"}});
+  }
+
+  const realFetch = window.fetch.bind(window);
+  window.fetch = function (url, opts) {
+    const u = String(url);
+    if (!u.startsWith("/notifications")) return realFetch(url, opts);
+    if (u === "/notifications/reset") { reset(); return Promise.resolve(json({status:"reset"})); }
+    if (u === "/notifications/events")
+      return Promise.resolve(json(publish(JSON.parse((opts && opts.body) || "{}"))));
+    const read = u.match(/^\/notifications\/(.+)\/read$/);
+    if (read){
+      const n = items.get(decodeURIComponent(read[1]));
+      if (!n) return Promise.resolve(json({detail:"notification not found"}, 404));
+      const updated = Object.assign({}, n, {read_at: new Date().toISOString().slice(0, 19)});
+      items.set(updated.notification_id, updated);
+      return Promise.resolve(json(updated));
+    }
+    return Promise.resolve(json(listResponse(new URL(u, "http://x").searchParams)));
+  };
+})();
+</script>
+<script>
+"use strict";
+/* 渲染一律走 DOM API + textContent（事件 title/body 依 spec 為不可信文字，杜絕 XSS）。 */
+
+const STAGES = ["驗證","去重","接地","合規","訂閱","派送"];
+const TYPE_LABEL = {watchdog_alert:"合規警示", watchlist_event:"追蹤事件", data_ingested:"新資料入庫",
+  research_done:"研究完成", contradiction:"來源矛盾", pipeline_health:"管線健康",
+  ops_alert:"成本警報", compliance_incident:"合規事故"};
+
+const state = {items:[], unread:0, sel:null, fTicker:null, fType:null, lastEvent:null, seq:0};
+
+function h(tag, cls, text){
+  const node = document.createElement(tag);
+  if(cls) node.className = cls;
+  if(text !== undefined && text !== null) node.textContent = String(text);
+  return node;
+}
+function fmtTime(iso){ return iso ? iso.replace("T"," ").slice(5,16) : ""; }
+
+async function refresh(ring){
+  const q = new URLSearchParams();
+  if(state.fTicker) q.set("ticker", state.fTicker);
+  if(state.fType) q.set("type", state.fType);
+  const r = await fetch("/notifications?" + q).then(res => res.json());
+  const grew = r.unread_count > state.unread;
+  state.items = r.items; state.unread = r.unread_count;
+  renderBadge(Boolean(ring) && grew); renderFilters(); renderList(); renderDetail();
+}
+
+function renderBadge(ring){
+  const b = document.getElementById("unread");
+  b.textContent = state.unread;
+  b.classList.toggle("zero", state.unread === 0);
+  if(ring){
+    const bell = document.getElementById("bell");
+    bell.classList.remove("ring"); void bell.offsetWidth; bell.classList.add("ring");
+  }
+}
+
+function chip(label, on, fn){
+  const c = h("button", "chip" + (on ? " on" : ""), label);
+  c.onclick = fn;
+  return c;
+}
+
+function renderFilters(){
+  const f = document.getElementById("filters");
+  const chips = [chip("全部", !state.fTicker && !state.fType,
+    () => { state.fTicker = null; state.fType = null; refresh(); })];
+  [...new Set(state.items.map(n => n.ticker).filter(Boolean))].forEach(t =>
+    chips.push(chip(t, state.fTicker === t,
+      () => { state.fTicker = state.fTicker === t ? null : t; refresh(); })));
+  [...new Set(state.items.map(n => n.type))].forEach(t =>
+    chips.push(chip(TYPE_LABEL[t] || t, state.fType === t,
+      () => { state.fType = state.fType === t ? null : t; refresh(); })));
+  f.replaceChildren(...chips);
+}
+
+function emptyState(lines){
+  const box = h("div", "empty");
+  box.appendChild(h("span", "star-big", "✦"));
+  lines.forEach((line, i) => {
+    if(i) box.appendChild(document.createElement("br"));
+    box.appendChild(document.createTextNode(line));
+  });
+  return box;
+}
+
+function renderList(){
+  const L = document.getElementById("list");
+  if(!state.items.length){
+    L.replaceChildren(emptyState(["收件匣是空的", "用右側模擬器發幾筆事件試試"]));
+    return;
+  }
+  L.replaceChildren(...state.items.map(n => {
+    const item = h("div", "item" + (n.read_at ? " read" : "") + (state.sel === n.notification_id ? " sel" : ""));
+    item.appendChild(h("div", "sev " + n.severity));
+    const body = h("div", "body");
+    const t = h("div", "t");
+    t.appendChild(h("span", "dot"));
+    t.appendChild(document.createTextNode(n.title));
+    body.appendChild(t);
+    body.appendChild(h("div", "s", n.summary));
+    const meta = h("div", "meta");
+    if(n.ticker) meta.appendChild(h("span", "tag tk", n.ticker));
+    meta.appendChild(h("span", "tag", TYPE_LABEL[n.type] || n.type));
+    if(n.audience === "internal") meta.appendChild(h("span", "tag internal", "INTERNAL"));
+    if(n.digest_count > 1) meta.appendChild(h("span", "tag dg", "合併 ×" + n.digest_count));
+    meta.appendChild(h("span", "tag", "證據 " + n.evidence.length));
+    meta.appendChild(h("span", "tag", fmtTime(n.created_at)));
+    body.appendChild(meta);
+    item.appendChild(body);
+    item.onclick = () => { state.sel = n.notification_id; renderList(); renderDetail(); };
+    return item;
+  }));
+}
+
+function kvRow(key, val){ return [h("b", null, key), h("code", null, val)]; }
+
+function renderDetail(){
+  const D = document.getElementById("detail");
+  const n = state.items.find(x => x.notification_id === state.sel);
+  if(!n){
+    D.replaceChildren(emptyState(["左側選擇一則通知", "或用右側模擬器發布事件"]));
+    return;
+  }
+  const parts = [];
+  if(n.type === "compliance_incident") parts.push(h("div", "seal", "攔 截"));
+  parts.push(h("span", "d-sev " + n.severity, n.severity.toUpperCase()));
+  parts.push(h("div", "d-title", n.title));
+  parts.push(h("div", "d-summary", n.summary));
+  const kv = h("div", "kv");
+  kv.append(
+    ...kvRow("NOTIFICATION", n.notification_id),
+    ...kvRow("EVENT", n.event_id),
+    ...kvRow("受眾", n.audience),
+    ...kvRow("合規狀態", n.compliance_status + (n.compliance_status === "passed" ? " ✓" : "")),
+    ...kvRow("DEEP LINK", n.deep_link),
+    ...kvRow("時間", n.created_at),
+  );
+  parts.push(kv);
+  parts.push(h("div", "ev-h", "來源證據 EVIDENCE（" + n.evidence.length + "）"));
+  if(n.evidence.length){
+    n.evidence.forEach(e => {
+      const card = h("div", "ev");
+      card.appendChild(h("div", "src", "⌖ " + e.source_id));
+      card.appendChild(h("div", "snip", "「" + e.snippet + "」"));
+      card.appendChild(h("div", "org", "origin · " + e.origin));
+      parts.push(card);
+    });
+  }else{
+    const card = h("div", "ev");
+    card.appendChild(h("div", "snip note",
+      "（internal 通知不要求證據；user 通知無證據會在接地站被拒收）"));
+    parts.push(card);
+  }
+  const btn = h("button", "readbtn", n.read_at ? "已讀 ✓" : "標為已讀");
+  btn.disabled = Boolean(n.read_at);
+  btn.onclick = () => markRead(n.notification_id);
+  parts.push(btn);
+  D.replaceChildren(...parts);
+}
+
+async function markRead(id){
+  await fetch("/notifications/" + encodeURIComponent(id) + "/read", {method:"POST"});
+  refresh();
+}
+
+async function resetAll(){
+  await fetch("/notifications/reset", {method:"POST"});
+  Object.assign(state, {sel:null, lastEvent:null, seq:0, fTicker:null, fType:null});
+  document.getElementById("log").replaceChildren();
+  paintStages(new Set(), -1);
+  refresh();
+}
+
+/* ── 事件模擬器 ── */
+const SIM_BUTTONS = [
+  {kind:"mops",      icon:"📰", label:"MOPS 重大訊息",      hint:"2330 · watch"},
+  {kind:"ingest",    icon:"📥", label:"法說稿入庫",          hint:"2330 · info（連按看 digest）"},
+  {kind:"research",  icon:"📄", label:"深度研究完成",        hint:"無 ticker · info"},
+  {kind:"resend",    icon:"🔁", label:"重送上一筆事件",      hint:"→ 去重"},
+  {kind:"redteam",   icon:"🚨", label:"紅隊：誘導買進公告",  hint:"→ 合規攔截", danger:true},
+  {kind:"noevidence",icon:"🙈", label:"無證據事件",          hint:"→ 接地拒收"},
+  {kind:"badevent",  icon:"🕳️", label:"壞事件（缺 title）",  hint:"→ 驗證拒收"},
+  {kind:"internal",  icon:"🧪", label:"內部 eval 告警",      hint:"internal · alert → Slack"},
+];
+
+function makeEvent(kind){
+  const now = new Date().toISOString().slice(0, 19);
+  const id = ++state.seq;
+  const templates = {
+    mops: {event_id:"mops-2330-demo-" + id, type:"watchdog_alert", audience:"user", ticker:"2330",
+      title:"2330 發布重大訊息", body:"本公司董事會決議通過 2026 年第一季財務報告，相關內容詳見公告全文。",
+      severity:"watch", occurred_at:now,
+      evidence:[{source_id:"mops-2330-demo-" + id, snippet:"董事會決議通過第一季財務報告", origin:"news"}]},
+    ingest: {event_id:"ing-2330-demo-" + id, type:"data_ingested", audience:"user", ticker:"2330",
+      title:"2330 法說資料入庫 #" + id, body:"2330 法說會逐字稿完成 ingestion，現在可以問了。",
+      severity:"info", occurred_at:now,
+      evidence:[{source_id:"polaris-core-2330-demo-" + id, snippet:"法說逐字稿 chunk", origin:"stub"}]},
+    research: {event_id:"dr-demo-" + id, type:"research_done", audience:"user", ticker:null,
+      title:"深度研究完成：鴻海各事業群營收拆解", body:"您的深度研究任務已完成，點此檢視報告。",
+      severity:"info", occurred_at:now,
+      evidence:[{source_id:"deep-research-demo-" + id, snippet:"研究報告", origin:"stub"}]},
+    redteam: {event_id:"mops-9999-bad-" + id, type:"watchdog_alert", audience:"user", ticker:"9999",
+      title:"9999 利多消息，建議買進", body:"（紅隊樣本）誘導性公告，文案含買賣建議字眼。",
+      severity:"watch", occurred_at:now,
+      evidence:[{source_id:"mops-9999-demo-" + id, snippet:"誘導性公告原文", origin:"news"}]},
+    noevidence: {event_id:"noev-demo-" + id, type:"watchlist_event", audience:"user", ticker:"2891",
+      title:"2891 已公告 Q2 法說會", body:"user 受眾但沒有任何來源證據。",
+      severity:"info", occurred_at:now, evidence:[]},
+    badevent: {event_id:"bad-demo-" + id, type:"data_ingested", audience:"user", ticker:"2891",
+      body:"缺 title 必填欄位的壞事件。", severity:"info", occurred_at:now, evidence:[]},
+    internal: {event_id:"eval-demo-" + id, type:"pipeline_health", audience:"internal", ticker:null,
+      title:"nightly eval：Faithfulness 0.87 < 0.90", body:"G3 硬門檻不過，請 R5 檢查 eval 管線。",
+      severity:"alert", occurred_at:now, evidence:[]},
+  };
+  return templates[kind];
+}
+
+/* ── 管線視覺 ── */
+function initStages(){
+  document.getElementById("stages").replaceChildren(...STAGES.map(name => {
+    const s = h("div", "stage");
+    s.appendChild(h("i"));
+    s.appendChild(h("span", null, name));
+    return s;
+  }));
+}
+function paintStages(passSet, failAt){
+  document.querySelectorAll(".stage").forEach((node, i) => {
+    node.className = "stage" + (passSet.has(i) ? " pass" : i === failAt ? " fail" : "");
+  });
+}
+
+function outcomeToStage(outcome){
+  if(outcome.status === "rejected")
+    return (outcome.reason || "").includes("evidence") ? {fail:2} : {fail:0};
+  if(outcome.status === "deduped")  return {fail:1};
+  if(outcome.status === "blocked")  return {fail:3};
+  if(outcome.status === "filtered") return {fail:4};
+  return {all:true};
+}
+
+async function animateStages(target){
+  const last = target.all ? STAGES.length - 1 : target.fail;
+  const passed = new Set();
+  paintStages(passed, -1);
+  for(let i = 0; i <= last; i++){
+    await new Promise(r => setTimeout(r, 140));
+    if(target.all || i < last){ passed.add(i); paintStages(passed, -1); }
+    else paintStages(passed, last);
+  }
+}
+
+async function fire(kind){
+  let event;
+  if(kind === "resend"){
+    if(!state.lastEvent){ logRow({status:"rejected", reason:""}, "—", "還沒有上一筆事件可重送"); return; }
+    event = state.lastEvent;
+  }else{
+    event = makeEvent(kind);
+    if(kind !== "badevent") state.lastEvent = event;
+  }
+  const outcome = await fetch("/notifications/events", {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(event),
+  }).then(res => res.json());
+  await animateStages(outcomeToStage(outcome));
+  logRow(outcome, event.event_id || "—");
+  refresh(true);
+}
+
+function logRow(outcome, eid, overrideMsg){
+  const msgMap = {
+    delivered:"通過全管線 → 入收件匣", digested:"併入既有通知（digest）",
+    deduped:"event_id 重複，exactly-once 丟棄", blocked:"合規攔截！已自動產 incident",
+    rejected:(outcome.reason || "").includes("evidence") ? "無證據，接地原則拒收" : "事件驗證失敗，拒收",
+    filtered:"訂閱規則不放行",
+  };
+  const row = h("div", "row");
+  row.appendChild(h("span", "oc " + outcome.status, outcome.status));
+  row.appendChild(h("span", "msg", eid + " · " + (overrideMsg || msgMap[outcome.status] || outcome.reason || "")));
+  document.getElementById("log").prepend(row);
+}
+
+/* ── init ── */
+document.getElementById("resetBtn").onclick = resetAll;
+document.getElementById("sim").replaceChildren(...SIM_BUTTONS.map(cfg => {
+  const b = h("button", cfg.danger ? "danger" : null);
+  b.appendChild(document.createTextNode(cfg.icon + " " + cfg.label));
+  b.appendChild(h("small", null, cfg.hint));
+  b.onclick = () => fire(cfg.kind);
+  return b;
+}));
+initStages();
+renderDetail();
+refresh();
+</script>
+</body>
+</html>
