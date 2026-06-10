@@ -32,3 +32,6 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Eval smoke (token-free, 5 questions)
+        run: make eval-smoke
