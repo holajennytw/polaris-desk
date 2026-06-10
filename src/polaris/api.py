@@ -6,6 +6,14 @@
 - ``POST /ask``      → 5 節點 workflow：``{query}`` → ``{answer, compliance_status, citations, trace}``
 - ``POST /research`` → Deep Research ReAct：``{question}`` → ``{final_answer, evidence, react_steps, status, compliance_status}``
 
+通知中心（specs/002，R7 Alert Inbox 升級版的後端契約 + 互動 demo）：
+
+- ``GET  /notifications``               → 收件匣列表 + 未讀數（query: ``ticker`` / ``type``）
+- ``POST /notifications/events``        → 發布事件進真實管線，回 ``PublishOutcome``
+- ``POST /notifications/{id}/read``     → 標已讀
+- ``POST /notifications/reset``         → 重置收件匣（demo / 測試隔離用）
+- ``GET  /demo/notifications``          → 互動 demo 頁（單檔 HTML，吃上面四個端點）
+
 **欄位名一字不差**（``source_id`` / ``compliance_status`` / ``react_steps`` …）；改契約＝R2/R3/R7 一起改。
 這層只做「HTTP ↔ 既有函式」的薄轉接：不碰 graph/state/compliance/Deep Research 本體。
 無金鑰時引擎走 fallback → 本 API 仍可端到端回應（token-free、CI 可測）。
@@ -14,8 +22,12 @@
 """
 from __future__ import annotations
 
-from fastapi import FastAPI
+from datetime import datetime
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator
 
 from polaris.config import settings
@@ -23,6 +35,12 @@ from polaris.graph.deep_research.agent import run_deep_research
 from polaris.graph.deep_research.state import ReActStep
 from polaris.graph.state import Citation, NodeTrace
 from polaris.graph.workflow import build_workflow
+from polaris.notifications import (
+    Notification,
+    NotificationService,
+    PublishOutcome,
+    SlackWebhookChannel,
+)
 from polaris.server import health_payload, resolve_port
 
 app = FastAPI(
@@ -110,6 +128,77 @@ def research(req: ResearchRequest) -> ResearchResponse:
         status=r.status,
         compliance_status=r.compliance_status,
     )
+
+
+# --- 通知中心（specs/002）— thin 轉接到 NotificationService ------------------
+#
+# Phase 1 收件匣為 in-memory（spec Assumptions；BigQuery 持久化 = Phase 2 / PRD
+# OQ-1）→ process 內單例。reset 端點供 demo / 測試取得乾淨狀態。
+
+_DEMO_HTML = Path(__file__).parent / "notifications" / "demo.html"
+
+
+def _new_notification_service() -> NotificationService:
+    return NotificationService(
+        channels=[SlackWebhookChannel(settings.slack_webhook_url)],
+    )
+
+
+_notification_service = _new_notification_service()
+
+
+class NotificationListResponse(BaseModel):
+    items: list[Notification]
+    unread_count: int
+    delivery_failures: list[str]
+
+
+@app.get("/notifications", response_model=NotificationListResponse, tags=["notifications"])
+def list_notifications(
+    ticker: str | None = None, type: str | None = None  # noqa: A002 — 對齊契約欄位名
+) -> NotificationListResponse:
+    """收件匣列表（created_at 倒序）+ 未讀數 + 外送降級記錄。"""
+    inbox = _notification_service.inbox
+    return NotificationListResponse(
+        items=inbox.list(ticker=ticker, type=type),  # type: ignore[arg-type] — 未知 type 僅比對不中
+        unread_count=inbox.unread_count(),
+        delivery_failures=list(inbox.delivery_failures),
+    )
+
+
+@app.post("/notifications/events", response_model=PublishOutcome, tags=["notifications"])
+def publish_event(event: dict) -> PublishOutcome:
+    """發布事件進**真實管線**（去重→接地→合規閘門→訂閱→digest/派送）。
+
+    壞事件回 ``status=rejected``（HTTP 200——拒收是管線的正常 outcome，
+    不是傳輸層錯誤；生產者依 ``status`` 分支）。
+    """
+    return _notification_service.publish(event)
+
+
+@app.post("/notifications/{notification_id}/read", response_model=Notification,
+          tags=["notifications"])
+def mark_notification_read(notification_id: str) -> Notification:
+    """標已讀；查無該通知 → 404。``read_at`` 取 API 邊界當下時間
+    （確定性約束只管管線內部；牆鐘是邊界輸入，同事件 ``occurred_at`` 的角色）。"""
+    updated = _notification_service.inbox.mark_read(notification_id, at=datetime.now())
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"notification not found: {notification_id}")
+    return updated
+
+
+@app.post("/notifications/reset", tags=["notifications"])
+def reset_notifications() -> dict[str, str]:
+    """重置為全新收件匣（in-memory 單例換新；demo / 測試隔離用）。"""
+    global _notification_service
+    _notification_service = _new_notification_service()
+    return {"status": "reset"}
+
+
+@app.get("/demo/notifications", response_class=HTMLResponse, tags=["notifications"])
+def notifications_demo() -> HTMLResponse:
+    """互動 demo 頁：收件匣 UI/UX + 事件模擬器（吃同源 /notifications 端點）。"""
+    return HTMLResponse(_DEMO_HTML.read_text(encoding="utf-8"))
 
 
 def main() -> None:  # pragma: no cover - 進入點，由 `python -m polaris.api` 啟動
