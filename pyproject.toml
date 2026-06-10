@@ -24,6 +24,8 @@ dependencies = [
     "google-cloud-bigquery>=3.25",
     # D8 prompt 壓縮量測：token 計數（離線、確定性）
     "tiktoken>=0.7",
+    # R4 ingestion：法說稿 PDF 文字抽取（純 Python、輕量；掃描檔需 OCR 另計）
+    "pypdf>=4.0",
     # W4 thin API：後端 HTTP 入口（Cloud Run + R7 Vercel 對接；純 Python、無 torch）
     "fastapi>=0.115",
     "uvicorn>=0.30",
