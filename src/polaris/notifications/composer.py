@@ -30,8 +30,11 @@ _TYPE_LABELS: dict[str, str] = {
 
 _DigestKey = tuple[str | None, str, date]
 
+#: digest 合併時累積的最大證據筆數（防止高頻事件無限增長）。
+_EVIDENCE_CAP = 50
 
-def _summarize(event: NotificationEvent) -> str:
+
+def summarize_event(event: NotificationEvent) -> str:
     """摘要取 body（空則退回 title），截 100 字（FR-NC-001 上限）。"""
     text = event.body or event.title
     return text[:100]
@@ -66,7 +69,7 @@ class Composer:
             audience=event.audience,
             ticker=event.ticker,
             title=event.title,
-            summary=_summarize(event),
+            summary=summarize_event(event),
             severity=event.severity,
             evidence=list(event.evidence),
             deep_link=f"/notifications/{notification_id}",
@@ -109,10 +112,10 @@ class Composer:
                 "title": f"{prefix}今日 {count} 則更新",
                 "summary": f"{label} ×{count}",
                 "digest_count": count,
-                "evidence": list(existing.evidence) + list(event.evidence),
+                "evidence": (list(existing.evidence) + list(event.evidence))[:_EVIDENCE_CAP],
                 "created_at": event.occurred_at,
             }
         )
 
 
-__all__ = ["Composer"]
+__all__ = ["Composer", "summarize_event"]

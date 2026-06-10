@@ -29,7 +29,7 @@ NotificationType = Literal[
     "contradiction",         # N5 來源矛盾偵測
     "pipeline_health",       # N6 管線健康（ingestion 失敗、eval 掉分）
     "ops_alert",             # N7 成本警報
-    "compliance_incident",   # N7 合規事故 —— 保留給 service 在攔截時合成
+    "compliance_incident",   # N8 合規事故（internal）—— 保留給 service 在攔截時合成
 ]
 
 Audience = Literal["user", "internal"]

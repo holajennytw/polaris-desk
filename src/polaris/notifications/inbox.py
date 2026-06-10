@@ -43,6 +43,10 @@ class InAppInbox:
         ]
         return sorted(items, key=lambda n: n.created_at, reverse=True)
 
+    def record_failure(self, msg: str) -> None:
+        """外送管道重試用盡後的降級記錄（FR-NC-009 不無聲丟失）。"""
+        self.delivery_failures.append(msg)
+
     def mark_read(self, notification_id: str, *, at: datetime) -> Notification | None:
         """標已讀；回更新後的新實例，查無回 None。``at`` 由呼叫端傳（不取 now）。"""
         current = self._items.get(notification_id)

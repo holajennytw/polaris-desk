@@ -45,17 +45,17 @@ def test_send_posts_expected_payload():
 
 def test_transient_failure_retried_then_succeeds():
     transport = RecorderTransport(fail_times=2)  # 前 2 次 503，第 3 次成功
-    ch = SlackWebhookChannel(URL, transport=transport, sleep=lambda _s: None)
+    ch = SlackWebhookChannel(URL, transport=transport, sleep=lambda _s: None, attempts=3)
     ch.send(make_notification())
-    assert len(transport.calls) == 3
+    assert len(transport.calls) == ch.attempts
 
 
 def test_retry_exhausted_raises_for_service_to_record():
     transport = RecorderTransport(fail_times=99)
-    ch = SlackWebhookChannel(URL, transport=transport, sleep=lambda _s: None)
+    ch = SlackWebhookChannel(URL, transport=transport, sleep=lambda _s: None, attempts=3)
     with pytest.raises(ApiError):
         ch.send(make_notification())
-    assert len(transport.calls) == 3  # call_with_retry 預設 attempts=3
+    assert len(transport.calls) == ch.attempts
 
 
 def test_empty_url_disables_channel_zero_calls():

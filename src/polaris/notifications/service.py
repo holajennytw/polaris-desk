@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from polaris.graph.nodes import compliance_agent
 from polaris.notifications.channels import Channel
-from polaris.notifications.composer import Composer, _summarize
+from polaris.notifications.composer import Composer, summarize_event
 from polaris.notifications.inbox import InAppInbox
 from polaris.notifications.model import (
     Notification,
@@ -68,7 +68,7 @@ class NotificationService:
 
         # 4. Compliance Gate（FR-NC-003：user 文案必審；internal 不審改寫）
         if event.audience == "user":
-            draft = f"{event.title}\n{_summarize(event)}"
+            draft = f"{event.title}\n{summarize_event(event)}"
             _, status = compliance_agent.review(draft, self.client)
             if status == "blocked":
                 incident = self._make_incident(event)
@@ -115,7 +115,7 @@ class NotificationService:
             try:
                 channel.send(notification)
             except Exception as exc:  # noqa: BLE001 — FR-NC-009 降級不拋給生產者
-                self.inbox.delivery_failures.append(
+                self.inbox.record_failure(
                     f"{type(channel).__name__} failed for "
                     f"{notification.notification_id}: {exc}"
                 )

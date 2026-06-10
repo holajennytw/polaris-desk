@@ -58,8 +58,10 @@ class SlackWebhookChannel:
         *,
         transport: Transport | None = None,
         sleep: Callable[[float], None] | None = None,
+        attempts: int = 3,
     ) -> None:
         self.webhook_url = webhook_url
+        self.attempts = attempts
         self._transport = transport if transport is not None else _urllib_transport
         self._sleep = sleep
 
@@ -72,7 +74,9 @@ class SlackWebhookChannel:
             return
         payload = {"text": _format_text(notification)}
         call_with_retry(
-            lambda: self._transport(self.webhook_url, payload), sleep=self._sleep
+            lambda: self._transport(self.webhook_url, payload),
+            attempts=self.attempts,
+            sleep=self._sleep,
         )
 
 
