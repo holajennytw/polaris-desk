@@ -12,6 +12,12 @@
 #   scripts/sync-plugin.sh [PLUGIN_REPO]
 #   PLUGIN_REPO=/path/to/fetch-tw-earnings-call scripts/sync-plugin.sh
 # Default PLUGIN_REPO: ../fetch-tw-earnings-call (sibling checkout).
+#
+# Direction: polaris-desk → plugin is the normal flow. If a fix lands in the
+# plugin repo first (e.g. made during a fetch run over there), BACK-SYNC it:
+# copy the same file set in reverse (plugin → here), reconcile SKILL.md by
+# hand, run this repo's test suite, then run this script — it must end with
+# "scripts identical" and a green plugin test run before either repo is pushed.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
