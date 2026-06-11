@@ -36,6 +36,15 @@ def to_period(year: int, quarter: int) -> str:
     return f"{year}Q{quarter}"
 
 
+def period_from_event_date(ymd8: str) -> str:
+    """檔名 8 碼日期 → 最近一個已結束季度（3月場談去年Q4、5月場談今年Q1…）。"""
+    if not re.fullmatch(r"\d{8}", ymd8 or ""):
+        return ""
+    year, month = int(ymd8[:4]), int(ymd8[4:6])
+    done = (month - 1) // 3  # 今年已結束的季數
+    return to_period(year - 1, 4) if done == 0 else to_period(year, done)
+
+
 def parse_roc_date(text: str) -> str:
     """從一段文字抽法說會日期 → ISO。先試西元（4 碼年），再試民國（2-3 碼年）。"""
     m = _WEST_DATE.search(text)

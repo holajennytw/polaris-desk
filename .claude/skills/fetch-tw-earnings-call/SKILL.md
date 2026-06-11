@@ -34,10 +34,15 @@ Options: `--ticker` (required), `--from`/`--to` (year range, default 2021..curre
 
 ## Coverage
 Companies in the registry (`ec_companies.py`) with a vendor adapter get zh+en + transcript.
-Other tickers fall back to the MOPS base (presentation only). To add a company, extend the
+Other tickers fall back to the MOPS base (presentation only, zh+en) — no registry entry
+needed; the company name comes from the MOPS listing. To add a company, extend the
 registry and (if a new IR vendor) add an adapter under `scripts/`.
 
 ## Notes
 - Most TW companies do **not** publish transcripts; the skill fetches them only when present
   and notes their absence in the run summary. It never fabricates a manifest entry.
+- Subject without 「第X季」 (e.g. 台塑化「說明近期營運概況」) → period inferred from the
+  filename date as the most recently completed quarter; an explicit quarter in any subject
+  for the same file wins.
+- Failed downloads are warned on stderr and skipped; the rest of the batch still completes.
 - This skill only downloads + writes a manifest. Parsing/chunking/embedding is R4 ingestion.

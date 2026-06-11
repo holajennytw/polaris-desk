@@ -2,7 +2,15 @@
 from __future__ import annotations
 
 from ec_companies import lookup
-from ec_model import Doc, build_filename, cn_quarter_num, month_to_quarter, parse_roc_date, to_period
+from ec_model import (
+    Doc,
+    build_filename,
+    cn_quarter_num,
+    month_to_quarter,
+    parse_roc_date,
+    period_from_event_date,
+    to_period,
+)
 
 
 def test_month_to_quarter():
@@ -20,6 +28,20 @@ def test_cn_quarter_num():
 def test_to_period():
     assert to_period(2026, 1) == "2026Q1"
     assert to_period(2024, 4) == "2024Q4"
+
+
+def test_period_from_event_date_last_completed_quarter():
+    # 法說會談「最近一個已結束的季度」：3月場談去年Q4、5月場談今年Q1…
+    assert period_from_event_date("20240319") == "2023Q4"
+    assert period_from_event_date("20240509") == "2024Q1"
+    assert period_from_event_date("20240923") == "2024Q2"
+    assert period_from_event_date("20241128") == "2024Q3"
+    assert period_from_event_date("20260105") == "2025Q4"
+
+
+def test_period_from_event_date_invalid():
+    assert period_from_event_date("") == ""
+    assert period_from_event_date("notdate8") == ""
 
 
 def test_parse_roc_date_minguo():

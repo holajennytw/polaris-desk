@@ -14,7 +14,7 @@ import re
 from collections.abc import Callable, Iterable
 from urllib.parse import urlencode
 
-from ec_model import Doc, to_period
+from ec_model import Doc, period_from_event_date, to_period
 
 ENDPOINT = "https://mopsov.twse.com.tw/mops/web/ajax_t100sb02_1"
 PDF_BASE = "https://mopsov.twse.com.tw/nas/STR/"
@@ -43,7 +43,7 @@ def _period_from_subject(subject: str) -> str:
 
 def _parse(html_text: str, ticker: str) -> list[Doc]:
     file_re = re.compile(rf"({re.escape(ticker)})(\d{{8}})([ME])(\d{{3}})\.pdf")
-    best: dict[str, Doc] = {}  # filename -> Doc（優先保留能解析季別者）
+    best: dict[str, tuple[Doc, bool]] = {}  # filename -> (Doc, 主旨有明示季別)
     for row in _TR.findall(html_text):
         cells = [t for t in (_cell_text(c) for c in _TD.findall(row)) if t]
         company = cells[1] if len(cells) > 1 else ""
@@ -53,15 +53,17 @@ def _parse(html_text: str, ticker: str) -> list[Doc]:
             fname, ymd, flag = m.group(0), m.group(2), m.group(3)
             doc = Doc(
                 ticker=ticker, company=company, doc_type="presentation",
-                fiscal_period=period, lang="zh" if flag == "M" else "en",
+                # 主旨沒寫「第X季」（如台塑化「說明近期營運概況」）→ 用檔名日期推最近已結束季度
+                fiscal_period=period or period_from_event_date(ymd),
+                lang="zh" if flag == "M" else "en",
                 event_date=f"{ymd[:4]}-{ymd[4:6]}-{ymd[6:8]}",
                 date_source="source_listing",
                 source_url=PDF_BASE + fname, source_page=ENDPOINT,
             )
             prev = best.get(fname)
-            if prev is None or (not prev.fiscal_period and period):
-                best[fname] = doc
-    return [d for d in best.values() if d.fiscal_period]
+            if prev is None or (not prev[1] and period):
+                best[fname] = (doc, bool(period))
+    return [d for d, _ in best.values() if d.fiscal_period]
 
 
 def fetch(ticker: str, years: Iterable[int], http_get: Callable[[str], bytes]) -> list[Doc]:

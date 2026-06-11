@@ -1,8 +1,17 @@
-"""編排層的純邏輯：依內容 md5 去重、同 (period,lang) 流水號。"""
+"""編排層的純邏輯：依內容 md5 去重、同 (period,lang) 流水號、下載容錯。"""
 from __future__ import annotations
 
+import json
+import urllib.error
+
+import fetch_earnings_call
 from ec_model import Doc
-from fetch_earnings_call import assign_filenames, dedupe_by_content, merge_by_key
+from fetch_earnings_call import (
+    assign_filenames,
+    dedupe_by_content,
+    download_blobs,
+    merge_by_key,
+)
 
 
 def _doc(period="2026Q1", lang="zh", url="u1", date="2026-05-19"):
@@ -55,3 +64,43 @@ def test_merge_by_key_keeps_distinct_lang_and_period():
     q2 = _doc(period="2025Q4", lang="zh", url="u3")
     merged = merge_by_key([zh, en, q2])
     assert len(merged) == 3
+
+
+def test_download_blobs_skips_failed_url(capsys):
+    def flaky(url):
+        if url == "bad":
+            raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
+        return b"DATA"
+
+    blobs = download_blobs([_doc(url="bad"), _doc(url="good")], flaky)
+    assert "bad" not in blobs
+    assert blobs["good"] == b"DATA"
+    assert "bad" in capsys.readouterr().err
+
+
+def test_resolve_docs_takes_company_name_from_mops_when_not_in_registry(monkeypatch):
+    # 6505 不在 registry → 公司名應取 MOPS 列出的「台塑化」而非代號
+    doc = Doc("6505", "台塑化", "presentation", "2024Q1", "zh", "2024-05-08",
+              "source_listing", "u", "p")
+    monkeypatch.setattr(fetch_earnings_call.ec_mops, "fetch", lambda t, y, g: [doc])
+    company, docs = fetch_earnings_call.resolve_docs("6505", [2024])
+    assert company == "台塑化"
+    assert docs == [doc]
+
+
+def test_run_survives_partial_download_failure(tmp_path, monkeypatch):
+    # 一條死連結不應讓整批失敗：好檔照寫、manifest 照出。
+    docs = [_doc(period="2026Q1", url="good"), _doc(period="2025Q4", url="bad")]
+    monkeypatch.setattr(fetch_earnings_call, "resolve_docs", lambda t, y: ("中信金控", docs))
+
+    def flaky(url):
+        if url == "bad":
+            raise urllib.error.URLError("timed out")
+        return b"%PDF-GOOD"
+
+    monkeypatch.setattr(fetch_earnings_call, "http_get", flaky)
+    manifest = fetch_earnings_call.run("2891", [2026], tmp_path)
+    assert [m["source_url"] for m in manifest] == ["good"]
+    written = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert len(written) == 1
+    assert (tmp_path / written[0]["file"]).read_bytes() == b"%PDF-GOOD"
