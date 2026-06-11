@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Wayne SHC (waynehuichi@gmail.com)
+# PolyForm Noncommercial 1.0.0 <https://polyformproject.org/licenses/noncommercial/1.0.0>
+# Commercial use requires a separate license — see COMMERCIAL-LICENSE.md at
+# https://github.com/WayneSHC/fetch-tw-earnings-call
 """抓台股法說會簡報/逐字稿（中英），跨股票代號。
 
 混合來源：vendor adapter（TodayIR…）+ MOPS 法人說明會一覽表底層 → md5 去重合併。
-繞過 MOPS 反爬：直接打公司 IR 權威來源。輸出 data/<ticker>_<name>/ + manifest.json。
+直接使用公司 IR 與 MOPS 公開查詢介面等權威來源。輸出 data/<ticker>_<name>/ + manifest.json。
 本檔含可單元測的純邏輯（dedupe / assign_filenames）與 I/O 編排（main）。
 """
 from __future__ import annotations

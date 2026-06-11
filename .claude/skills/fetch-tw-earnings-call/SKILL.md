@@ -1,6 +1,6 @@
 ---
 name: fetch-tw-earnings-call
-description: Download Taiwan-listed companies' earnings-call (法說會) presentations and transcripts (Chinese + English) by ticker. Use when the user wants to fetch 法說會/法人說明會 簡報 or 逐字稿 for a TWSE/TPEx ticker (e.g. 2891 中信金, 2330 台積電), or mentions 公開資訊觀測站/MOPS being blocked for crawling. Bypasses MOPS anti-crawling by hitting authoritative IR sources directly.
+description: Download Taiwan-listed companies' earnings-call (法說會) presentations and transcripts (Chinese + English) by ticker. Use when the user wants to fetch 法說會/法人說明會 簡報 or 逐字稿 for a TWSE/TPEx ticker (e.g. 2891 中信金, 2330 台積電), or mentions 公開資訊觀測站/MOPS being hard to scrape. Fetches directly from authoritative sources — company IR sites and the MOPS public listing endpoint.
 ---
 
 # Fetch Taiwan Earnings-Call Materials
@@ -9,11 +9,14 @@ Downloads 法說會 (investor conference) **presentations** and **transcripts** 
 ticker, Chinese and English, into `data/<ticker>_<name>/` with a `manifest.json`
 that carries source provenance (引用接地, R4).
 
-## Why not MOPS scraping
-公開資訊觀測站 (MOPS) blocks aggressive crawling. This skill instead hits **authoritative
-sources**: the company's IR site via a per-vendor adapter (richer — zh+en + transcript when
-published) plus the MOPS 法人說明會一覽表 as a generic base that works for any ticker.
-Results merge and dedupe by content md5.
+## Sources
+The MOPS web UI is a SPA and unsuited to page scraping. This skill instead fetches from
+**authoritative sources**: the company's IR site via a per-vendor adapter (richer — zh+en +
+transcript when published) plus the MOPS 法人說明會一覽表 public listing endpoint as a
+generic base that works for any ticker. Results merge and dedupe by content md5.
+Access the sources at a reasonable rate; the downloaded documents belong to their issuers
+(the skill code is PolyForm Noncommercial 1.0.0 — see the fetch-tw-earnings-call repo's
+LICENSE and COMMERCIAL-LICENSE.md; the license covers code only).
 
 ## Usage
 ```bash

@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Wayne SHC (waynehuichi@gmail.com)
+# PolyForm Noncommercial 1.0.0 <https://polyformproject.org/licenses/noncommercial/1.0.0>
+# Commercial use requires a separate license — see COMMERCIAL-LICENSE.md at
+# https://github.com/WayneSHC/fetch-tw-earnings-call
 """TodayIR IR 站 adapter（中信金等）。
 
 法說會簡報頁 `/c/financial_analyst?year=<西元>` 每年一頁，PDF 連結由 JS 注入，

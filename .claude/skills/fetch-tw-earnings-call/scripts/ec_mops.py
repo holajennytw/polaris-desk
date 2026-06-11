@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Wayne SHC (waynehuichi@gmail.com)
+# PolyForm Noncommercial 1.0.0 <https://polyformproject.org/licenses/noncommercial/1.0.0>
+# Commercial use requires a separate license — see COMMERCIAL-LICENSE.md at
+# https://github.com/WayneSHC/fetch-tw-earnings-call
 """MOPS 法人說明會一覽表（集中式底層，任意股票代號可用）。
 
 公開資訊觀測站改版為 SPA，但舊版 AJAX 端點仍可用且接受 GET：

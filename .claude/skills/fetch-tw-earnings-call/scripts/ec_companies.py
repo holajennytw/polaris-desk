@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Wayne SHC (waynehuichi@gmail.com)
+# PolyForm Noncommercial 1.0.0 <https://polyformproject.org/licenses/noncommercial/1.0.0>
+# Commercial use requires a separate license — see COMMERCIAL-LICENSE.md at
+# https://github.com/WayneSHC/fetch-tw-earnings-call
 """ticker → 公司名 + IR 廠商 + 頁面樣板 的小註冊表。
 
 只列已知 vendor adapter 可處理的公司；未列者由 MOPS 底層處理。

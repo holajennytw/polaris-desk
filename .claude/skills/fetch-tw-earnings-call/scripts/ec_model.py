@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Wayne SHC (waynehuichi@gmail.com)
+# PolyForm Noncommercial 1.0.0 <https://polyformproject.org/licenses/noncommercial/1.0.0>
+# Commercial use requires a separate license — see COMMERCIAL-LICENSE.md at
+# https://github.com/WayneSHC/fetch-tw-earnings-call
 """法說會下載：值物件 + 期別/日期正規化 + 檔名產生（純函式、無 I/O）。"""
 from __future__ import annotations
 
