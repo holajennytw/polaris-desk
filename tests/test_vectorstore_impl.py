@@ -85,17 +85,25 @@ class TestBigQueryStore:
             store.add_documents([make_doc()])
         assert client.loaded == []  # 0 寫入
 
-    def test_add_documents_to_dev_dataset(self):
+    def test_add_documents_to_dev_dataset_canonical_columns(self):
+        """寫入用 canonical 欄名（SOP §4：chunk_id/ticker/fiscal_period/chunk_text）。"""
         client = FakeBQClient()
         store = BigQueryStore(
             make_settings(bq_dataset="polaris_dev_wayne"), client=client
         )
-        store.add_documents([make_doc()])
+        store.add_documents(
+            [make_doc(metadata={"doc_type": "presentation", "published_at": "2025-04-17"})]
+        )
         rows, table = client.loaded[0]
         assert table == "polaris-desk-team.polaris_dev_wayne.chunks"
-        assert rows[0]["id"] == "2330-2025Q1-c001"
-        assert rows[0]["doc_id"] == "2330-2025Q1"  # 取自 metadata
+        assert rows[0]["chunk_id"] == "2330-2025Q1-c001"
+        assert rows[0]["ticker"] == "2330"
+        assert rows[0]["fiscal_period"] == "2025Q1"
+        assert rows[0]["chunk_text"].startswith("台積電")
+        assert rows[0]["doc_type"] == "presentation"  # 取自 metadata
+        assert rows[0]["published_at"] == "2025-04-17"  # 取自 metadata
         assert rows[0]["embedding"] == EMB
+        assert "id" not in rows[0] and "company" not in rows[0]  # 舊欄名不再使用
 
     def test_add_documents_core_allowed_with_explicit_flag(self):
         """ingestion 帳號（R1/R4）設 BQ_ALLOW_CORE_WRITE=1 才解鎖。"""
@@ -113,25 +121,36 @@ class TestBigQueryStore:
         assert client.loaded == []
 
     def test_search_uses_vector_search_cosine(self):
+        from datetime import date
+
         client = FakeBQClient(rows=[
-            {"id": "c1", "content": "片段", "company": "2330",
-             "period": "2025Q1", "metadata": '{"page": 3}', "distance": 0.2},
+            {"chunk_id": "c1", "chunk_text": "片段", "ticker": "2330",
+             "fiscal_period": "2025Q1", "doc_type": "presentation",
+             "published_at": date(2025, 4, 17), "distance": 0.2},
         ])
         store = BigQueryStore(make_settings(), client=client)
         results = store.search(EMB, top_k=5)
         sql = client.queries[0]
         assert "VECTOR_SEARCH" in sql
         assert "COSINE" in sql
+        assert results[0].id == "c1"
+        assert results[0].content == "片段"
+        assert results[0].company == "2330"
+        assert results[0].period == "2025Q1"
         assert results[0].score == pytest.approx(0.8)  # 1 - distance
-        assert results[0].metadata == {"page": 3}
+        assert results[0].metadata == {
+            "doc_type": "presentation", "published_at": "2025-04-17"
+        }
 
-    def test_search_filters_in_subquery(self):
+    def test_search_filters_map_to_canonical_columns(self):
+        """介面 filter 鍵（company/period）→ canonical 欄（ticker/fiscal_period）。"""
         client = FakeBQClient()
         store = BigQueryStore(make_settings(), client=client)
         store.search(EMB, filters={"company": "2330", "period": "2024Q3"})
         sql = client.queries[0]
-        assert "company = @company" in sql
-        assert "period = @period" in sql
+        assert "ticker = @ticker" in sql
+        assert "fiscal_period = @fiscal_period" in sql
+        assert "company = @" not in sql and " period = @" not in sql  # 舊欄名不再使用
 
 
 # ── pgvector fakes ───────────────────────────────────────────────────────────

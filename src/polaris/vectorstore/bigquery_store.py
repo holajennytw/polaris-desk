@@ -11,16 +11,26 @@
   ``BQ_ALLOW_CORE_WRITE=1`` 解鎖 —— 這是 client 端防呆，**不取代** server
   端 ACL（ACL 變更一律走 SOP §7 PR）。
 - 維度 768 / 距離 cosine，與 pgvector fallback 兩端一致（憲法 §Additional）。
+- **欄名對齊 canonical schema（SOP §4）**：BigQuery 端實體欄位是
+  ``chunk_id / ticker / doc_type / fiscal_period / published_at / chunk_text /
+  embedding``；介面層（Document / SearchResult）仍是 id / company / period /
+  content / metadata，由本類別做雙向對映 —— 呼叫端與 pgvector fallback 都不用改。
 """
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from .base import Document, SearchResult, VectorStore
 
 #: 共用 canonical dataset —— 預設唯讀（憲法 III）。
 _CORE_DATASET = "polaris_core"
+
+#: 介面 filter 鍵 → canonical 欄名（SOP §4 cluster 欄優先：ticker / doc_type）。
+_FILTER_COLUMNS = {
+    "company": "ticker",
+    "period": "fiscal_period",
+    "doc_type": "doc_type",
+}
 
 
 class BigQueryStore(VectorStore):
@@ -53,13 +63,13 @@ class BigQueryStore(VectorStore):
             )
         rows = [
             {
-                "id": d.id,
-                "doc_id": d.metadata.get("doc_id", d.id),
-                "company": d.company,
-                "period": d.period,
-                "content": d.content,
+                "chunk_id": d.id,
+                "ticker": d.company,
+                "doc_type": d.metadata.get("doc_type"),
+                "fiscal_period": d.period,
+                "published_at": d.metadata.get("published_at"),
+                "chunk_text": d.content,
                 "embedding": d.embedding,
-                "metadata": json.dumps(d.metadata, ensure_ascii=False),
             }
             for d in docs
         ]
@@ -78,16 +88,16 @@ class BigQueryStore(VectorStore):
         where = ""
         params: dict[str, Any] = {"qe": query_embedding, "k": top_k}
         clauses = []
-        for key in ("company", "period"):
+        for key, column in _FILTER_COLUMNS.items():
             if filters and filters.get(key) is not None:
-                clauses.append(f"{key} = @{key}")
-                params[key] = filters[key]
+                clauses.append(f"{column} = @{column}")
+                params[column] = filters[key]
         if clauses:
             where = "WHERE " + " AND ".join(clauses)
 
         sql = f"""
-        SELECT base.id, base.content, base.company, base.period, base.metadata,
-               distance
+        SELECT base.chunk_id, base.chunk_text, base.ticker, base.fiscal_period,
+               base.doc_type, base.published_at, distance
         FROM VECTOR_SEARCH(
             (SELECT * FROM `{self._table}` {where}),
             'embedding',
@@ -100,13 +110,25 @@ class BigQueryStore(VectorStore):
         rows = self._run_query(sql, params)
         return [
             SearchResult(
-                id=row["id"],
-                content=row["content"],
+                id=row["chunk_id"],
+                content=row["chunk_text"],
                 # cosine 距離 → 相似度分數（兩端後端同語意：越大越像）
                 score=1.0 - float(row["distance"]),
-                company=row.get("company"),
-                period=row.get("period"),
-                metadata=json.loads(row["metadata"]) if row.get("metadata") else {},
+                company=row.get("ticker"),
+                period=row.get("fiscal_period"),
+                # canonical 無 metadata JSON 欄 → 由欄位重組（引用接地要 doc_type / 日期）
+                metadata={
+                    k: v
+                    for k, v in {
+                        "doc_type": row.get("doc_type"),
+                        "published_at": (
+                            row["published_at"].isoformat()
+                            if hasattr(row.get("published_at"), "isoformat")
+                            else row.get("published_at")
+                        ),
+                    }.items()
+                    if v is not None
+                },
             )
             for row in rows
         ]
