@@ -14,7 +14,7 @@
 |---|---|---|
 | 100 份入庫（BigQuery `polaris_core`）| FR-001/G1 | 100 份法說稿成功入 `polaris_core`、**可被 Retriever 查到**；多產業 `gics_classifications` schema 就緒 |
 | pgvector fallback 驗證 | Q-03/G4 | 同一份 eval 在 pgvector 後端跑出**與 BigQuery 一致**的結果（離線備援可切）|
-| ColPali POC → 上線 | US3/TD-01/G3 | **圖表題檢索命中率 ≥ 70% 才採用**，否則砍（記 TD-01）|
+| ColPali POC → 上線（**R1/R2 backup**，2026-06-12 拍板）| US3/TD-01/G3 | **圖表題檢索命中率 ≥ 70% 才採用**，否則砍（記 TD-01）；R4 以入庫為最優先，若無暇啟動 POC 由 R1/R2 接手（見下方快照）|
 | 新聞第 5 路 | FR-082/G3 | 新聞表入庫 + 成為第 5 路檢索來源 |
 | Watchdog 事件來源 | FR-004 | MOPS 新公告 → 觸發 Watchdog（事件驅動）|
 | 離線備援資料集 | SC-005/G4 | demo 用乾淨資料集 + mock ReAct trace JSON，斷網可跑 |
@@ -26,6 +26,9 @@
 > - **開工指南 + 2 支實測 PoC 已備**：[`../R4_ingestion_開工指南.md`](../R4_ingestion_開工指南.md)（法說單軌 + 財報兩軌 §10）、`scripts/poc_transcript_ingest.py`（法說）、`scripts/poc_financial_extract.py`（財報圖檔頁→vision）。
 > - **本週就做（最高優先）**：把 100 份法說灌進 `polaris_core`、`make bq-smoke` 轉綠 → 通知全隊解鎖。
 > - 下方任務待 ingestion 完成才勾。
+>
+> **📌 2026-06-12 拍板：ColPali owner 維持 R4、R1 + R2 為 backup**
+> R4 一律以入庫為最優先；若 6/14 前 R4 仍無暇啟動 ColPali POC，由 backup 接手：**R1 整備素材**（從 Drive 挑 10–15 份含圖表的法說 PDF + 對應圖表題，並召集 6/14 砍留判定）、**R2 以 2 天 timebox（Colab 免費 GPU）跑技術 POC**。判準不變：圖表題命中率 **≥ 70% 才採用**（之後由 R3 接入檢索第 4 路），否則砍場景 3 + ColPali（記 TD-01）。時程細節見 [`../開發時程_2026-06-12_W3W4_Demo衝刺.md`](../開發時程_2026-06-12_W3W4_Demo衝刺.md)。
 
 **W1**
 - [ ] D1 **BigQuery `polaris_core` 建表**（依 SOP §4：分區 + cluster + 向量索引）；pgvector fallback 設定留待離線備援
@@ -38,12 +41,12 @@
 - [ ] D6 Embedding refresh（**前提：TD-01 已鎖定嵌入模型 `gemini-embedding-2`**）
 - [ ] D7 MOPS 爬蟲
 - [ ] D8 結構化財報
-- [ ] D9 ColPali POC（圖表題命中率 ≥ 70% 才採用，否則砍 → 記 TD-01）
+- [ ] D9 ColPali POC（圖表題命中率 ≥ 70% 才採用，否則砍 → 記 TD-01；**R1/R2 backup**，接手條件見 2026-06-12 拍板註記）
 - [ ] D10 **BigQuery e2e 檢索驗收（Q-03）** → G2 驗收（資料面）
 
 **W3（+2 人天）**
 - [ ] D11–12 檢索調校 + 入庫監控
-- [ ] D13 **ColPali 上線**：圖表檢索進正式環境
+- [ ] D13 **ColPali 上線**：圖表檢索進正式環境（POC 過 70% 門檻才做；**R1/R2 backup**）
 - [ ] D14 **Watchdog 事件接入**：MOPS 新公告 → 觸發
 - [ ] D15–16 新聞表入庫 + 第 5 路 retrieval（FR-082）
 

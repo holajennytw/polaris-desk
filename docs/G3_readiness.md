@@ -6,7 +6,7 @@
 >
 > **G3 四條件**（`00_Polaris-Desk_專題_spec.md` §閘門表）：**ColPali/LLMLingua 整合 + Eval ≥ 80% +
 > Deep Research 可跑 + Watchdog 可跑**（ColPali 失敗 → 砍場景 3 + ColPali）。其中 **R2 直接負責**＝
-> Deep Research 可跑、以及 LLMLingua 的**量測**半邊；Eval ≥ 80%＝R5、ColPali＝R6、Watchdog＝R3。
+> Deep Research 可跑、以及 LLMLingua 的**量測**半邊；Eval ≥ 80%＝R5、ColPali＝R4（POC/上線，**R1/R2 backup**〔2026-06-12 拍板〕，R3 接入檢索）、Watchdog＝R3。
 > 四條件逐項 owner 簽核的**完整驗收清單＝R1 的卡**（R1 spec D15–16），本文不越界。
 
 更新時間：2026-06-04 ｜ 全測試：`make lint && make test` → **304 passed, ruff clean**
@@ -18,7 +18,7 @@
 |---|---|---|---|
 | **Deep Research 可跑** | **R2** | ✅ | v0 loop 跑通（D15）+ v1 過驗收（D16）；見 §C 場景 2 四門檻 |
 | **LLMLingua** 整合 | **R2**（量測）/ 全隊（整合決策）| ✅（量測）| 量測 harness ✅；**真 LLMLingua-2 已實測達 SC-006 ≥50%**（rate≈0.33：D6 stub 55.83% / 代表性片段 55.43%，獨立 tiktoken 量；2026-06-04，見 D8 設計 §6）；確定性基線 ~7–8%。**刻意「量測 only、未接進 live graph」**（D8：更積極壓縮會傷引用接地，live 整合須另行設閘）|
-| ColPali 整合 | R6 | ⤷ 跨角色 | POC 待 R6；**若失敗 → 砍場景 3 + ColPali**（spec 已定）。不影響 R2 Deep Research |
+| ColPali 整合 | R4（**R1/R2 backup**）| ⤷ 跨角色 | POC 待 R4（R4 spec W2 D9 POC / W3 D13 上線；R1/R2 backup 接手條件見 R4 spec 2026-06-12 拍板註記；R3 只負責接入檢索）；**若失敗 → 砍場景 3 + ColPali**（spec 已定）。不影響 R2 Deep Research |
 | Eval ≥ 80% | R5 | ⤷ 跨角色 | 130 題 Ragas + 三方 Judge（CP≥0.85 / Faithfulness≥0.90 / AR≥0.85）；R5 spec D17 公布分數 |
 | Watchdog 可跑 | R3 | ⤷ 跨角色 | 事件 Watchdog Agent 待 R3 |
 
@@ -62,7 +62,7 @@
 |---|---|---|
 | ~~LLMLingua ≥50% 實測~~ ✅ **已完成（2026-06-04）** | R2 | 真 LLMLingua-2（`bert-base-multilingual`, CPU）rate≈0.33 實測 **55.83% / 55.43%** ≥50%；D8 §6 已回填；可重現 `POLARIS_USE_LLMLINGUA=1 POLARIS_LLMLINGUA_RATE=0.33 python -m polaris.compression`。CI 仍 token-free（`[llmlingua]` 不進 CI）|
 | Eval ≥ 80%（130 題 Ragas + 三方 Judge）| R5 | **G3 硬門檻**；R5 spec D17 公布分數。卡關 < 80% 啟動降級（砍場景 3）|
-| ColPali POC | R6 | G3 條件；**失敗 → 砍場景 3 + ColPali**（spec 已定 contingency）。不阻擋 R2 Deep Research |
+| ColPali POC | R4（**R1/R2 backup**）| G3 條件；**失敗 → 砍場景 3 + ColPali**（spec 已定 contingency）。不阻擋 R2 Deep Research |
 | Watchdog Agent 可跑 | R3 | G3 條件（第 2 個 Agent）|
 | 真實「入庫資料」BigQuery 煙測（Q-03）/ `BigQueryStore.{health_check,add_documents,search}` | R4 | 沿用 G2 未關項；R4 ingestion（SOP §4）尚未開工。R2 **未碰**該檔（角色邊界）|
 | 全員 `GCP_PROJECT=polaris-desk-team` + ADC 金鑰 | 各成員 | 沿用 G2；否則 bq-smoke config fail / connectivity skipped |
@@ -78,5 +78,5 @@
 rate≈0.33 對兩語料量到 **55.83% / 55.43%**（SC-006 達標，D8 §6 已回填，獨立 tiktoken 量、可重現）。CI 維持 token-free。
 更積極壓縮會傷引用接地，故仍守 D8「量測 only、未接進 live graph」，live 整合另行設閘。
 
-**整體 G3 是否過閘取決於跨角色硬門檻**：Eval ≥ 80%（R5）、ColPali（R6，失敗則砍場景 3）、Watchdog（R3）。
+**整體 G3 是否過閘取決於跨角色硬門檻**：Eval ≥ 80%（R5）、ColPali（R4，R1/R2 backup，失敗則砍場景 3）、Watchdog（R3）。
 建議 **R1 彙整 4 條件逐項 owner 簽核**（R1 spec D15–16）作為 G3 最終裁定；R2 在此確認**架構面與 Deep Research 端**已備妥。
