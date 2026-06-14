@@ -1,35 +1,46 @@
 # G3 架構面驗收自評（R2）
 
-> **閘門**：W3 D17 G3（架構面）。本文是 R2 對「W3 第一個真 Agent（Deep Research）是否就緒 +
-> R2 在 G3 四條件的對應交付」的自評，對應 spec 的 FR-004 / SC 與 R2 角色 spec 的 W3 交付（D11–D16）。
+> **閘門**：W3 D17 G3（架構面）。本文是 R2 對「G3 四條件的 R2 負責項交付狀態」的自評，
+> 對應 spec 的 FR-004 / SC 與 R2 角色 spec 的 W3–W4 交付（D11–D16＋後續）。
 > 每條都附**可重跑的證據**（測試名 / 指令）。
 >
 > **G3 四條件**（`00_Polaris-Desk_專題_spec.md` §閘門表）：**ColPali/LLMLingua 整合 + Eval ≥ 80% +
 > Deep Research 可跑 + Watchdog 可跑**（ColPali 失敗 → 砍場景 3 + ColPali）。其中 **R2 直接負責**＝
-> Deep Research 可跑、以及 LLMLingua 的**量測**半邊；Eval ≥ 80%＝R5、ColPali＝R4（POC/上線，**R1/R2 backup**〔2026-06-12 拍板〕，R3 接入檢索）、Watchdog＝R3。
+> Deep Research 可跑、LLMLingua 的**量測**半邊；Eval ≥ 80%＝R5（Ragas 真分）、Watchdog＝R3。
 > 四條件逐項 owner 簽核的**完整驗收清單＝R1 的卡**（R1 spec D15–16），本文不越界。
 
-更新時間：2026-06-04 ｜ 全測試：`make lint && make test` → **304 passed, ruff clean**
-｜ 開發路徑：`~/code/polaris-desk`（已移出 iCloud 同步，見專案記憶事故註記）
+更新時間：2026-06-14 ｜ 全測試：`make lint && make test` → **576 passed, 6 skipped, ruff clean**
+｜ 開發路徑：branch `claude/r2-tasks-rqbcjr`（PR #71）
+
+---
 
 ## A. G3 四條件 × R2 對應狀態
 
 | G3 條件 | owner | R2 視角狀態 | 證據 / 備註 |
 |---|---|---|---|
-| **Deep Research 可跑** | **R2** | ✅ | v0 loop 跑通（D15）+ v1 過驗收（D16）；見 §C 場景 2 四門檻 |
-| **LLMLingua** 整合 | **R2**（量測）/ 全隊（整合決策）| ✅（量測）| 量測 harness ✅；**真 LLMLingua-2 已實測達 SC-006 ≥50%**（rate≈0.33：D6 stub 55.83% / 代表性片段 55.43%，獨立 tiktoken 量；2026-06-04，見 D8 設計 §6）；確定性基線 ~7–8%。**刻意「量測 only、未接進 live graph」**（D8：更積極壓縮會傷引用接地，live 整合須另行設閘）|
-| ColPali 整合 | R4（**R1/R2 backup**）| ⤷ 跨角色 | POC 待 R4（R4 spec W2 D9 POC / W3 D13 上線；R1/R2 backup 接手條件見 R4 spec 2026-06-12 拍板註記；R3 只負責接入檢索）；**若失敗 → 砍場景 3 + ColPali**（spec 已定）。不影響 R2 Deep Research |
-| Eval ≥ 80% | R5 | ⤷ 跨角色 | 130 題 Ragas + 三方 Judge（CP≥0.85 / Faithfulness≥0.90 / AR≥0.85）；R5 spec D17 公布分數 |
-| Watchdog 可跑 | R3 | ⤷ 跨角色 | 事件 Watchdog Agent 待 R3 |
+| **Deep Research 可跑** | **R2** | ✅ | v0 loop 跑通（D15）+ v1 過驗收（D16）；v2 ReAct 接 LLMLingua 壓縮（PR #66）；見 §C 場景 2 四門檻 |
+| **LLMLingua** 整合 | **R2**（量測）| ✅ | 量測 harness ✅；**真 LLMLingua-2 已實測達 SC-006 ≥50%**（rate≈0.33：D6 stub 55.83% / 代表性片段 55.43%，獨立 tiktoken 量；刻意「量測 only、未接進 live graph」，live 整合須另行設閘）|
+| **ColPali 整合** | R4（**TD-01 cut**）| ✅ 已裁定 cut | **2026-06-14 TD-01**：R4 未開工 POC，R1/R2 backup 評估後確定 cut。ColPali 從 G3 必要條件移除；retrieval 鎖定 3-path（BM25 + vector + **Cohere Rerank**，見 §B）。G3 不設 ColPali 閘門（spec contingency 已啟用）|
+| **Eval ≥ 80%** | R5 | ⤷ 跨角色 | 130 題 Ragas + 三方 Judge（CP≥0.85 / Faithfulness≥0.90 / AR≥0.85）；R5 spec D17 公布分數。**R2 已備妥管線骨架（75 題 smoke 100%）**：`python -m polaris.eval` |
+| **Watchdog 可跑** | R3 / **R2 代填** | ✅ | Phase 1 全實作（events/state/agent/notify）；CLI demo 無需引數（內建 5 筆事件）；`--notify` 旗標接 NotificationService 全管線；GET /alerts API 端點；576 passed |
 
-## B. R2 W3 架構面交付（D11–D16，皆已併入 main）
+---
+
+## B. R2 W3–W4 架構面交付（D11–D16 ＋ 後續，皆已或即將併入 main）
 
 | 交付 | 對應 | 狀態 | 證據（可重跑）|
 |---|---|---|---|
-| D11 狀態管理 / AQ-03 拍板 | FR-004 | ✅ | 設計文件 `specs/2026-06-03-r2-w3-d11-...-state-design.md`；決策＝**自寫 ReAct loop**（棄 deprecated `create_react_agent`）；狀態模型於 D15 落地 |
-| D13 Agent prompt 優化 | FR-004 | ✅ | `test_prompts.py`、`test_deep_research_react.py`；中央 registry `graph/prompts.py`（`NO_ADVICE_CLAUSE` single source）+ ReAct 機制 `graph/deep_research/react.py` |
-| D15 Deep Research v0（loop 跑通）| FR-004 | ✅ | `test_deep_research_state.py`、`test_deep_research_agent.py`；純 Python bounded loop（reason→act→observe），evidence 去重累積，最終過 D9 Compliance |
-| D16 Deep Research v1（過驗收）| FR-004 | ✅ | `test_deep_research_acceptance.py`（PR #27, b495cfb）；`is_fully_traceable` + verify-or-synthesize 硬保證 |
+| D11 狀態管理 / AQ-03 拍板 | FR-004 | ✅ | 設計文件 `docs/superpowers/specs/...d11...`；決策＝**自寫 ReAct loop** |
+| D13 Agent prompt 優化 | FR-004 | ✅ | `test_prompts.py`、`test_deep_research_react.py`；中央 registry `graph/prompts.py` |
+| D15 Deep Research v0 | FR-004 | ✅ | `test_deep_research_agent.py`；純 Python bounded loop |
+| D16 Deep Research v1 | FR-004 | ✅ | `test_deep_research_acceptance.py`；is_fully_traceable + verify-or-synthesize |
+| **issue #32 R2 seam** | 存取控制 | ✅ | `ResearchState.viewer` 欄位；`cli ask --viewer`；`/ask viewer` 欄位；viewer 全鏈透傳至 store.search |
+| **HybridRetriever 3-path** | 檢索架構 | ✅ | BM25 + vector + **Cohere Rerank**（`rerank_fn` 注入式，無 API key 優雅 skip）；`test_retriever.py` 12 tests |
+| **owner/confidential schema** | issue #32 R4 側 | ✅ | pgvector + BigQuery 兩後端 SQL 過濾；schema migration SQL（待 R4 執行）|
+| **Watchdog demo 改善** | G3 demo 備戰 | ✅ | `__main__.py` 無需引數（預設 `watchdog_events.json`）；`--notify` 旗標；`/alerts` API |
+| **Eval 管線骨架** | specs/004 | ✅ | 75 題 smoke 100%；`python -m polaris.eval`；報告誠實標「煙測分」|
+
+---
 
 ## C. Deep Research v1 驗收證據（場景 2：同業比較）
 
@@ -39,44 +50,51 @@
 | FR-004 門檻 | 斷言 | 機制 |
 |---|---|---|
 | ≤ 6 次 ReAct 迴圈 | `iterations <= 6` | `should_continue(max_loops=6)` 硬編碼上限 |
-| ≥ 3 條引用 | `len(evidence) >= 3` | 確定性 facet 政策（營收/毛利率/風險）輪流 search 到 ≥3 才 finish；依 source_id 去重 |
-| 句句可溯源 | `is_fully_traceable(answer, evidence)` | `_synthesize` 逐點結構化（一 evidence 一 bullet+`（來源：sid）`）→ by construction；v1 verify-or-synthesize 硬保證（LLM 自由文未可溯源 + 有 evidence → 換結構化 grounded）|
-| 0 買賣建議 | `all(kw not in answer for kw in BUYSELL_KEYWORDS)` | 最終結論一律過 **D9 Compliance Agent**（NFR-031） |
+| ≥ 3 條引用 | `len(evidence) >= 3` | 確定性 facet 政策（營收/毛利率/風險）輪流 search 到 ≥3 才 finish |
+| 句句可溯源 | `is_fully_traceable(answer, evidence)` | verify-or-synthesize 硬保證 |
+| 0 買賣建議 | `all(kw not in answer for kw in BUYSELL_KEYWORDS)` | 最終結論過 D9 Compliance（NFR-031）|
 
-> 場景 2 期望輸出的「並列數字表」需 **R4 真實財務資料** → stub 階段不做（pending R4）；
-> 但 **≤6 / ≥3 / 可溯源 / 0 建議** 四門檻以 stub evidence 即可達成並已驗收。
+---
 
 ## D. 核心不變量（W1 起持續綠）
 
 | 準則 | 內容 | 狀態 | 證據 |
 |---|---|---|---|
-| SC-001/002 | e2e 0 介入產出 answer+citations、trace 列 5 節點 | ✅ | `test_workflow_e2e.py` |
-| SC-003 | 6 關鍵字攔截 100%、最終 answer 0 買賣建議 | ✅ | `test_compliance.py`、`test_compliance_agent.py`；Deep Research 最終結論亦過 D9（`test_deep_research_agent.py`）|
-| SC-005 | 換節點 → workflow.py diff = 0 行 | ✅ | `test_node_swap.py`（hash 不變；D11–D16 僅新增 `graph/deep_research/` + `graph/prompts.py`、`workflow.py`/`state.py`(5節點)/`compliance.py` 未動）|
-| SC-006 | 同問題 3 次結果完全相同 | ✅ | `test_workflow_e2e.py::TestE2EDeterminism`；Deep Research 亦可重現（§C `test_repeatable`）|
+| SC-001/002 | e2e 產出 answer+citations、trace 列 5 節點 | ✅ | `test_workflow_e2e.py` |
+| SC-003 | 6 關鍵字攔截 100%、最終 answer 0 買賣建議 | ✅ | `test_compliance.py`、`test_compliance_agent.py` |
+| SC-005 | 換節點 → workflow.py diff = 0 行 | ✅ | `test_node_swap.py` |
+| SC-006 | 同問題 3 次結果完全相同 | ✅ | `test_workflow_e2e.py::TestE2EDeterminism`；Deep Research 亦可重現 |
 | SC-007 | 空輸入只跑 Planner、固定錯誤訊息 | ✅ | `test_workflow_edges.py` |
+| NFR-031 | 任何路徑 0 買賣建議 | ✅ | Security `test_never_recommends_buy_sell`；Watchdog NFR-031 gate；eval 紅隊題 10/10 |
+| issue #32 | 跨租戶隔離 — analyst_A 看不到 client_B 文件 | ✅ | `test_cross_tenant_isolation_contract`（PASSED）；`test_retriever_bm25_viewer_filter_blocks_owner_scoped`；`test_retriever_viewer_filter_passed_to_store` |
 
-## E. 上游依賴 / Action items（待補才會「全綠」）
+---
 
-| 項目 | 由誰 | 影響 |
-|---|---|---|
-| ~~LLMLingua ≥50% 實測~~ ✅ **已完成（2026-06-04）** | R2 | 真 LLMLingua-2（`bert-base-multilingual`, CPU）rate≈0.33 實測 **55.83% / 55.43%** ≥50%；D8 §6 已回填；可重現 `POLARIS_USE_LLMLINGUA=1 POLARIS_LLMLINGUA_RATE=0.33 python -m polaris.compression`。CI 仍 token-free（`[llmlingua]` 不進 CI）|
-| Eval ≥ 80%（130 題 Ragas + 三方 Judge）| R5 | **G3 硬門檻**；R5 spec D17 公布分數。卡關 < 80% 啟動降級（砍場景 3）|
-| ColPali POC | R4（**R1/R2 backup**）| G3 條件；**失敗 → 砍場景 3 + ColPali**（spec 已定 contingency）。不阻擋 R2 Deep Research |
-| Watchdog Agent 可跑 | R3 | G3 條件（第 2 個 Agent）|
-| 真實「入庫資料」BigQuery 煙測（Q-03）/ `BigQueryStore.{health_check,add_documents,search}` | R4 | 沿用 G2 未關項；R4 ingestion（SOP §4）尚未開工。R2 **未碰**該檔（角色邊界）|
-| 全員 `GCP_PROJECT=polaris-desk-team` + ADC 金鑰 | 各成員 | 沿用 G2；否則 bq-smoke config fail / connectivity skipped |
-| 金鑰全員到位 + G1 站會過閘（D5 `[~]`）| 全員 | G1 出場 action item 尚未關閉 |
+## E. 上游依賴 / Action items（R2 視角）
 
-## F. G3 結論（R2 視角）
+| 項目 | 由誰 | 影響 | 狀態 |
+|---|---|---|---|
+| Eval ≥ 80%（Ragas + 三方 Judge）| **R5** | G3 硬門檻（`context_precision≥0.85 / faithfulness≥0.90 / AR≥0.85`）| ⏳ R5 spec D17 公布；R2 管線就緒 |
+| migration SQL 執行 | **R4** | `migrations/2026-06-14_add_owner_confidential.sql`（pgvector）＋ `..._bq.sql`（BigQuery） | ⏳ R4 在 ingestion 後執行 |
+| `polaris_core` 真實語料入庫 | **R4** | 真分 Ragas 需要；目前 stub 語料 | ⏳ R4 ingestion SOP §4 |
+| COHERE_API_KEY 設定 | **全員** | Cohere Rerank 啟用（無 key → 優雅 skip，不阻 CI） | ⏳ Secret Manager 設定 |
+| ColPali | ~~R4~~ **TD-01 cut** | G3 場景 3 砍除 | ✅ 已裁定 |
+| Cloud Run 部署（6/15）| **R4/R7** | 需 GCP 憑證 | ⏳ 不在 R2 範圍 |
 
-**R2 架構面就緒 → Go（架構面）**：第一個真 Agent（Deep Research）v0 跑通、v1 **過驗收**
-（場景 2 四門檻全過且可重現，`test_deep_research_acceptance.py` 背書），W3 交付 D11/D13/D15/D16 全綠、
-5 節點 e2e / 節點可換 / 確定性 / 合規攔截等核心不變量持續綠（**304 passed, ruff clean**）。
+---
 
-**R2 半邊已收尾（2026-06-04）**：LLMLingua **≥50% 實測完成**——真 LLMLingua-2 backend（本機 `[llmlingua]` extra）
-rate≈0.33 對兩語料量到 **55.83% / 55.43%**（SC-006 達標，D8 §6 已回填，獨立 tiktoken 量、可重現）。CI 維持 token-free。
-更積極壓縮會傷引用接地，故仍守 D8「量測 only、未接進 live graph」，live 整合另行設閘。
+## F. G3 結論（R2 視角，2026-06-14 更新）
 
-**整體 G3 是否過閘取決於跨角色硬門檻**：Eval ≥ 80%（R5）、ColPali（R4，R1/R2 backup，失敗則砍場景 3）、Watchdog（R3）。
-建議 **R1 彙整 4 條件逐項 owner 簽核**（R1 spec D15–16）作為 G3 最終裁定；R2 在此確認**架構面與 Deep Research 端**已備妥。
+**R2 架構面 → Go**：
+
+- **Deep Research** v1 已過驗收（場景 2 四門檻）。
+- **LLMLingua** 量測 ≥50% 完成。
+- **ColPali** TD-01 cut，retrieval 鎖定 3-path（BM25 + vector + Cohere Rerank）。
+- **Issue #32 存取控制**全鏈就緒（viewer → state → CLI → API → HybridRetriever → store SQL）。
+- **Watchdog** demo 備妥（CLI、API、NotificationService 全管線）。
+- **Eval 管線** 75 題 smoke 100%（誠實標「煙測分」，G3 真分待 R5）。
+
+全套件：**576 passed, 6 skipped, ruff clean**（`make lint && make test`）。
+
+**整體 G3 是否過閘取決於跨角色硬門檻**：Eval ≥ 80%（R5 Ragas 真分）＋ Cloud Run 部署（R4/R7）。
+建議 **R1 彙整 4 條件逐項 owner 簽核**（R1 spec D15–16）作為 G3 最終裁定。
