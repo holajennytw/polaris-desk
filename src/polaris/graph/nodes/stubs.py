@@ -79,6 +79,8 @@ def retriever(state: dict[str, Any]) -> dict[str, Any]:
     - 有解析到季別 → 只回語料中存在的對應季別（未入庫季別 → 0 條，下游誠實
       回「資料不足」而非編造）。
     - 無期間語句 → 回預設最新季別 1 條。
+    - viewer 欄位（issue #32）：從 state 取出，供 HybridRetriever 接線後做
+      owner-scoped 過濾；stub 語料無 owner 欄位，此階段過濾為 no-op。
 
     D7 保險絲（retries=2）：R4 接真實向量檢索後，DB / 網路暫時性失敗自動重試；
     目前 stub 走記憶體 dict，不會失敗，故對現有行為零影響。
@@ -86,6 +88,9 @@ def retriever(state: dict[str, Any]) -> dict[str, Any]:
     period = state.get("period")
     quarters = list(period.quarters) if period and period.quarters else [_DEFAULT_QUARTER]
     contexts = [_STUB_CORPUS[q] for q in quarters if q in _STUB_CORPUS]
+    # viewer (issue #32) is in state["viewer"]; stub corpus has no owner field so
+    # filtering is a no-op here.  HybridRetriever wiring will read it directly from
+    # state when stubs.retriever is replaced by the real retriever node.
     return {"contexts": contexts}
 
 

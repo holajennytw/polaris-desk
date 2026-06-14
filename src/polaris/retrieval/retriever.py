@@ -79,6 +79,12 @@ def _matches_filters(result: SearchResult, filters: dict | None) -> bool:
             return False
         if key == "period" and result.period != value:
             return False
+        if key == "viewer":
+            # Owner-based access control (issue #32): public docs (owner=None) are always
+            # visible; owner-scoped docs only visible to the matching principal.
+            owner = result.metadata.get("owner")
+            if owner is not None and owner != value:
+                return False
     return True
 
 
