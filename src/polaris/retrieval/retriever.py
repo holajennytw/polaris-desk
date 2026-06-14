@@ -1,18 +1,16 @@
-"""4-way 混合檢索骨架（@R3）。
+"""3-way 混合檢索：BM25 keyword + vector + Cohere Rerank。
 
-v0/v1 先做低成本、確定性的 2-way 檢索：
-- 不需要 Gemini / Cohere / BigQuery key
-- 預設不呼叫外部 API
-- BM25 keyword ranking 先可用
-- Vector search 透過可注入的 embedding_fn + VectorStore.search 介面接入
-- 回傳 SearchResult，讓 Writer 後續可以接 citation
-- W2 再把 Cohere rerank / ColPali 接進來
+- BM25 keyword ranking：確定性，無 API key 即可用
+- Vector search：透過可注入的 embedding_fn + VectorStore.search 介面接入
+- Cohere Rerank（opt-in）：``COHERE_API_KEY`` 存在且傳入 ``rerank_fn`` 時啟用；
+  無 key 則 skip，結果仍為 BM25+vector merge，確定性可重現（CI friendly）
+- ColPali 已於 G3 前評估後 cut（TD-01）
 """
 from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from rank_bm25 import BM25Okapi
@@ -21,6 +19,10 @@ from ..vectorstore import SearchResult, VectorStore, get_vector_store
 
 
 EmbeddingFn = Callable[[str], list[float]]
+
+# Cohere rerank callable: (query, results, top_k) -> list[SearchResult]
+# Injected so tests never call the real Cohere API.
+RerankFn = Callable[[str, list[SearchResult], int], list[SearchResult]]
 
 
 _FALLBACK_CORPUS = [
@@ -116,6 +118,53 @@ def _normalize_vector_result(result: SearchResult) -> SearchResult:
     )
 
 
+def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[SearchResult]:
+    """Default Cohere rerank implementation using ``COHERE_API_KEY`` from env.
+
+    Falls back gracefully if the key is absent or the Cohere call fails —
+    caller receives ``results`` unchanged and BM25+vector ordering holds.
+    """
+    import os
+
+    api_key = os.environ.get("COHERE_API_KEY", "")
+    if not api_key:
+        return results
+    try:
+        import cohere  # type: ignore[import-untyped]
+
+        client = cohere.Client(api_key=api_key)
+        docs = [r.content for r in results]
+        response = client.v2.rerank(
+            model="rerank-v4.0",
+            query=query,
+            documents=docs,
+            top_n=top_k,
+        )
+        reranked: list[SearchResult] = []
+        for hit in response.results:
+            original = results[hit.index]
+            metadata = dict(original.metadata)
+            metadata["origin"] = "rerank"
+            metadata["retrieval_channels"] = list(
+                metadata.get("retrieval_channels", [original.metadata.get("origin", "unknown")])
+            )
+            if "rerank" not in metadata["retrieval_channels"]:
+                metadata["retrieval_channels"].append("rerank")
+            reranked.append(
+                SearchResult(
+                    id=original.id,
+                    content=original.content,
+                    score=float(hit.relevance_score),
+                    company=original.company,
+                    period=original.period,
+                    metadata=metadata,
+                )
+            )
+        return reranked
+    except Exception:  # noqa: BLE001 - rerank is optional; BM25+vector result stands
+        return results
+
+
 def _merge_results(results: list[SearchResult]) -> list[SearchResult]:
     merged: dict[str, SearchResult] = {}
     for result in results:
@@ -148,6 +197,9 @@ class HybridRetriever:
     top_k: int = 8
     store: VectorStore | None = None
     embedding_fn: EmbeddingFn | None = None
+    # Cohere Rerank (3rd path, opt-in): inject a fake for tests; None = use
+    # _cohere_rerank which reads COHERE_API_KEY and skips gracefully if absent.
+    rerank_fn: RerankFn | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -193,10 +245,11 @@ class HybridRetriever:
         return [_normalize_vector_result(result) for result in results]
 
     def retrieve(self, query: str, *, filters: dict | None = None) -> list[SearchResult]:
-        """Retriever D3：BM25 keyword + optional vector search interface.
+        """3-path retrieval: BM25 keyword + optional vector + optional Cohere Rerank.
 
-        Vector search is intentionally opt-in through ``embedding_fn`` so local
-        tests and personal development do not spend API quota by accident.
+        Vector and Rerank are opt-in (no API quota spent in CI/local dev by default).
+        Rerank uses ``rerank_fn`` if set, otherwise falls back to ``_cohere_rerank``
+        which reads ``COHERE_API_KEY`` and skips gracefully when absent.
         """
         query = (query or "").strip()
         if not query:
@@ -207,4 +260,8 @@ class HybridRetriever:
             *self._vector_search(query, filters),
         ])
         ranked.sort(key=lambda r: r.score, reverse=True)
-        return ranked[: self.top_k]
+        candidates = ranked[: self.top_k]
+
+        reranker = self.rerank_fn if self.rerank_fn is not None else _cohere_rerank
+        candidates = reranker(query, candidates, self.top_k)
+        return candidates
