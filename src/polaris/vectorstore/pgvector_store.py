@@ -41,15 +41,17 @@ class PgVectorStore(VectorStore):
                 cur.execute(
                     """
                     INSERT INTO chunks (id, doc_id, company, period, content,
-                                        embedding, metadata)
-                    VALUES (%s, %s, %s, %s, %s, %s::vector, %s::jsonb)
+                                        embedding, metadata, owner, confidential)
+                    VALUES (%s, %s, %s, %s, %s, %s::vector, %s::jsonb, %s, %s)
                     ON CONFLICT (id) DO UPDATE SET
                         doc_id = EXCLUDED.doc_id,
                         company = EXCLUDED.company,
                         period = EXCLUDED.period,
                         content = EXCLUDED.content,
                         embedding = EXCLUDED.embedding,
-                        metadata = EXCLUDED.metadata
+                        metadata = EXCLUDED.metadata,
+                        owner = EXCLUDED.owner,
+                        confidential = EXCLUDED.confidential
                     """,
                     (
                         d.id,
@@ -59,6 +61,8 @@ class PgVectorStore(VectorStore):
                         d.content,
                         _vector_literal(d.embedding or []),
                         json.dumps(d.metadata, ensure_ascii=False),
+                        d.metadata.get("owner"),
+                        bool(d.metadata.get("confidential", False)),
                     ),
                 )
         conn.commit()
@@ -75,6 +79,12 @@ class PgVectorStore(VectorStore):
             if filters and filters.get(key) is not None:
                 clauses.append(f"{key} = %s")
                 args.append(filters[key])
+        viewer = filters.get("viewer") if filters else None
+        if viewer is not None:
+            clauses.append("(owner IS NULL OR owner = %s)")
+            args.append(viewer)
+            clauses.append("(NOT COALESCE(confidential, FALSE) OR owner = %s)")
+            args.append(viewer)
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
         qe = _vector_literal(query_embedding)
         # ⚠️ 一定用 <=>（cosine）且 ORDER BY ... LIMIT 形式 → 走 HNSW 索引

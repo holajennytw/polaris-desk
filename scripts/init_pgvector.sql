@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS chunks (
     period      TEXT,                 -- 供 Temporal Anchoring 用（如 2024Q3）
     content     TEXT NOT NULL,
     embedding   VECTOR(768),
-    metadata    JSONB DEFAULT '{}'::jsonb
+    metadata    JSONB DEFAULT '{}'::jsonb,
+    owner       TEXT DEFAULT NULL,          -- principal who owns this doc (NULL = public)
+    confidential BOOLEAN NOT NULL DEFAULT FALSE  -- MNPI / restricted flag
 );
 
 -- 向量近似搜尋索引（cosine）
@@ -32,3 +34,4 @@ CREATE INDEX IF NOT EXISTS idx_chunks_embedding
 
 CREATE INDEX IF NOT EXISTS idx_chunks_company ON chunks (company);
 CREATE INDEX IF NOT EXISTS idx_chunks_period  ON chunks (period);
+CREATE INDEX IF NOT EXISTS idx_chunks_owner   ON chunks (owner);

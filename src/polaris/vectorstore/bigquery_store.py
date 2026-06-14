@@ -70,6 +70,8 @@ class BigQueryStore(VectorStore):
                 "published_at": d.metadata.get("published_at"),
                 "chunk_text": d.content,
                 "embedding": d.embedding,
+                "owner": d.metadata.get("owner"),
+                "confidential": bool(d.metadata.get("confidential", False)),
             }
             for d in docs
         ]
@@ -92,6 +94,11 @@ class BigQueryStore(VectorStore):
             if filters and filters.get(key) is not None:
                 clauses.append(f"{column} = @{column}")
                 params[column] = filters[key]
+        viewer = filters.get("viewer") if filters else None
+        if viewer is not None:
+            clauses.append("(owner IS NULL OR owner = @viewer)")
+            clauses.append("(NOT confidential OR owner = @viewer)")
+            params["viewer"] = viewer
         if clauses:
             where = "WHERE " + " AND ".join(clauses)
 

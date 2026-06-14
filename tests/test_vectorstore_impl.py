@@ -152,6 +152,24 @@ class TestBigQueryStore:
         assert "fiscal_period = @fiscal_period" in sql
         assert "company = @" not in sql and " period = @" not in sql  # 舊欄名不再使用
 
+    def test_search_viewer_filter_sql(self):
+        """viewer filter generates owner IS NULL OR owner = @viewer clause."""
+        client = FakeBQClient()
+        store = BigQueryStore(make_settings(), client=client)
+        store.search(EMB, filters={"viewer": "analyst_A"})
+        sql = client.queries[0]
+        assert "owner IS NULL OR owner = @viewer" in sql
+        assert "NOT confidential OR owner = @viewer" in sql
+
+    def test_add_documents_writes_owner_and_confidential(self):
+        client = FakeBQClient()
+        store = BigQueryStore(make_settings(bq_dataset="polaris_dev_test"), client=client)
+        doc = make_doc(metadata={"owner": "client_B", "confidential": True})
+        store.add_documents([doc])
+        rows, _ = client.loaded[0]
+        assert rows[0]["owner"] == "client_B"
+        assert rows[0]["confidential"] is True
+
 
 # ── pgvector fakes ───────────────────────────────────────────────────────────
 
@@ -227,6 +245,28 @@ class TestPgVectorStore:
         assert "company = %s" in sql
         assert args[-1] == 5  # top_k
         assert results[0].score == pytest.approx(0.85)
+
+    def test_search_viewer_filter_sql(self):
+        """viewer filter generates owner/confidential WHERE clauses."""
+        conn = FakeConn()
+        store = PgVectorStore(make_settings(), conn=conn)
+        store.search(EMB, top_k=3, filters={"viewer": "analyst_A"})
+        sql, args = conn.cur.executed[0]
+        assert "owner IS NULL OR owner = %s" in sql
+        assert "NOT COALESCE(confidential, FALSE) OR owner = %s" in sql
+        # viewer value appears twice (owner filter + confidential bypass)
+        assert args.count("analyst_A") == 2
+
+    def test_add_documents_writes_owner_and_confidential(self):
+        conn = FakeConn()
+        store = PgVectorStore(make_settings(), conn=conn)
+        doc = make_doc(metadata={"doc_id": "doc-1", "owner": "client_B", "confidential": True})
+        store.add_documents([doc])
+        sql, args = conn.cur.executed[0]
+        assert "owner" in sql
+        assert "confidential" in sql
+        assert "client_B" in args
+        assert True in args
 
 
 # ── factory 整合 ─────────────────────────────────────────────────────────────
