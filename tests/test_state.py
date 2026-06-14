@@ -136,9 +136,9 @@ class TestResearchState:
     def test_state_has_required_keys(self):
         from polaris.graph.state import ResearchState
         hints = get_type_hints(ResearchState, include_extras=True)
-        # 對齊 data-model.md 表格
+        # 對齊 data-model.md 表格（viewer = issue #32 存取控制欄位）
         expected = {
-            "query", "plan", "contexts", "calculations", "draft", "answer",
+            "query", "viewer", "plan", "contexts", "calculations", "draft", "answer",
             "citations", "compliance_status", "trace", "halt",
         }
         assert expected.issubset(set(hints.keys())), (
@@ -149,6 +149,11 @@ class TestResearchState:
         from polaris.graph.state import ResearchState
         hints = get_type_hints(ResearchState)
         assert hints["query"] is str
+
+    def test_state_viewer_is_str(self):
+        from polaris.graph.state import ResearchState
+        hints = get_type_hints(ResearchState)
+        assert hints["viewer"] is str
 
     def test_state_halt_is_bool(self):
         from polaris.graph.state import ResearchState

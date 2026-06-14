@@ -105,6 +105,8 @@ class ResearchState(TypedDict, total=False):
 
     # 入口欄位
     query: str
+    # 存取控制身分（issue #32）：retriever 依此過濾 owner-scoped 文件
+    viewer: str
 
     # 各節點輸出
     plan: list[str]

@@ -43,6 +43,19 @@ class TestCLIMainFunction:
         assert rc == 0
         assert "請提供具體問題。" in out
 
+    def test_viewer_flag_accepted(self, capsys):
+        from polaris.cli import main
+
+        rc = main(["ask", "台積電毛利率", "--viewer", "analyst_A"])
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "Answer" in out
+
+    def test_viewer_default_is_demo_principal(self, capsys):
+        from polaris.cli import _cmd_ask
+        rc = _cmd_ask("台積電", viewer="demo_principal")
+        assert rc == 0
+
 
 class TestModuleEntrypoints:
     def test_python_m_polaris_cli(self):

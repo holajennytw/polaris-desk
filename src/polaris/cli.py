@@ -26,6 +26,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="(US2) make writer emit buy/sell text to demo compliance blocking",
     )
+    ask.add_argument(
+        "--viewer",
+        default="demo_principal",
+        help="存取控制身分（issue #32；預設 demo_principal）",
+    )
 
     sub.add_parser("doctor", help="檢查 .env 內哪些 API 金鑰已正確設定（G1 用）")
     sub.add_parser(
@@ -35,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.cmd == "ask":
-        return _cmd_ask(args.query, stub_buysell=args.stub_buysell)
+        return _cmd_ask(args.query, stub_buysell=args.stub_buysell, viewer=args.viewer)
     if args.cmd == "doctor":
         return _cmd_doctor()
     if args.cmd == "bq-smoke":
@@ -69,7 +74,7 @@ def _cmd_bq_smoke() -> int:
     return 1 if report.overall == "fail" else 0
 
 
-def _cmd_ask(query: str, *, stub_buysell: bool = False) -> int:
+def _cmd_ask(query: str, *, stub_buysell: bool = False, viewer: str = "demo_principal") -> int:
     if stub_buysell:
         # US2 demo：把 writer 模組屬性換成會回「建議買進」的版本。
         # 這跟測試用 monkeypatch.setattr(stubs, "writer", ...) 是對稱的做法。
@@ -80,7 +85,7 @@ def _cmd_ask(query: str, *, stub_buysell: bool = False) -> int:
     from polaris.graph.workflow import build_workflow
 
     app = build_workflow()
-    result = app.invoke({"query": query})
+    result = app.invoke({"query": query, "viewer": viewer})
     _pretty_print(query, result)
     return 0
 
