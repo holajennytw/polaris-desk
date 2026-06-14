@@ -219,3 +219,27 @@ def test_cli_main_prints_alerts_and_stats(capsys):
     from polaris.graph.compliance import BUYSELL_KEYWORDS
     for kw in BUYSELL_KEYWORDS:
         assert kw not in out
+
+
+def test_cli_no_args_uses_default_events(capsys):
+    """python -m polaris.graph.watchdog（無引數）走內建示範事件。"""
+    from polaris.graph.watchdog.__main__ import main
+
+    exit_code = main([])
+    out = capsys.readouterr().out
+    assert exit_code == 0
+    assert "Watchdog Alert" in out
+    assert "passed=" in out and "blocked=1" in out
+
+
+def test_cli_notify_flag_shows_notification_status(capsys):
+    """--notify 旗標：每則 alert 後顯示 notification 狀態，末尾顯示 inbox_unread。"""
+    from polaris.graph.watchdog.__main__ import main
+
+    exit_code = main(["--notify"])
+    out = capsys.readouterr().out
+    assert exit_code == 0
+    assert "notification:" in out
+    assert "inbox_unread=" in out
+    # blocked 的紅隊事件 → notification: blocked
+    assert "notification: blocked" in out
