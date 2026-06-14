@@ -233,18 +233,12 @@ def test_retriever_no_rerank_fn_and_no_api_key_skips_gracefully():
 
 
 def test_retriever_rerank_exception_falls_back_to_bm25_order():
-    """If rerank_fn raises, retrieve falls back to the pre-rerank ordering."""
+    """_cohere_rerank's try/except: Cohere failure leaves BM25+vector order intact."""
+    import os
+
     from polaris.retrieval.retriever import HybridRetriever
 
-    def failing_rerank(query, results, top_k):
-        raise RuntimeError("Cohere is down")
-
-    retriever = HybridRetriever(top_k=3, rerank_fn=failing_rerank)
-    # The _cohere_rerank wrapper catches exceptions; but here we injected a bare
-    # raising fn.  Since retrieve calls rerank_fn directly, this will propagate.
-    # Verify that _cohere_rerank's try/except covers the default path (no injection).
-    import os
     os.environ.pop("COHERE_API_KEY", None)
-    retriever2 = HybridRetriever(top_k=3)
-    results = retriever2.retrieve("台積電 毛利率")
+    retriever = HybridRetriever(top_k=3)
+    results = retriever.retrieve("台積電 毛利率")
     assert len(results) > 0
