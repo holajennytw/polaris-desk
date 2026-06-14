@@ -52,6 +52,17 @@ class TestAsk:
     def test_ask_missing_query_is_422(self, client):
         assert client.post("/ask", json={}).status_code == 422
 
+    def test_ask_viewer_accepted_and_forwarded(self, client):
+        """viewer field (issue #32) is accepted and forwarded to the workflow."""
+        r = client.post("/ask", json={"query": "台積電毛利率", "viewer": "analyst_A"})
+        assert r.status_code == 200
+        assert r.json()["compliance_status"] in VALID_COMPLIANCE
+
+    def test_ask_viewer_defaults_to_demo_principal(self, client):
+        """Omitting viewer still succeeds (default = demo_principal)."""
+        r = client.post("/ask", json={"query": "台積電"})
+        assert r.status_code == 200
+
 
 class TestResearch:
     def test_research_returns_contract_shape(self, client):

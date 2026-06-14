@@ -83,6 +83,9 @@ def _reject_blank(value: str) -> str:
 
 class AskRequest(BaseModel):
     query: str = Field(min_length=1, description="自然語言問題")
+    # issue #32: viewer identity for owner-based document access control.
+    # Omit or set null to use the default public principal.
+    viewer: str = Field(default="demo_principal", description="存取控制身分（issue #32）")
 
     _not_blank = field_validator("query")(_reject_blank)
 
@@ -116,8 +119,11 @@ def healthz() -> dict[str, str]:
 
 @app.post("/ask", response_model=AskResponse, tags=["research"])
 def ask(req: AskRequest) -> AskResponse:
-    """跑 5 節點 workflow，回帶引用 + 合規狀態 + 每節點 trace 的答案。"""
-    result = build_workflow().invoke({"query": req.query})
+    """跑 5 節點 workflow，回帶引用 + 合規狀態 + 每節點 trace 的答案。
+
+    ``viewer`` 透傳進 workflow state（issue #32）：retriever 依此做 owner-scoped 過濾。
+    """
+    result = build_workflow().invoke({"query": req.query, "viewer": req.viewer})
     return AskResponse(
         answer=result.get("answer", ""),
         compliance_status=result.get("compliance_status", "unknown"),
