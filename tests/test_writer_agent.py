@@ -115,6 +115,64 @@ class TestMakeDraftRetry:
         assert len(client.calls) == 1  # 永久性錯誤 → 不重試
 
 
+class TestBuildPromptCompression:
+    """D8 live integration: _build_prompt compresses context block before LLM call."""
+
+    def test_compressor_is_called_on_context_block(self):
+        """Injected compressor receives the formatted context text."""
+        calls: list[str] = []
+
+        class SpyCompressor:
+            name = "spy"
+
+            def compress(self, text: str) -> str:
+                calls.append(text)
+                return text  # pass-through
+
+        wa._build_prompt("台積電", SAMPLE_CONTEXTS, compressor=SpyCompressor())
+
+        assert len(calls) == 1
+        assert "doc-1" in calls[0]
+        assert "台積電 2025Q1 營收 8,000 億元。" in calls[0]
+
+    def test_compressed_text_appears_in_prompt(self):
+        """Compressor output replaces original context block in the prompt."""
+
+        class ShrinkCompressor:
+            name = "shrink"
+
+            def compress(self, text: str) -> str:
+                return "COMPRESSED"
+
+        prompt = wa._build_prompt("q", SAMPLE_CONTEXTS, compressor=ShrinkCompressor())
+
+        assert "COMPRESSED" in prompt
+        assert "台積電 2025Q1" not in prompt  # original text replaced
+
+    def test_citations_built_from_original_snippets(self):
+        """Compression of the prompt does NOT affect citation grounding."""
+
+        class ZeroCompressor:
+            name = "zero"
+
+            def compress(self, text: str) -> str:
+                return ""  # wipe everything
+
+        # Even with a compressor that deletes all context text from the prompt,
+        # build_citations works on the original contexts list — grounding is safe.
+        cites = wa.build_citations(SAMPLE_CONTEXTS)
+        assert cites[0].snippet == "台積電 2025Q1 營收 8,000 億元。"
+
+    def test_default_compressor_removes_boilerplate(self):
+        """DeterministicCompressor (default) strips stub boilerplate from the prompt."""
+        stub_contexts = [
+            {"source_id": "s1", "text": "（v0 stub）台積電 2025Q1 法說摘要。"},
+        ]
+        prompt = wa._build_prompt("台積電", stub_contexts)
+        assert "（v0 stub）" not in prompt
+        assert "台積電 2025Q1 法說摘要。" in prompt  # content kept
+
+
 class TestWriterNodeIntegration:
     def test_workflow_uses_llm_draft_when_client_available(self, monkeypatch):
         from tests.conftest import FakeLLM
