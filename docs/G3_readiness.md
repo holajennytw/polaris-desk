@@ -9,8 +9,8 @@
 > Deep Research 可跑、LLMLingua 的**量測**半邊；Eval ≥ 80%＝R5（Ragas 真分）、Watchdog＝R3。
 > 四條件逐項 owner 簽核的**完整驗收清單＝R1 的卡**（R1 spec D15–16），本文不越界。
 
-更新時間：2026-06-14 ｜ 全測試：`make lint && make test` → **576 passed, 6 skipped, ruff clean**
-｜ 開發路徑：branch `claude/r2-tasks-rqbcjr`（PR #71）
+更新時間：2026-06-15 ｜ 全測試：`make lint && make test` → **585 passed, 6 skipped, ruff clean**
+｜ 開發路徑：branch `claude/r2-tasks-rqbcjr`（PR #72）
 
 ---
 
@@ -18,8 +18,8 @@
 
 | G3 條件 | owner | R2 視角狀態 | 證據 / 備註 |
 |---|---|---|---|
-| **Deep Research 可跑** | **R2** | ✅ | v0 loop 跑通（D15）+ v1 過驗收（D16）；v2 ReAct 接 LLMLingua 壓縮（PR #66）；見 §C 場景 2 四門檻 |
-| **LLMLingua** 整合 | **R2**（量測）| ✅ | 量測 harness ✅；**真 LLMLingua-2 已實測達 SC-006 ≥50%**（rate≈0.33：D6 stub 55.83% / 代表性片段 55.43%，獨立 tiktoken 量；刻意「量測 only、未接進 live graph」，live 整合須另行設閘）|
+| **Deep Research 可跑** | **R2** | ✅ | v0 loop 跑通（D15）+ v1 過驗收（D16）；v2 ReAct 接 LLMLingua 壓縮（PR #72）；預設 search = `active_search_fn(viewer)`（BM25 + vector + Cohere Rerank）；見 §C 場景 2 四門檻 |
+| **LLMLingua** 整合 | **R2**（量測 + **live**）| ✅ | 量測 harness ✅；**真 LLMLingua-2 已實測達 SC-006 ≥50%**（55.83%）；**live 接入** `active_compressor().compress()` 在 Writer node `_build_prompt()` 呼叫（PR #72）；`POLARIS_USE_LLMLINGUA=1` 啟用；CI token=0（DeterministicCompressor 預設）|
 | **ColPali 整合** | R4（**TD-01 cut**）| ✅ 已裁定 cut | **2026-06-14 TD-01**：R4 未開工 POC，R1/R2 backup 評估後確定 cut。ColPali 從 G3 必要條件移除；retrieval 鎖定 3-path（BM25 + vector + **Cohere Rerank**，見 §B）。G3 不設 ColPali 閘門（spec contingency 已啟用）|
 | **Eval ≥ 80%** | R5 | ⤷ 跨角色 | 130 題 Ragas + 三方 Judge（CP≥0.85 / Faithfulness≥0.90 / AR≥0.85）；R5 spec D17 公布分數。**R2 已備妥管線骨架（75 題 smoke 100%）**：`python -m polaris.eval` |
 | **Watchdog 可跑** | R3 / **R2 代填** | ✅ | Phase 1 全實作（events/state/agent/notify）；CLI demo 無需引數（內建 5 筆事件）；`--notify` 旗標接 NotificationService 全管線；GET /alerts API 端點；576 passed |
@@ -34,8 +34,9 @@
 | D13 Agent prompt 優化 | FR-004 | ✅ | `test_prompts.py`、`test_deep_research_react.py`；中央 registry `graph/prompts.py` |
 | D15 Deep Research v0 | FR-004 | ✅ | `test_deep_research_agent.py`；純 Python bounded loop |
 | D16 Deep Research v1 | FR-004 | ✅ | `test_deep_research_acceptance.py`；is_fully_traceable + verify-or-synthesize |
-| **issue #32 R2 seam** | 存取控制 | ✅ | `ResearchState.viewer` 欄位；`cli ask --viewer`；`/ask viewer` 欄位；viewer 全鏈透傳至 store.search |
-| **HybridRetriever 3-path** | 檢索架構 | ✅ | BM25 + vector + **Cohere Rerank**（`rerank_fn` 注入式，無 API key 優雅 skip）；`test_retriever.py` 12 tests |
+| **issue #32 R2 seam** | 存取控制 | ✅ | `ResearchState.viewer` 欄位；`cli ask --viewer`；`/ask /research viewer` 欄位；viewer 全鏈透傳至 store.search；`POST /research viewer` → `run_deep_research(viewer=...)` → `active_search_fn(viewer)` |
+| **HybridRetriever 3-path + active_search_fn** | 檢索架構 | ✅ | BM25 + vector + **Cohere Rerank**（`rerank_fn` 注入式，無 API key 優雅 skip）；`make_retriever_search_fn` / `active_search_fn(viewer)` SearchResult→Citation 橋；Deep Research 預設 search = `active_search_fn(viewer)`；`test_retriever.py` 15 tests |
+| **D8 live LLMLingua 接入** | 壓縮 | ✅ | `writer_agent._build_prompt()` 呼叫 `active_compressor().compress()`；`test_writer_agent.py::TestBuildPromptCompression` 4 tests；不影響 Citation grounding |
 | **owner/confidential schema** | issue #32 R4 側 | ✅ | pgvector + BigQuery 兩後端 SQL 過濾；schema migration SQL（待 R4 執行）|
 | **Watchdog demo 改善** | G3 demo 備戰 | ✅ | `__main__.py` 無需引數（預設 `watchdog_events.json`）；`--notify` 旗標；`/alerts` API |
 | **Eval 管線骨架** | specs/004 | ✅ | 75 題 smoke 100%；`python -m polaris.eval`；報告誠實標「煙測分」|
@@ -83,18 +84,18 @@
 
 ---
 
-## F. G3 結論（R2 視角，2026-06-14 更新）
+## F. G3 結論（R2 視角，2026-06-15 更新）
 
 **R2 架構面 → Go**：
 
-- **Deep Research** v1 已過驗收（場景 2 四門檻）。
-- **LLMLingua** 量測 ≥50% 完成。
+- **Deep Research** v1 已過驗收（場景 2 四門檻）；預設 search 升級為 `active_search_fn(viewer)`（BM25 + vector + Cohere Rerank）。
+- **LLMLingua** 量測 ≥50% 完成 **+ live 接入** Writer node（`POLARIS_USE_LLMLINGUA=1`；CI token=0）。
 - **ColPali** TD-01 cut，retrieval 鎖定 3-path（BM25 + vector + Cohere Rerank）。
-- **Issue #32 存取控制**全鏈就緒（viewer → state → CLI → API → HybridRetriever → store SQL）。
+- **Issue #32 存取控制**全鏈就緒（viewer → state → CLI → `/ask` → `/research` → `active_search_fn` → HybridRetriever → store SQL）。
 - **Watchdog** demo 備妥（CLI、API、NotificationService 全管線）。
 - **Eval 管線** 75 題 smoke 100%（誠實標「煙測分」，G3 真分待 R5）。
 
-全套件：**576 passed, 6 skipped, ruff clean**（`make lint && make test`）。
+全套件：**585 passed, 6 skipped, ruff clean**（`make lint && make test`）。
 
 **整體 G3 是否過閘取決於跨角色硬門檻**：Eval ≥ 80%（R5 Ragas 真分）＋ Cloud Run 部署（R4/R7）。
 建議 **R1 彙整 4 條件逐項 owner 簽核**（R1 spec D15–16）作為 G3 最終裁定。
