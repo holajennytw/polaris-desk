@@ -129,17 +129,24 @@ def run_deep_research(
     question: str,
     *,
     client=None,
-    search: SearchFn = stub_search,
+    search: SearchFn | None = None,
     max_loops: int = 6,
     min_citations: int = 3,
     viewer: str = "demo_principal",
 ) -> DeepResearchResult:
     """跑通 Deep Research ReAct loop，回 :class:`DeepResearchResult`。
 
-    ``viewer`` 是存取控制身分（issue #32）：stub_search 無 owner 欄位故為 no-op；
-    R4 真實 HybridRetriever 接入後，呼叫端用 closure 帶入：
-    ``search=lambda q: adapter(retriever.retrieve(q, filters={"viewer": viewer}))``
+    ``search`` 預設為 ``None``，自動使用 :func:`~polaris.retrieval.retriever.active_search_fn`
+    （BM25 + vector + Cohere Rerank，viewer-filtered）。
+    Tests 可注入確定性 ``search=stub_search`` 以避開 store 依賴；
+    ``search=lambda q: []`` 可測無證據路徑。
+
+    ``viewer`` 是存取控制身分（issue #32），透傳進 ``active_search_fn(viewer)``；
+    注入自訂 search fn 時 viewer 由呼叫端透過 closure 帶入（見 :func:`make_retriever_search_fn`）。
     """
+    if search is None:
+        from polaris.retrieval.retriever import active_search_fn as _active_search_fn
+        search = _active_search_fn(viewer)
     state: dict = {
         "iteration": 0,
         "status": "running",

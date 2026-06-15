@@ -76,7 +76,7 @@ class TestTraceabilityGuarantee:
                 "Thought:\nAction: finish\nAction Input: 一段沒有來源標註的自由文結論。",
             ]
         )
-        r = ag.run_deep_research(SCENARIO_2_Q, client=client)
+        r = ag.run_deep_research(SCENARIO_2_Q, client=client, search=ag.stub_search)
         assert len(r.evidence) >= 3
         # LLM 自由文未可溯源 + 有 evidence → 硬保證轉結構化 grounded
         assert is_fully_traceable(r.final_answer, r.evidence)

@@ -265,3 +265,56 @@ class HybridRetriever:
         reranker = self.rerank_fn if self.rerank_fn is not None else _cohere_rerank
         candidates = reranker(query, candidates, self.top_k)
         return candidates
+
+
+# ---------------------------------------------------------------------------
+# Deep Research search-fn bridge (SearchResult → Citation adapter)
+# ---------------------------------------------------------------------------
+
+def make_retriever_search_fn(
+    retriever: "HybridRetriever | None" = None,
+    *,
+    viewer: str = "demo_principal",
+    filters: dict | None = None,
+) -> "Callable[[str], list]":
+    """Return a ``SearchFn``-compatible callable backed by :class:`HybridRetriever`.
+
+    Adapts ``SearchResult → Citation`` so the result can be consumed by
+    :func:`~polaris.graph.deep_research.agent.run_deep_research`.
+
+    Viewer and any extra filters are merged and forwarded to
+    ``retriever.retrieve(..., filters={viewer: ..., ...})`` — the store enforces
+    owner-based access control (issue #32).
+
+    ``retriever`` is injected for tests; ``None`` uses the default
+    :class:`HybridRetriever` (BM25 + store from ``VECTOR_BACKEND`` env).
+    """
+    from polaris.graph.state import Citation
+
+    r = retriever if retriever is not None else HybridRetriever()
+    combined_filters: dict = {**(filters or {}), "viewer": viewer}
+
+    def _search(query: str) -> list:
+        return [
+            Citation(
+                source_id=sr.id,
+                snippet=sr.content,
+                origin=sr.metadata.get("origin", "retriever"),
+            )
+            for sr in r.retrieve(query, filters=combined_filters)
+        ]
+
+    return _search
+
+
+def active_search_fn(viewer: str = "demo_principal") -> "Callable[[str], list]":
+    """Active search fn for Deep Research: BM25 + vector + Cohere Rerank.
+
+    Mirrors :func:`~polaris.llm.gemini.active_llm` and
+    :func:`~polaris.compression.compressors.active_compressor`:
+
+    - CI / no credentials: BM25-only from fallback corpus, fully deterministic
+    - Production: BM25 + vector (``VECTOR_BACKEND``) + Cohere Rerank if key set
+    - viewer forwarded to store for owner-scoped filtering (issue #32)
+    """
+    return make_retriever_search_fn(viewer=viewer)

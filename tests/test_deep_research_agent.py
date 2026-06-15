@@ -97,7 +97,7 @@ class TestSmartPath:
                 "Thought: 夠了\nAction: finish\nAction Input: 綜合結論。",
             ]
         )
-        r = ag.run_deep_research("台積電 Q1", client=client)
+        r = ag.run_deep_research("台積電 Q1", client=client, search=ag.stub_search)
         assert r.status == "answered"
         assert r.iterations == 3
         assert len(r.evidence) == 2
