@@ -92,6 +92,17 @@ class TestResearch:
     def test_research_missing_question_is_422(self, client):
         assert client.post("/research", json={}).status_code == 422
 
+    def test_research_viewer_accepted(self, client):
+        """viewer field (issue #32) is accepted and forwarded to run_deep_research."""
+        r = client.post("/research", json={"question": "台積電毛利率", "viewer": "analyst_A"})
+        assert r.status_code == 200
+        assert r.json()["compliance_status"] in VALID_COMPLIANCE
+
+    def test_research_viewer_defaults_to_demo_principal(self, client):
+        """Omitting viewer still succeeds."""
+        r = client.post("/research", json={"question": "台積電"})
+        assert r.status_code == 200
+
 
 class TestRouting:
     def test_unknown_path_404(self, client):

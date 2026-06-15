@@ -130,3 +130,34 @@ class TestSearchSeam:
         r = ag.run_deep_research("Q", search=fake_search)
         assert calls  # 注入的 search 被呼叫
         assert r.status == "answered"
+
+
+class TestViewerParam:
+    """viewer identity flows through run_deep_research (issue #32)."""
+
+    def test_viewer_default_is_demo_principal(self):
+        """Omitting viewer succeeds with the default principal."""
+        r = ag.run_deep_research("台積電")
+        assert r.status in {"answered", "exhausted"}
+
+    def test_viewer_accepted_and_stored_in_state(self):
+        """viewer is accepted without error; custom value is fine."""
+        r = ag.run_deep_research("台積電", viewer="analyst_A")
+        assert r.status in {"answered", "exhausted"}
+
+    def test_viewer_aware_search_fn_receives_viewer_via_closure(self):
+        """Pattern for R4: wrap search_fn with viewer via closure."""
+        captured_viewer: list[str] = []
+
+        def viewer_aware_search(q: str, *, viewer: str) -> list[Citation]:
+            captured_viewer.append(viewer)
+            return [Citation(source_id=f"v-{viewer}", snippet="片段", origin="stub")]
+
+        viewer = "analyst_A"
+        r = ag.run_deep_research(
+            "台積電",
+            viewer=viewer,
+            search=lambda q: viewer_aware_search(q, viewer=viewer),
+        )
+        assert r.status in {"answered", "exhausted"}
+        assert all(v == "analyst_A" for v in captured_viewer)

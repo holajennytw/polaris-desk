@@ -99,6 +99,8 @@ class AskResponse(BaseModel):
 
 class ResearchRequest(BaseModel):
     question: str = Field(min_length=1, description="開放式研究問題")
+    # issue #32: viewer identity forwarded to Deep Research search fn.
+    viewer: str = Field(default="demo_principal", description="存取控制身分（issue #32）")
 
     _not_blank = field_validator("question")(_reject_blank)
 
@@ -134,8 +136,12 @@ def ask(req: AskRequest) -> AskResponse:
 
 @app.post("/research", response_model=ResearchResponse, tags=["research"])
 def research(req: ResearchRequest) -> ResearchResponse:
-    """跑 Deep Research ReAct loop（≤6 迴圈 / ≥3 引用 / 過合規），回結論 + 證據 + 步驟。"""
-    r = run_deep_research(req.question)
+    """跑 Deep Research ReAct loop（≤6 迴圈 / ≥3 引用 / 過合規），回結論 + 證據 + 步驟。
+
+    ``viewer`` 透傳進 run_deep_research（issue #32）：R4 真實 search fn 接入後
+    可依此做 owner-scoped 過濾；stub_search 無 owner 欄位，目前為 no-op。
+    """
+    r = run_deep_research(req.question, viewer=req.viewer)
     return ResearchResponse(
         final_answer=r.final_answer,
         evidence=r.evidence,

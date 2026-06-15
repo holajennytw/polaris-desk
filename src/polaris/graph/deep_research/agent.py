@@ -132,14 +132,21 @@ def run_deep_research(
     search: SearchFn = stub_search,
     max_loops: int = 6,
     min_citations: int = 3,
+    viewer: str = "demo_principal",
 ) -> DeepResearchResult:
-    """跑通 Deep Research ReAct loop，回 :class:`DeepResearchResult`。"""
+    """跑通 Deep Research ReAct loop，回 :class:`DeepResearchResult`。
+
+    ``viewer`` 是存取控制身分（issue #32）：stub_search 無 owner 欄位故為 no-op；
+    R4 真實 HybridRetriever 接入後，呼叫端用 closure 帶入：
+    ``search=lambda q: adapter(retriever.retrieve(q, filters={"viewer": viewer}))``
+    """
     state: dict = {
         "iteration": 0,
         "status": "running",
         "react_steps": [],
         "evidence": [],
         "final_answer": "",
+        "viewer": viewer,  # available for search fn wiring when real store is connected
     }
     while should_continue(state, max_loops=max_loops):
         action = _decide(question, state, client, min_citations)
