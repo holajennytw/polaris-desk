@@ -109,6 +109,34 @@ class TestSmartPath:
         assert len(r.evidence) >= 3
 
 
+class TestClientAutoWiring:
+    """run_deep_research auto-wires the LLM client from active_llm() when none is
+    passed (mirrors the search default), so the deployed /research uses Gemini
+    reasoning when a key is present and the deterministic path when absent."""
+
+    def test_autowires_active_llm_when_client_none(self, monkeypatch):
+        # LLM present → reasoning is LLM-driven: it finishes on iteration 1, which
+        # the deterministic policy never does (that always searches first).
+        client = _ScriptedLLM(["Thought: 夠了\nAction: finish\nAction Input: 結論摘要。"])
+        monkeypatch.setattr(ag, "active_llm", lambda: client)
+
+        r = ag.run_deep_research("台積電 Q1", search=ag.stub_search)  # no client passed
+
+        assert client.calls  # LLM was invoked for reasoning
+        assert r.iterations == 1  # LLM finished immediately; deterministic would search first
+        assert r.final_answer == "結論摘要。"
+
+    def test_no_key_falls_back_to_deterministic(self, monkeypatch):
+        monkeypatch.setattr(ag, "active_llm", lambda: None)
+
+        r = ag.run_deep_research("台積電 2025Q1 體質", search=ag.stub_search)
+
+        # deterministic facet policy: searches until >=3 evidence, then finishes
+        assert r.status == "answered"
+        assert len(r.evidence) >= 3
+        assert r.iterations >= 3
+
+
 class TestCompliance:
     def test_advisory_finish_blocked(self):
         from polaris.graph.compliance import SAFE_MESSAGE

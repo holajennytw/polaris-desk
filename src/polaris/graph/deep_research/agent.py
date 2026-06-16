@@ -30,6 +30,7 @@ from polaris.graph.deep_research.state import (
 )
 from polaris.graph.nodes import compliance_agent
 from polaris.graph.state import Citation
+from polaris.llm.gemini import active_llm
 from polaris.retrieval.retriever import PUBLIC_VIEWER
 from polaris.retry import call_with_retry
 
@@ -142,12 +143,19 @@ def run_deep_research(
     Tests 可注入確定性 ``search=stub_search`` 以避開 store 依賴；
     ``search=lambda q: []`` 可測無證據路徑。
 
+    ``client`` 預設為 ``None``，自動使用 :func:`~polaris.llm.gemini.active_llm`：有金鑰
+    → Gemini 驅動 ReAct 推理 + smart compliance（spec D15 smart 路徑）；無金鑰 → ``None``
+    → 確定性 facet 政策 + floor compliance（token-free CI）。任一 LLM 失敗仍 fail-to-
+    deterministic（見 :func:`_decide`）。硬上限 / verify-or-synthesize / NFR-031 不受影響。
+
     ``viewer`` 是存取控制身分（issue #32），透傳進 ``active_search_fn(viewer)``；
     注入自訂 search fn 時 viewer 由呼叫端透過 closure 帶入（見 :func:`make_retriever_search_fn`）。
     """
     if search is None:
         from polaris.retrieval.retriever import active_search_fn as _active_search_fn
         search = _active_search_fn(viewer)
+    if client is None:
+        client = active_llm()
     state: dict = {
         "iteration": 0,
         "status": "running",
