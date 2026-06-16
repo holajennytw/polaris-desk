@@ -158,6 +158,7 @@ Step 1–4 全程不需 UI，已涵蓋端到端。
 |------|----------|------|
 | `make setup` 抓不到 Python 3.13 | 沒裝 3.13 | `uv python install 3.13` 或 `brew install python@3.13` |
 | `make test` 紅 | 程式碼 / 環境問題 | 看 traceback；非測資問題，回報 owner |
+| 跑測試報 `ModuleNotFoundError`（如 `rank_bm25`）但套件其實裝了 | 用了 `uv run pytest`，PATH 解析到全域 / conda 的 `pytest`（非 venv） | 改用 `make test`、`.venv/bin/pytest` 或 `uv run python -m pytest`（強制走 venv 直譯器）|
 | `ask` 回空 / fallback 內容 | 缺 `GEMINI_API_KEY` 或未登入 ADC | 回到 Step 0 🧑 |
 | BigQuery 權限錯 | 未 `gcloud auth application-default login` | 跑該登入；或改 `VECTOR_BACKEND=pgvector` 走離線 |
 | eval 報告全綠但仍不放心 | 那是**煙測分**非真分 | 裝 `.[eval]` extra + 金鑰跑真 Ragas |
