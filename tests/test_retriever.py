@@ -264,3 +264,86 @@ def test_retriever_rerank_exception_falls_back_to_bm25_order():
     retriever = HybridRetriever(top_k=3)
     results = retriever.retrieve("台積電 毛利率")
     assert len(results) > 0
+
+
+def test_rerank_skip_logs_debug_when_no_key(caplog):
+    """No COHERE_API_KEY → debug log explains why rerank was skipped (review nit #5)."""
+    import logging
+    import os
+
+    from polaris.retrieval.retriever import _cohere_rerank
+    from polaris.vectorstore.base import SearchResult as SR
+
+    os.environ.pop("COHERE_API_KEY", None)
+    out = [SR(id="x", content="c", score=1.0, metadata={})]
+    with caplog.at_level(logging.DEBUG, logger="polaris.retrieval.retriever"):
+        result = _cohere_rerank("q", out, 3)
+    assert result is out  # unchanged ordering
+    assert any("skipping rerank" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# Default viewer = public sentinel (review nit #4)
+# ---------------------------------------------------------------------------
+
+def test_active_search_fn_default_viewer_is_public_sentinel():
+    """make_retriever_search_fn defaults to PUBLIC_VIEWER and forwards it to the store.
+
+    A default/unauthenticated caller must therefore see public docs only — never
+    an owner-scoped doc owned by a real principal.
+    """
+    from polaris.retrieval.retriever import (
+        PUBLIC_VIEWER,
+        HybridRetriever,
+        make_retriever_search_fn,
+    )
+    from polaris.vectorstore.base import SearchResult as SR
+
+    owned = SR(id="client-b", content="機密", score=1.0, metadata={"owner": "client_B"})
+    public = SR(id="pub", content="公開", score=1.0, metadata={})
+
+    captured: dict = {}
+
+    class CapturingStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):
+            captured["filters"] = filters
+            viewer = (filters or {}).get("viewer")
+            return [d for d in (owned, public)
+                    if d.metadata.get("owner") in (None, viewer)]
+
+        def health_check(self):
+            return True
+
+    retriever = HybridRetriever(top_k=5, store=CapturingStore(), embedding_fn=lambda _q: [0.1])
+    search = make_retriever_search_fn(retriever)  # no viewer → sentinel default
+    cites = search("投資組合")
+
+    assert captured["filters"] == {"viewer": PUBLIC_VIEWER}
+    ids = [c.source_id for c in cites]
+    assert "client-b" not in ids   # owner-scoped doc hidden from default caller
+    assert "pub" in ids
+
+
+def test_make_retriever_search_fn_maps_vector_origin_to_embedding():
+    """SearchResult origin 'vector' must map to the 'embedding' Citation literal.
+
+    Citation.origin is a Literal without 'vector'; passing it through verbatim
+    would raise a ValidationError once a real vector store is wired.
+    """
+    from polaris.retrieval.retriever import HybridRetriever, make_retriever_search_fn
+    from polaris.vectorstore.base import SearchResult as SR
+
+    class VectorStoreStub:
+        def search(self, query_embedding, top_k=8, *, filters=None):
+            # store results carry origin set by _normalize_vector_result → "vector"
+            return [SR(id="v1", content="向量命中", score=0.9, metadata={})]
+
+        def health_check(self):
+            return True
+
+    retriever = HybridRetriever(top_k=5, store=VectorStoreStub(), embedding_fn=lambda _q: [0.1])
+    cites = make_retriever_search_fn(retriever)("台積電")
+
+    assert any(c.source_id == "v1" for c in cites)
+    assert all(c.origin in {"stub", "bm25", "embedding", "colpali", "rerank", "news"} for c in cites)
+    assert next(c for c in cites if c.source_id == "v1").origin == "embedding"

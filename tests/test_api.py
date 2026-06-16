@@ -58,8 +58,8 @@ class TestAsk:
         assert r.status_code == 200
         assert r.json()["compliance_status"] in VALID_COMPLIANCE
 
-    def test_ask_viewer_defaults_to_demo_principal(self, client):
-        """Omitting viewer still succeeds (default = demo_principal)."""
+    def test_ask_viewer_defaults_to_public_sentinel(self, client):
+        """Omitting viewer still succeeds (default = public sentinel principal)."""
         r = client.post("/ask", json={"query": "台積電"})
         assert r.status_code == 200
 
@@ -98,8 +98,8 @@ class TestResearch:
         assert r.status_code == 200
         assert r.json()["compliance_status"] in VALID_COMPLIANCE
 
-    def test_research_viewer_defaults_to_demo_principal(self, client):
-        """Omitting viewer still succeeds."""
+    def test_research_viewer_defaults_to_public_sentinel(self, client):
+        """Omitting viewer still succeeds (default = public sentinel principal)."""
         r = client.post("/research", json={"question": "台積電"})
         assert r.status_code == 200
 

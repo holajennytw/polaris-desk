@@ -135,8 +135,13 @@ class TestSearchSeam:
 class TestViewerParam:
     """viewer identity flows through run_deep_research (issue #32)."""
 
-    def test_viewer_default_is_demo_principal(self):
-        """Omitting viewer succeeds with the default principal."""
+    def test_viewer_default_is_public_sentinel(self):
+        """Omitting viewer succeeds and defaults to the public sentinel principal."""
+        import inspect
+
+        from polaris.retrieval.retriever import PUBLIC_VIEWER
+
+        assert inspect.signature(ag.run_deep_research).parameters["viewer"].default == PUBLIC_VIEWER
         r = ag.run_deep_research("台積電")
         assert r.status in {"answered", "exhausted"}
 

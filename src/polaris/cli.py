@@ -11,6 +11,8 @@ import argparse
 import sys
 from typing import Any
 
+from polaris.retrieval.retriever import PUBLIC_VIEWER
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -28,8 +30,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     ask.add_argument(
         "--viewer",
-        default="demo_principal",
-        help="存取控制身分（issue #32；預設 demo_principal）",
+        default=PUBLIC_VIEWER,
+        help="存取控制身分（issue #32；預設 = 公開身分，僅看公開文件）",
     )
 
     sub.add_parser("doctor", help="檢查 .env 內哪些 API 金鑰已正確設定（G1 用）")
@@ -74,7 +76,7 @@ def _cmd_bq_smoke() -> int:
     return 1 if report.overall == "fail" else 0
 
 
-def _cmd_ask(query: str, *, stub_buysell: bool = False, viewer: str = "demo_principal") -> int:
+def _cmd_ask(query: str, *, stub_buysell: bool = False, viewer: str = PUBLIC_VIEWER) -> int:
     if stub_buysell:
         # US2 demo：把 writer 模組屬性換成會回「建議買進」的版本。
         # 這跟測試用 monkeypatch.setattr(stubs, "writer", ...) 是對稱的做法。

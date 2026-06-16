@@ -30,6 +30,7 @@ from polaris.graph.deep_research.state import (
 )
 from polaris.graph.nodes import compliance_agent
 from polaris.graph.state import Citation
+from polaris.retrieval.retriever import PUBLIC_VIEWER
 from polaris.retry import call_with_retry
 
 SearchFn = Callable[[str], list[Citation]]
@@ -132,7 +133,7 @@ def run_deep_research(
     search: SearchFn | None = None,
     max_loops: int = 6,
     min_citations: int = 3,
-    viewer: str = "demo_principal",
+    viewer: str = PUBLIC_VIEWER,
 ) -> DeepResearchResult:
     """跑通 Deep Research ReAct loop，回 :class:`DeepResearchResult`。
 

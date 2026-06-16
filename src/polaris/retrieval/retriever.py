@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -18,11 +19,21 @@ from rank_bm25 import BM25Okapi
 from ..vectorstore import SearchResult, VectorStore, get_vector_store
 
 
+logger = logging.getLogger(__name__)
+
 EmbeddingFn = Callable[[str], list[float]]
 
 # Cohere rerank callable: (query, results, top_k) -> list[SearchResult]
 # Injected so tests never call the real Cohere API.
 RerankFn = Callable[[str, list[SearchResult], int], list[SearchResult]]
+
+# Sentinel principal for the default/unauthenticated caller (issue #32, review
+# follow-up). A namespaced value that cannot collide with a real owner id, so a
+# default caller sees public docs only — never owner-scoped docs that happen to
+# be owned by a placeholder string. Access logic is ``owner IS NULL OR
+# owner == viewer``; with this sentinel the right-hand side never matches a real
+# owner, leaving public (owner=None) docs as the only visible set.
+PUBLIC_VIEWER = "__public__"
 
 
 _FALLBACK_CORPUS = [
@@ -132,6 +143,7 @@ def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[
 
     api_key = os.environ.get("COHERE_API_KEY", "")
     if not api_key:
+        logger.debug("COHERE_API_KEY not set; skipping rerank, keeping BM25+vector order")
         return results
     try:
         import cohere  # type: ignore[import-untyped]
@@ -166,6 +178,7 @@ def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[
             )
         return reranked
     except Exception:  # noqa: BLE001 - rerank is optional; BM25+vector result stands
+        logger.warning("Cohere rerank failed; falling back to BM25+vector order", exc_info=True)
         return results
 
 
@@ -278,7 +291,7 @@ class HybridRetriever:
 def make_retriever_search_fn(
     retriever: "HybridRetriever | None" = None,
     *,
-    viewer: str = "demo_principal",
+    viewer: str = PUBLIC_VIEWER,
     filters: dict | None = None,
 ) -> "Callable[[str], list]":
     """Return a ``SearchFn``-compatible callable backed by :class:`HybridRetriever`.
@@ -298,12 +311,22 @@ def make_retriever_search_fn(
     r = retriever if retriever is not None else HybridRetriever()
     combined_filters: dict = {**(filters or {}), "viewer": viewer}
 
+    # Map retriever-internal origins onto the Citation literal. The retriever uses
+    # "vector" but Citation calls that channel "embedding"; anything unrecognised
+    # falls back to "bm25" so the adapter never raises a validation error.
+    _CITATION_ORIGINS = {"stub", "bm25", "embedding", "colpali", "rerank", "news"}
+
+    def _citation_origin(raw: str | None) -> str:
+        if raw == "vector":
+            return "embedding"
+        return raw if raw in _CITATION_ORIGINS else "bm25"
+
     def _search(query: str) -> list:
         return [
             Citation(
                 source_id=sr.id,
                 snippet=sr.content,
-                origin=sr.metadata.get("origin", "retriever"),
+                origin=_citation_origin(sr.metadata.get("origin")),
             )
             for sr in r.retrieve(query, filters=combined_filters)
         ]
@@ -311,7 +334,7 @@ def make_retriever_search_fn(
     return _search
 
 
-def active_search_fn(viewer: str = "demo_principal") -> "Callable[[str], list]":
+def active_search_fn(viewer: str = PUBLIC_VIEWER) -> "Callable[[str], list]":
     """Active search fn for Deep Research: BM25 + vector + Cohere Rerank.
 
     Mirrors :func:`~polaris.llm.gemini.active_llm` and

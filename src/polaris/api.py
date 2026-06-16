@@ -40,6 +40,7 @@ from polaris.graph.deep_research.state import ReActStep
 from polaris.graph.state import Citation, NodeTrace
 from polaris.graph.watchdog import load_mock_events, run_watchdog
 from polaris.graph.workflow import build_workflow
+from polaris.retrieval.retriever import PUBLIC_VIEWER
 from polaris.notifications import (
     Notification,
     NotificationService,
@@ -84,8 +85,8 @@ def _reject_blank(value: str) -> str:
 class AskRequest(BaseModel):
     query: str = Field(min_length=1, description="自然語言問題")
     # issue #32: viewer identity for owner-based document access control.
-    # Omit or set null to use the default public principal.
-    viewer: str = Field(default="demo_principal", description="存取控制身分（issue #32）")
+    # Omit to use the public sentinel principal (public docs only).
+    viewer: str = Field(default=PUBLIC_VIEWER, description="存取控制身分（issue #32）")
 
     _not_blank = field_validator("query")(_reject_blank)
 
@@ -100,7 +101,7 @@ class AskResponse(BaseModel):
 class ResearchRequest(BaseModel):
     question: str = Field(min_length=1, description="開放式研究問題")
     # issue #32: viewer identity forwarded to Deep Research search fn.
-    viewer: str = Field(default="demo_principal", description="存取控制身分（issue #32）")
+    viewer: str = Field(default=PUBLIC_VIEWER, description="存取控制身分（issue #32）")
 
     _not_blank = field_validator("question")(_reject_blank)
 
