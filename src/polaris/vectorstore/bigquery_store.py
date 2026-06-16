@@ -97,7 +97,11 @@ class BigQueryStore(VectorStore):
         viewer = filters.get("viewer") if filters else None
         if viewer is not None:
             clauses.append("(owner IS NULL OR owner = @viewer)")
-            clauses.append("(NOT confidential OR owner = @viewer)")
+            # COALESCE keeps pre-backfill rows (confidential = NULL) visible — BigQuery
+            # ADD COLUMN ... DEFAULT FALSE does not retroactively fill existing rows, so a
+            # bare ``NOT confidential`` would silently drop every public doc once a viewer
+            # is passed. Mirrors the pgvector store's NULL-safe filter.
+            clauses.append("(NOT COALESCE(confidential, FALSE) OR owner = @viewer)")
             params["viewer"] = viewer
         if clauses:
             where = "WHERE " + " AND ".join(clauses)

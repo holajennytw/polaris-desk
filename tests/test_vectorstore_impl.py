@@ -159,7 +159,8 @@ class TestBigQueryStore:
         store.search(EMB, filters={"viewer": "analyst_A"})
         sql = client.queries[0]
         assert "owner IS NULL OR owner = @viewer" in sql
-        assert "NOT confidential OR owner = @viewer" in sql
+        # NULL-safe: pre-backfill rows (confidential = NULL) stay visible
+        assert "NOT COALESCE(confidential, FALSE) OR owner = @viewer" in sql
 
     def test_add_documents_writes_owner_and_confidential(self):
         client = FakeBQClient()

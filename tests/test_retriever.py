@@ -175,6 +175,28 @@ def test_retriever_bm25_viewer_filter_blocks_owner_scoped():
     assert _matches_filters(owned, {"viewer": "client_B"}) is True
 
 
+def test_retriever_bm25_confidential_filter_matches_store_sql():
+    """BM25 path gates on confidential too, agreeing with the store SQL filter.
+
+    A confidential doc with no owner must NOT leak to an arbitrary viewer — the
+    store SQL is ``(NOT COALESCE(confidential, FALSE) OR owner = viewer)``; the
+    in-memory path has to make the same call (issue #32).
+    """
+    from polaris.retrieval.retriever import _matches_filters
+    from polaris.vectorstore.base import SearchResult as SR
+
+    confidential_public = SR(id="mnpi", content="MNPI", score=1.0,
+                             metadata={"confidential": True})
+    confidential_owned = SR(id="mnpi-b", content="MNPI", score=1.0,
+                            metadata={"owner": "client_B", "confidential": True})
+
+    # ownerless-but-confidential leaks under owner-only logic; must be blocked
+    assert _matches_filters(confidential_public, {"viewer": "analyst_A"}) is False
+    # owner sees their own confidential doc
+    assert _matches_filters(confidential_owned, {"viewer": "client_B"}) is True
+    assert _matches_filters(confidential_owned, {"viewer": "analyst_A"}) is False
+
+
 # ---------------------------------------------------------------------------
 # Cohere Rerank (3rd retrieval path)
 # ---------------------------------------------------------------------------

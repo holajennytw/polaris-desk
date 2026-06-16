@@ -9,7 +9,7 @@
 > Deep Research 可跑、LLMLingua 的**量測**半邊；Eval ≥ 80%＝R5（Ragas 真分）、Watchdog＝R3。
 > 四條件逐項 owner 簽核的**完整驗收清單＝R1 的卡**（R1 spec D15–16），本文不越界。
 
-更新時間：2026-06-15 ｜ 全測試：`make lint && make test` → **585 passed, 6 skipped, ruff clean**
+更新時間：2026-06-16 ｜ 全測試：`make lint && make test` → **586 passed, 6 skipped, ruff clean**
 ｜ 開發路徑：branch `claude/r2-tasks-rqbcjr`（PR #72）
 
 ---
@@ -95,7 +95,7 @@
 - **Watchdog** demo 備妥（CLI、API、NotificationService 全管線）。
 - **Eval 管線** 75 題 smoke 100%（誠實標「煙測分」，G3 真分待 R5）。
 
-全套件：**585 passed, 6 skipped, ruff clean**（`make lint && make test`）。
+全套件：**586 passed, 6 skipped, ruff clean**（`make lint && make test`）。
 
 **整體 G3 是否過閘取決於跨角色硬門檻**：Eval ≥ 80%（R5 Ragas 真分）＋ Cloud Run 部署（R4/R7）。
 建議 **R1 彙整 4 條件逐項 owner 簽核**（R1 spec D15–16）作為 G3 最終裁定。
