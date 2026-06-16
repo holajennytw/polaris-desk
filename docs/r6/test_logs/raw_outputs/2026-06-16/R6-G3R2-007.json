@@ -1,0 +1,136 @@
+{
+  "answer": "（v0 stub 草稿）依據引用來源（mops_723e08dd220ea7c8、mops_76d0ee267c9d8464、mops_6ff1809dc689ce2d、mops_6bc48cd533ee56ad、mops_965e70cddae7ff0f、mops_2e8407f293f3e1ae、mops_5e20c30e8fde175a、mops_65fed9027c50f12a）整理之事實摘要。本系統僅描述事實與引用，不提供買賣建議。",
+  "compliance_status": "passed",
+  "citations": [
+    {
+      "source_id": "mops_723e08dd220ea7c8",
+      "snippet": "台積公司2025年6月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_76d0ee267c9d8464",
+      "snippet": "台積公司2025年8月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_6ff1809dc689ce2d",
+      "snippet": "台積公司2025年7月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_6bc48cd533ee56ad",
+      "snippet": "台積公司2025年9月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_965e70cddae7ff0f",
+      "snippet": "台積公司2025年11月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_2e8407f293f3e1ae",
+      "snippet": "台積公司2025年3月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_5e20c30e8fde175a",
+      "snippet": "台積公司2025年第二季每股盈餘新台幣15.36元",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_65fed9027c50f12a",
+      "snippet": "台積公司2025年10月營收報告",
+      "origin": "embedding"
+    }
+  ],
+  "trace": [
+    {
+      "node_name": "planner",
+      "status": "ok",
+      "input_keys": [
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "period",
+        "plan"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1626
+    },
+    {
+      "node_name": "retriever",
+      "status": "ok",
+      "input_keys": [
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "contexts"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1377
+    },
+    {
+      "node_name": "calculator",
+      "status": "ok",
+      "input_keys": [
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "calculations"
+      ],
+      "error_message": null,
+      "elapsed_ms": 0
+    },
+    {
+      "node_name": "writer",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "citations",
+        "draft"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1684
+    },
+    {
+      "node_name": "compliance",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "citations",
+        "contexts",
+        "draft",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "answer",
+        "compliance_status"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1650
+    }
+  ]
+}

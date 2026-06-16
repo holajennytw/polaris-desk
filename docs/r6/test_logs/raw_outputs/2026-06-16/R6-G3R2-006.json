@@ -1,0 +1,136 @@
+{
+  "answer": "（v0 stub 草稿）依據引用來源（93767102-64d8-4b45-b084-ba681cb59a84、e2f78903-32b9-4624-a4e9-a5b92d350ef4、41bf5a15-e89c-4174-95dd-482081e63cb1、e5504627-8f4e-4035-a2b0-64209bddca2e、5d4dc251-cb99-4a89-b139-c81090f15b12、3c68fddb-9c9b-498e-a8be-f7ffd2acec5a、5e444001-5e31-47a0-a1b0-fd221e6ea08d、7554a530-b24f-4364-b2d9-06048097d0c8）整理之事實摘要。本系統僅描述事實與引用，不提供買賣建議。",
+  "compliance_status": "passed",
+  "citations": [
+    {
+      "source_id": "93767102-64d8-4b45-b084-ba681cb59a84",
+      "snippet": "法說會逐字稿\n鴻海精密工業股份有限公司 2025 年第一季法人說明會\n會議日期及時間 ：2025 年 5 月14 日 台北時間下午3 點\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n鴻海精密工業股份有限公司\n2025 年第一季法人說明會\n公司與會者\n劉揚偉 Young Liu 鴻海精密工業股份有限公司 董事長\n黃德才 David Huang 鴻海精密工業股份有限公司 財務長\n巫俊毅 James Wu 鴻海精密工業股份有限公司 發言人\n方文妍 Kristen Fang 鴻海精密工業股份有限公司 投資人關係資深經理\n法說會提問者\nSharon Shih Morgan Stanley-分析師\nAngela Hsiang 凱基投顧-分析師\nCarrie Liu Citi-分析師\n方昱翔 三立財經-記者\n謝佩穎 TVBS新聞網-記者\nAlbert Hong J.P. Morgan-分析師\nArthur Liao 富邦投顧-分析師\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com |",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "e2f78903-32b9-4624-a4e9-a5b92d350ef4",
+      "snippet": "\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n簡報\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n各位投資以及媒體先進大家好，我是 Kristen，歡迎參加鴻海公司法人說明會。今天我們再次\n邀請到董事長劉揚偉先生、財務長黃德才先生、以及發言人James為各位說明。\n法說會的時間預計是一個小時，第一階段是簡報，第二階段是問答時間。在會議正式進行前，\n請大家先詳細閱讀簡報中的免責聲明。\n接下來就進入法說會的第一個階段簡報，這次有四個議題: 分別是2025年第一季回顧、2025\n年第二季暨全年的展望、重要事業進展、以及近期重大事件。現在先邀請財務長 David向大家\n說明2025年第一季的財務表現。\n黃德才 David Huang 鴻海精密工業股份有限公司—財務長\n謝謝 Kristen。各位在線上的投資先進，還有媒體朋友們，大家好。我是黃德才。接下來，由\n我向大家報告鴻海2025年第一季營運狀況。\n請大家看到第 5 頁 2025 年第",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "41bf5a15-e89c-4174-95dd-482081e63cb1",
+      "snippet": "的看法？以及今年整體AI 伺服器營收展望是否改變？\n劉揚偉 Young Liu 鴻海精密工業股份有限公司—董事長\n我們第一季受惠於算力需求持續成長，以及新平台推動，AI 伺服器與通用型伺服器出貨表現\n皆顯著提升，營收年增都超過 50%、但沒有達到一倍。主要是因為 GB 系列第一季底進入大量\n生產的階段，所以大部分產品都是在第二季交貨。以市場來看，主要北美 CSP 客戶除了持續\n擴大AI 伺服器部署外，也同步增加通用型伺服器採購，支撐整體出貨成長。\n展望第二季，我們預期整體伺服器業務將持續成長，營收季增及年增都可望達到高雙位數增長。\n在AI 伺服器方面，GB 系列量產能力持續改善；另外，我們已經跟幾家CSP 客戶共同開發ASIC\n架構 AI 伺服器，並也陸續出貨；再加上 HGX 需求進一步擴張，所以 AI 伺服器的出貨量已經\n在加速當中，預計會有將近倍數的成長。\n8\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n在大語言模型持續更迭優化的帶動下，市場對 AI 基礎設施，以及本地部署解決方案的需求明\n顯提升。基於目前訂單能",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "e5504627-8f4e-4035-a2b0-64209bddca2e",
+      "snippet": "現金周轉天數51天，與去年持平。負債比例則為百分\n之 60，較去年同期增加，主要原因為營收成長，為了因應營運資金的週轉需求，故增加借款\n所致。\n2\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n最後，簡報第 7頁，現金流量表。2025年截至3月底，營業活動現金流出為511億元。較去\n年同期流入182億元相比，主要為存貨增加所致。存貨變動主因為客戶對新品拉貨動能提升，\n故配合客戶備料所致，但我們仍會秉持存貨穩健管理的原則進行管控。自由現金流為淨流出\n949億元，與去年同期相比，現金流出增加 800億元，主要係因營業活動現金流出增加，及資\n本支出增加所致。\n以上為2025年第一季財務報表的簡要報告，接下來我們把時間交給劉董事長。\n劉揚偉 Young Liu 鴻海精密工業股份有限公司—董事長\n謝謝David。大家好，總結第一季的表現，營收創下歷年同期新高，季節性表現優於過去五年\n平均水準，相較於去年同期，則達到強勁成長，表現與上次法說會的預期大致相當。\n從產品組合的角度來看，在 AI 伺服器的強勁成長帶動下，雲端網路產品的佔",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "5d4dc251-cb99-4a89-b139-c81090f15b12",
+      "snippet": "會影響到我們帳上台幣營收\n的表現。至於在獲利方面，主要可能影響到業內的存貨成本，以及業外損益的部分。舉例來說，\n台幣兌美元，年平均匯率升值一元時，會影響到鴻海的營收約百分之三，毛利率也會減少約百\n分之0.1。以目前來看，我們會持續透過存貨管理的機制，讓美元貶值對於毛利率的影響降到\n最低。\n業外的部分，確實會受到匯率波動的影響，但是我們已進行必要的避險，將風險降至可控的範\n圍。此外，我們公司有一套因應匯率波動的政策指引，例如跟客戶的合約中有訂定匯率的調整\n條款，以及增加報價的頻率，並以合適的金融避險工具，對沖營業投資以及融資活動匯率風險\n等多種舉措，來降低匯率波動的相關風險。\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n謝謝財務長。接下來是最後一個問題，線上若想要提問的朋友，現在可以點選舉手符號等候。\n我們在下一題問答結束之後，將會開放給線上的法人與媒體自由提問。\n第三題：AI 伺服器：請公司說明AI 伺服器在第一季整體表現和原先預期的差異？對於第二季\n的看法？以及今年整體AI 伺服器營收展望是否改變？\n劉揚偉 Young Liu 鴻海精密工業股份有限",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "3c68fddb-9c9b-498e-a8be-f7ffd2acec5a",
+      "snippet": "unch our next generation flagship SoC, which has gained better\ntraction with more customers than the previous ones. We expect our strong flagship product line-up to\ncontinue gaining shares and enhancing our blended ASP as AI becomes more pervasive.\nFor the second quarter, thanks to more adoptions of our AI SoCs, Dimensity 9400+ and Dimensity 8000\nseries, we will grow our business in the flagship and premium segments. However, as demand in\nmainstream and entry segments slow down after the strong ",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "5e444001-5e31-47a0-a1b0-fd221e6ea08d",
+      "snippet": "MediaTek 1Q25 Earnings Call\nWednesday, April 30, 2025, 3:00pm Taiwan Time\nPREPARED REMARKS\nJessie Wang, IR Deputy Director\nGood afternoon, everyone. Joining us today are Dr. Rick Tsai, MediaTek CEO and Mr. David Ku, MediaTek\nCFO. Mr. Ku will report our first quarter results and then Dr. Tsai will provide our prepared remarks. After\nthat, we will open for Q&A.\nAs a reminder: Today’s presentation will provide forward looking statements based on our current\nexpectations. The statements are subject ",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "7554a530-b24f-4364-b2d9-06048097d0c8",
+      "snippet": "上次法說會的預期大致相當。\n從產品組合的角度來看，在 AI 伺服器的強勁成長帶動下，雲端網路產品的佔比顯著提升，相\n較去年第一季增加了6%，達到了34%的水準。同樣期間，消費智能產品的營收相較於去年也\n有一些成長，但是佔比降低到40%，顯示我們的產品組合持續朝向更均衡的方向發展。\n如同我在上次法說會提到的，今年全年雲端網路產品的占比將會接近消費智能產品。以四大產\n品來看，電腦終端的表現比預期還要好，但是消費智能和雲端網路都稍微的落後預期。不過整\n體上都還是維持平穩的表現。從整體獲利性來看，我們在毛利、營業利益及稅後淨利，都創下\n了歷史同期新高的表現。\n接下來，我來說明今年第二季的展望。\n過去一個多月來，美國關稅政策變化快速，對於全球供應鏈產生不小的影響。最近又加上匯率\n變動的因素，所以我們對於接下來的展望，會先抱持比較審慎的看法。整體來看，預期第二季\n相較於第一季，以及去年同期都將有顯著成長。\n從四個產品來看，在消費智能產品方面，主要的產品進入新舊產品交換期，再加上第一季有新\n產品推出，以及近期匯率的因素，我們預期季對季會有略為衰退的情況，相較於去年同期則大\n致持平。在雲端網路產品，隨",
+      "origin": "embedding"
+    }
+  ],
+  "trace": [
+    {
+      "node_name": "planner",
+      "status": "ok",
+      "input_keys": [
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "period",
+        "plan"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1655
+    },
+    {
+      "node_name": "retriever",
+      "status": "ok",
+      "input_keys": [
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "contexts"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1071
+    },
+    {
+      "node_name": "calculator",
+      "status": "ok",
+      "input_keys": [
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "calculations"
+      ],
+      "error_message": null,
+      "elapsed_ms": 0
+    },
+    {
+      "node_name": "writer",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "citations",
+        "draft"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1688
+    },
+    {
+      "node_name": "compliance",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "citations",
+        "contexts",
+        "draft",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "answer",
+        "compliance_status"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1660
+    }
+  ]
+}

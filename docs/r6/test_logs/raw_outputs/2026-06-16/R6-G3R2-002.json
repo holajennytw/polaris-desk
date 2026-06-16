@@ -1,0 +1,136 @@
+{
+  "answer": "根據提供的引用片段，關於聯發科（2454）2025年第一季法人說明會的重點資訊整理如下：\n\n### 1. 法說會召開時間與出席人員\n*   **召開日期矛盾**：根據公開資訊觀測站公告，聯發科 114 年第一季法人說明會原定於 114 年 4 月 17 日召開 [mops_a10a5fec5ca347a5]；但另一份法說會文稿紀錄顯示日期為 2025 年 4 月 30 日（星期三）台灣時間下午 3:00 [5e444001-5e31-47a0-a1b0-fd221e6ea08d]。\n*   **出席高層**：由執行長蔡力行（Dr. Rick Tsai）與財務長顧大為（Mr. David Ku）出席，並由投資關係處副處長王家慈（Jessie Wang）主持 [5e444001-5e31-47a0-a1b0-fd221e6ea08d]。\n\n### 2. 營收公告資訊\n*   公司已分別於 114 年 1 月及 2 月發布自結合併營收淨額公告 [mops_99213f5b3a367333], [mops_e97d447bec06001d]。\n\n### 3. 資料不足說明\n*   **財務數據缺失**：提供的引用片段僅包含法說會的開場致詞（Prepared Remarks）與免責聲明，並未揭露 2025 年第一季的具體財務數字（如營收、毛利率、EPS 等）或營運成果 [5e444001-5e31-47a0-a1b0-fd221e6ea08d]。\n*   **未來展望缺失**：片段中雖提到執行長將提供準備好的致詞內容，但具體的產業展望、產品線表現或第二季指引（Guidance）均未出現在現有資料中 [5e444001-5e31-47a0-a1b0-fd221e6ea08d]。\n*   **子公司動態**：資料提及重要子公司 MediaTek Investment Singapore Pte. Ltd. 董事會決議發放股利，但未說明具體金額或對母公司財務之影響 [mops_99fca8476460980a]。\n\n**結論：** 目前資料僅能確認法說會的召開計畫、出席人員及存在日期記載矛盾之情形，無法提供 2025Q1 的具體經營績效或法說會實質重點內容。",
+  "compliance_status": "passed",
+  "citations": [
+    {
+      "source_id": "mops_e97d447bec06001d",
+      "snippet": "聯發科技114年2月份自結合併營收淨額公告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_99213f5b3a367333",
+      "snippet": "聯發科技114年1月份自結合併營收淨額公告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_3418ff9754714a4a",
+      "snippet": "聯發科技113年12月份自結合併營收淨額公告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_a10a5fec5ca347a5",
+      "snippet": "公告本公司114年第一季法人說明會將於114年4月17日召開",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "5e444001-5e31-47a0-a1b0-fd221e6ea08d",
+      "snippet": "MediaTek 1Q25 Earnings Call\nWednesday, April 30, 2025, 3:00pm Taiwan Time\nPREPARED REMARKS\nJessie Wang, IR Deputy Director\nGood afternoon, everyone. Joining us today are Dr. Rick Tsai, MediaTek CEO and Mr. David Ku, MediaTek\nCFO. Mr. Ku will report our first quarter results and then Dr. Tsai will provide our prepared remarks. After\nthat, we will open for Q&A.\nAs a reminder: Today’s presentation will provide forward looking statements based on our current\nexpectations. The statements are subject ",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_99fca8476460980a",
+      "snippet": "代重要子公司MediaTek Investment Singapore Pte. Ltd.\n公告董事會決議發放股利",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "2b4b9fac-8efd-4275-a825-1804dec9e350",
+      "snippet": "Novatek Microelectronics Corp. 2025 Q1 Earnings\nCall\nMay 7, 2025\nDavid Chen:\n各位投資人、分析師、媒體，大家午安。我是聯詠科技的副總經理以及發言人陳健興。非常歡\n迎大家再次來參加聯詠科技 2025 年第一季的法人\u0000明會。今天線上跟我們在一起的有我們聯\n詠科技的副董事長王守仁先生，還有財務長周聖呈先生，還有投資關係的處長 Tony 還有 Yvo\nnne。很高興能再一次跟大家在線上見面。今天的法\u0000會同時會用中英文來進行。今天的會議\n的整個議程如下。首先會有 Tony 這邊用英文報告聯詠 2025 年第一季的結果。接下來會由我\n們王守仁副董事長針對第一季的結果做進一步的\u0000明，同時也報告 2025 年第二季的這個展望\n。最後會開放給各位問答的時間。目前我們手上有收到的一些投資人的問題，各位若還有任何\n的問題想要問的，可以上傳給我們，我們收集以後，會有 Tony\n這邊來發問，那再由我們副董，還有財務長還有本人用中文來回答，然後再翻譯成英文。\nGood afternoon everyone. I would like to",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_3c85c361ae40fc1d",
+      "snippet": "代重要子公司MEDIATEK SINGAPORE PTE. LTD.\n公告董事會決議發放股利",
+      "origin": "embedding"
+    }
+  ],
+  "trace": [
+    {
+      "node_name": "planner",
+      "status": "ok",
+      "input_keys": [
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "period",
+        "plan"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1697
+    },
+    {
+      "node_name": "retriever",
+      "status": "ok",
+      "input_keys": [
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "contexts"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1637
+    },
+    {
+      "node_name": "calculator",
+      "status": "ok",
+      "input_keys": [
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "calculations"
+      ],
+      "error_message": null,
+      "elapsed_ms": 0
+    },
+    {
+      "node_name": "writer",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "citations",
+        "draft"
+      ],
+      "error_message": null,
+      "elapsed_ms": 18676
+    },
+    {
+      "node_name": "compliance",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "citations",
+        "contexts",
+        "draft",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "answer",
+        "compliance_status"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1665
+    }
+  ]
+}
