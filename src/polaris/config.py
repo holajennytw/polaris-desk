@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     embedding_model: str = "gemini-embedding-2"   # 最新多模態嵌入；純文字可改 gemini-embedding-001
     embedding_dim: int = 768
 
+    # Vertex AI（用 GCP 專案配額 / trial credit 跑「生成」，繞過 AI Studio 免費日配額）。
+    # embeddings 一律仍走 api_key 同一模型，以保 polaris_core 既有 768 向量空間（別動）。
+    gemini_use_vertex: bool = False           # GEMINI_USE_VERTEX=1 → 生成走 Vertex（ADC / SA 認證）
+    vertex_location: str = "global"           # gemini-3-flash-preview 僅 global 端點可用（實測 2026-06-16）
+
     # LLM 成本 / 資源護欄（LLM10）
     llm_max_output_tokens: int = 4096         # 每次生成輸出上限（傳給 Gemini，擋失控長輸出）
     llm_token_budget: int = 0                 # process 累計 token 上限；0 = 無上限（預設）

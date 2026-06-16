@@ -41,11 +41,31 @@ def active_llm() -> "GeminiClient | None":
 
 
 class GeminiClient:
+    """Gemini 封裝。生成可走 Vertex（GCP 專案配額 / trial credit），嵌入恆走 api_key。
+
+    - ``GEMINI_USE_VERTEX=1``：``generate`` 走 Vertex AI（ADC / runtime SA 認證，
+      用專案配額繞過 AI Studio 免費日配額）；``embed`` 仍走 api_key 同一模型，
+      保住 ``polaris_core`` 既有 768 向量空間（換 embedding 後端會讓檢索失準）。
+    - 預設（未設）：生成與嵌入都走 api_key，與既有行為完全一致。
+    - 任一模式都需要有效 ``GEMINI_API_KEY``（嵌入用）。
+    """
+
     def __init__(self) -> None:
         if not is_real_key(settings.gemini_api_key):
             raise RuntimeError("缺少有效 GEMINI_API_KEY，請在 .env 填入真實金鑰")
         from google import genai  # 延遲 import
-        self._client = genai.Client(api_key=settings.gemini_api_key)
+
+        # 嵌入恆走 api_key（向量空間與 polaris_core 一致）。
+        self._embed_client = genai.Client(api_key=settings.gemini_api_key)
+        # 生成：Vertex（專案配額）或 api_key。
+        if settings.gemini_use_vertex:
+            self._gen_client = genai.Client(
+                vertexai=True,
+                project=settings.gcp_project,
+                location=settings.vertex_location,
+            )
+        else:
+            self._gen_client = self._embed_client
 
     def generate(
         self,
@@ -67,7 +87,7 @@ class GeminiClient:
             max_output_tokens=settings.llm_max_output_tokens,
             temperature=0.0,
         )
-        resp = self._client.models.generate_content(
+        resp = self._gen_client.models.generate_content(
             model=model, contents=prompt, config=config
         )
         # LLM10：把本次估算用量記入 process 預算（超限會 raise，擋住後續呼叫）。
@@ -81,7 +101,7 @@ class GeminiClient:
         """
         from google.genai import types  # 延遲 import
 
-        resp = self._client.models.embed_content(
+        resp = self._embed_client.models.embed_content(
             model=settings.embedding_model,
             contents=text,
             config=types.EmbedContentConfig(output_dimensionality=settings.embedding_dim),

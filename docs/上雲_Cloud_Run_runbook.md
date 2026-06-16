@@ -76,12 +76,17 @@ gcloud run deploy polaris-api \
   --allow-unauthenticated \
   --port 8000 \
   --service-account polaris-run@polaris-desk-team.iam.gserviceaccount.com \
-  --set-env-vars "APP_ENV=cloud,VECTOR_BACKEND=bigquery,GCP_PROJECT=polaris-desk-team,BQ_DATASET=polaris_core,POLARIS_CORS_ORIGINS=https://<r7-vercel-domain>" \
-  --set-secrets "GEMINI_API_KEY=gemini-api-key:latest,COHERE_API_KEY=cohere-api-key:latest,TAVILY_API_KEY=tavily-api-key:latest"
+  --set-env-vars "APP_ENV=cloud,VECTOR_BACKEND=bigquery,GCP_PROJECT=polaris-desk-team,BQ_DATASET=polaris_core,GEMINI_USE_VERTEX=1,POLARIS_CORS_ORIGINS=https://<r7-vercel-domain>" \
+  --set-secrets "GEMINI_API_KEY=gemini-api-key:latest"
 ```
 
 - **非敏感設定**（`APP_ENV` / `VECTOR_BACKEND` / `GCP_PROJECT` / `BQ_DATASET`）→ `--set-env-vars`。
   對齊 `polaris/config.py` 的 `Settings` 欄位（同一份程式、雲端只換環境變數）。
+- **`GEMINI_USE_VERTEX=1`**：生成（`generate`）走 **Vertex AI**（用專案配額 / GenAI trial credit，
+  繞過 AI Studio 免費日配額 429）。需 runtime SA 有 `roles/aiplatform.user`（見 §4）+ Vertex AI API 已開
+  （`gcloud services enable aiplatform.googleapis.com`）。**嵌入（`embed`）仍走 `GEMINI_API_KEY` 同一模型**，
+  保住 `polaris_core` 768 向量空間。模型 `gemini-3-flash-preview` 僅 `vertex_location=global` 可用（實測）。
+- 只掛 `gemini-api-key` 一把祕密（embeddings 用）；Cohere/Tavily 為佔位，未建祕密（rerank / 網搜 graceful skip）。
 - **`POLARIS_CORS_ORIGINS`**：R7 前端（Vercel）跨域呼叫本 API 的允許來源。**部署時換成 R7 實際的
   Vercel 網域**（如 `https://polaris-desk.vercel.app`，多個逗號分隔）。本地 dev 預設已含
   `http://localhost:3000`（Next.js）/ `:8501`（Chainlit）。不設＝只允許本地，R7 線上會被 CORS 擋。
@@ -103,6 +108,8 @@ SA=polaris-run@$PROJ.iam.gserviceaccount.com
 gcloud projects add-iam-policy-binding $PROJ --member="serviceAccount:$SA" --role="roles/bigquery.user"
 # 讀取 Secret Manager 的金鑰
 gcloud projects add-iam-policy-binding $PROJ --member="serviceAccount:$SA" --role="roles/secretmanager.secretAccessor"
+# 呼叫 Vertex AI（GEMINI_USE_VERTEX=1 的生成路徑；用專案配額 / trial credit）
+gcloud projects add-iam-policy-binding $PROJ --member="serviceAccount:$SA" --role="roles/aiplatform.user"
 # polaris_core 唯讀（dataset 層；R4=OWNER 寫入，本服務只讀）
 bq update --dataset --source <(echo '{"access":[{"role":"READER","userByEmail":"'$SA'"}]}') $PROJ:polaris_core
 ```
