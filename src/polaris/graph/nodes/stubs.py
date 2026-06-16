@@ -16,6 +16,7 @@ from polaris.graph.nodes.trace import traced
 from polaris.graph.redaction import redact
 from polaris.graph.state import Citation
 from polaris.llm.gemini import active_llm
+from polaris.retrieval.retriever import PUBLIC_VIEWER, active_retriever
 
 
 # ---------------------------------------------------------------------------
@@ -72,25 +73,69 @@ def planner(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+#: retriever-internal origin → Citation literal（vector 通道對應 "embedding"）。
+_CITATION_ORIGINS = {"stub", "bm25", "embedding", "colpali", "rerank", "news"}
+
+
+def _citation_origin(raw: str | None) -> str:
+    if raw == "vector":
+        return "embedding"
+    return raw if raw in _CITATION_ORIGINS else "bm25"
+
+
+def _real_contexts(
+    retriever_obj: Any, query: str, quarters: list[str] | None, viewer: str
+) -> list[dict[str, Any]]:
+    """HybridRetriever SearchResults → writer 形狀的 context dict（依 id 去重）。
+
+    每個 anchored 季別查一次（BigQuery filter 單一 fiscal_period）；無季別 → 一次
+    無過濾語意查詢。viewer 透傳做 owner-scoped 過濾（issue #32）。
+    """
+    contexts: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for q in quarters or [None]:
+        filters: dict[str, Any] = {"viewer": viewer}
+        if q:
+            filters["period"] = q
+        for r in retriever_obj.retrieve(query, filters=filters):
+            if r.id in seen:
+                continue
+            seen.add(r.id)
+            contexts.append(
+                {
+                    "source_id": r.id,
+                    "text": r.content,
+                    "period": r.period,
+                    "origin": _citation_origin((r.metadata or {}).get("origin")),
+                }
+            )
+    return contexts
+
+
 @traced("retriever", retries=2)
 def retriever(state: dict[str, Any]) -> dict[str, Any]:
-    """W2 D6：依 Temporal Anchoring 解析的季別，只取對應期間的語料。
+    """依 Temporal Anchoring 解析的季別取語料。
 
-    - 有解析到季別 → 只回語料中存在的對應季別（未入庫季別 → 0 條，下游誠實
-      回「資料不足」而非編造）。
-    - 無期間語句 → 回預設最新季別 1 條。
-    - viewer 欄位（issue #32）：從 state 取出，供 HybridRetriever 接線後做
-      owner-scoped 過濾；stub 語料無 owner 欄位，此階段過濾為 no-op。
+    - **真路徑（有金鑰）**：:func:`active_retriever` 回 HybridRetriever（BM25 +
+      vector + Cohere Rerank），對 ``polaris_core`` 查真 chunks；每季一次、依 viewer
+      做 owner-scoped 過濾（issue #32）；無季別 → 一次無過濾語意查詢。
+    - **stub 路徑（CI / 無金鑰）**：``active_retriever`` 回 None，沿用 W2 D6 迷你假
+      語料依季別過濾（未入庫季別 → 0 條，下游誠實回「資料不足」），token-free。
 
-    D7 保險絲（retries=2）：R4 接真實向量檢索後，DB / 網路暫時性失敗自動重試；
-    目前 stub 走記憶體 dict，不會失敗，故對現有行為零影響。
+    D7 保險絲（retries=2）：真路徑 DB / 網路暫時性失敗自動重試；stub 走記憶體 dict
+    不會失敗，對既有行為零影響。
     """
     period = state.get("period")
-    quarters = list(period.quarters) if period and period.quarters else [_DEFAULT_QUARTER]
-    contexts = [_STUB_CORPUS[q] for q in quarters if q in _STUB_CORPUS]
-    # viewer (issue #32) is in state["viewer"]; stub corpus has no owner field so
-    # filtering is a no-op here.  HybridRetriever wiring will read it directly from
-    # state when stubs.retriever is replaced by the real retriever node.
+    quarters = list(period.quarters) if period and period.quarters else None
+    viewer = state.get("viewer", PUBLIC_VIEWER)
+
+    real = active_retriever()
+    if real is None:
+        stub_quarters = quarters or [_DEFAULT_QUARTER]
+        contexts = [_STUB_CORPUS[q] for q in stub_quarters if q in _STUB_CORPUS]
+        return {"contexts": contexts}
+
+    contexts = _real_contexts(real, state.get("query", ""), quarters, viewer)
     return {"contexts": contexts}
 
 

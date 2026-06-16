@@ -23,6 +23,20 @@ logger = logging.getLogger(__name__)
 
 EmbeddingFn = Callable[[str], list[float]]
 
+
+def active_embedding_fn() -> "EmbeddingFn | None":
+    """Real query-embedding fn (gemini-embedding-2) when a Gemini key is present,
+    else None so the vector channel stays disabled (BM25-only, token-free CI).
+
+    Mirrors :func:`~polaris.llm.gemini.active_llm` /
+    :func:`~polaris.compression.compressors.active_compressor`: no key → no
+    client constructed, no google-genai import, deterministic CI.
+    """
+    from polaris.llm.gemini import active_llm
+
+    client = active_llm()
+    return client.embed if client is not None else None
+
 # Cohere rerank callable: (query, results, top_k) -> list[SearchResult]
 # Injected so tests never call the real Cohere API.
 RerankFn = Callable[[str, list[SearchResult], int], list[SearchResult]]
@@ -221,6 +235,12 @@ class HybridRetriever:
     def __post_init__(self) -> None:
         if self.store is None:
             self.store = get_vector_store()
+        # Auto-wire the real query-embedding fn when a Gemini key is present so the
+        # vector channel actually runs (CI / no key → stays None → BM25-only).
+        # This is what connects every HybridRetriever consumer — the 5-node node
+        # AND Deep Research's active_search_fn — to real polaris_core vectors.
+        if self.embedding_fn is None:
+            self.embedding_fn = active_embedding_fn()
 
     def _bm25_search(self, query: str, filters: dict | None) -> list[SearchResult]:
         candidates = [item for item in _FALLBACK_CORPUS if _matches_filters(item, filters)]
@@ -332,6 +352,18 @@ def make_retriever_search_fn(
         ]
 
     return _search
+
+
+def active_retriever() -> "HybridRetriever | None":
+    """Real :class:`HybridRetriever` (vector channel auto-enabled via
+    :func:`active_embedding_fn`) when a Gemini key is available, else None so the
+    5-node ``retriever`` node falls back to its deterministic stub corpus.
+
+    Mirrors :func:`~polaris.llm.gemini.active_llm`.
+    """
+    from polaris.llm.gemini import available
+
+    return HybridRetriever() if available() else None
 
 
 def active_search_fn(viewer: str = PUBLIC_VIEWER) -> "Callable[[str], list]":
