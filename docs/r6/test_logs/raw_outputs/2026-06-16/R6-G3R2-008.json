@@ -1,0 +1,136 @@
+{
+  "answer": "（v0 stub 草稿）依據引用來源（news_e20d393d7516be60、mops_032083be78a88ef1、mops_98533378fac6fa40、mops_3d3ffca5106790aa、mops_d4ca6b4d0489e6a4、mops_4848ebc1ad3ebb64、mops_385f6ab830731297、mops_3418ff9754714a4a）整理之事實摘要。本系統僅描述事實與引用，不提供買賣建議。",
+  "compliance_status": "passed",
+  "citations": [
+    {
+      "source_id": "news_e20d393d7516be60",
+      "snippet": "焦點股》聯發科：滿血復活！   強勢亮燈漲停\nIC設計龍頭聯發科（2454）AI ASIC（客製化晶片）業務前景看俏，成功從博通（Broadcom）手中瓜分市占率，拿下Google大單，更進一步與輝達合作跨入AI PC市場，具多重利多題材，獲得外資重新評價（re-rating），今日早盤聯發科股價滿血復活，亮燈漲停。",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_032083be78a88ef1",
+      "snippet": "聯發科技114年8月份自結合併營收淨額公告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_98533378fac6fa40",
+      "snippet": "聯發科技114年9月份自結合併營收淨額公告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_3d3ffca5106790aa",
+      "snippet": "聯發科技114年7月份自結合併營收淨額公告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_d4ca6b4d0489e6a4",
+      "snippet": "聯發科技114年10月份自結合併營收淨額公告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_4848ebc1ad3ebb64",
+      "snippet": "聯發科技114年5月份自結合併營收淨額公告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_385f6ab830731297",
+      "snippet": "聯發科技114年12月份自結合併營收淨額公告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_3418ff9754714a4a",
+      "snippet": "聯發科技113年12月份自結合併營收淨額公告",
+      "origin": "embedding"
+    }
+  ],
+  "trace": [
+    {
+      "node_name": "planner",
+      "status": "ok",
+      "input_keys": [
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "period",
+        "plan"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1641
+    },
+    {
+      "node_name": "retriever",
+      "status": "ok",
+      "input_keys": [
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "contexts"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1160
+    },
+    {
+      "node_name": "calculator",
+      "status": "ok",
+      "input_keys": [
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "calculations"
+      ],
+      "error_message": null,
+      "elapsed_ms": 0
+    },
+    {
+      "node_name": "writer",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "citations",
+        "draft"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1643
+    },
+    {
+      "node_name": "compliance",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "citations",
+        "contexts",
+        "draft",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "answer",
+        "compliance_status"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1645
+    }
+  ]
+}

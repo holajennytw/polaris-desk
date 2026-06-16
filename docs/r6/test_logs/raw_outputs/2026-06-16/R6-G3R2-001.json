@@ -1,0 +1,136 @@
+{
+  "answer": "（v0 stub 草稿）依據引用來源（mops_af86502735e10d2e、mops_a6d8ae1a3d97e831、mops_88dcc80ad0bc9483、mops_6a73a66c96ad9f08、mops_a10a5fec5ca347a5、mops_c43085669abcb3ba、93767102-64d8-4b45-b084-ba681cb59a84、mops_2e97a8a8b7e22932）整理之事實摘要。本系統僅描述事實與引用，不提供買賣建議。",
+  "compliance_status": "passed",
+  "citations": [
+    {
+      "source_id": "mops_af86502735e10d2e",
+      "snippet": "台積公司2025年2月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_a6d8ae1a3d97e831",
+      "snippet": "台積公司2025年1月營收報告與地震影響說明",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_88dcc80ad0bc9483",
+      "snippet": "台積公司2024年第四季每股盈餘新台幣14.45元",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_6a73a66c96ad9f08",
+      "snippet": "台積公司2024年12月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_a10a5fec5ca347a5",
+      "snippet": "公告本公司114年第一季法人說明會將於114年4月17日召開",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_c43085669abcb3ba",
+      "snippet": "台積公司董事會決議",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "93767102-64d8-4b45-b084-ba681cb59a84",
+      "snippet": "法說會逐字稿\n鴻海精密工業股份有限公司 2025 年第一季法人說明會\n會議日期及時間 ：2025 年 5 月14 日 台北時間下午3 點\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n鴻海精密工業股份有限公司\n2025 年第一季法人說明會\n公司與會者\n劉揚偉 Young Liu 鴻海精密工業股份有限公司 董事長\n黃德才 David Huang 鴻海精密工業股份有限公司 財務長\n巫俊毅 James Wu 鴻海精密工業股份有限公司 發言人\n方文妍 Kristen Fang 鴻海精密工業股份有限公司 投資人關係資深經理\n法說會提問者\nSharon Shih Morgan Stanley-分析師\nAngela Hsiang 凱基投顧-分析師\nCarrie Liu Citi-分析師\n方昱翔 三立財經-記者\n謝佩穎 TVBS新聞網-記者\nAlbert Hong J.P. Morgan-分析師\nArthur Liao 富邦投顧-分析師\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com |",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_2e97a8a8b7e22932",
+      "snippet": "公告本公司將受邀參加「JP Morgan Taiwan CEO-CFO Conference 2025」之法說訊息",
+      "origin": "embedding"
+    }
+  ],
+  "trace": [
+    {
+      "node_name": "planner",
+      "status": "ok",
+      "input_keys": [
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "period",
+        "plan"
+      ],
+      "error_message": null,
+      "elapsed_ms": 10222
+    },
+    {
+      "node_name": "retriever",
+      "status": "ok",
+      "input_keys": [
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "contexts"
+      ],
+      "error_message": null,
+      "elapsed_ms": 2792
+    },
+    {
+      "node_name": "calculator",
+      "status": "ok",
+      "input_keys": [
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "calculations"
+      ],
+      "error_message": null,
+      "elapsed_ms": 0
+    },
+    {
+      "node_name": "writer",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "citations",
+        "draft"
+      ],
+      "error_message": null,
+      "elapsed_ms": 1712
+    },
+    {
+      "node_name": "compliance",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "citations",
+        "contexts",
+        "draft",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "answer",
+        "compliance_status"
+      ],
+      "error_message": null,
+      "elapsed_ms": 5672
+    }
+  ]
+}
