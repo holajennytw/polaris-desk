@@ -59,9 +59,26 @@ class SmokeReport:
         return next(k for k, v in _OVERALL_RANK.items() if v == worst)
 
 
+def _adc_well_known_file() -> str:
+    """``gcloud auth application-default login`` 寫入的 ADC 路徑（對齊 google-auth 探測）。
+
+    尊重 ``CLOUDSDK_CONFIG``（google-auth 同款行為）→ 測試可指向空 tmp 取得確定性。
+    """
+    base = os.getenv("CLOUDSDK_CONFIG") or os.path.join(
+        os.path.expanduser("~"), ".config", "gcloud"
+    )
+    return os.path.join(base, "application_default_credentials.json")
+
+
 def _gcp_creds_available() -> bool:
-    """是否偵測到 GCP ADC 金鑰（確定性；CI 未設 → False → 連線步驟 skipped）。"""
-    return bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip())
+    """是否偵測到 GCP ADC 金鑰（確定性；CI 未設 → False → 連線步驟 skipped）。
+
+    ``GOOGLE_APPLICATION_CREDENTIALS`` 或 ``gcloud`` ADC well-known 檔任一存在即可——
+    與步驟提示文字（``gcloud auth application-default login``）一致。
+    """
+    if os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip():
+        return True
+    return os.path.isfile(_adc_well_known_file())
 
 
 def bigquery_smoke(settings=None, *, store=None, creds_available=None) -> SmokeReport:

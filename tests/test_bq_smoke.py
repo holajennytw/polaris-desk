@@ -111,13 +111,23 @@ class TestOverallPrecedence:
 
 
 class TestCredsGateDefault:
-    def test_no_env_skips(self, monkeypatch):
+    def test_no_env_skips(self, monkeypatch, tmp_path):
+        # 同時清掉 env 與 ADC well-known（指向空 tmp）→ 確定性「無金鑰」。
         monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+        monkeypatch.setenv("CLOUDSDK_CONFIG", str(tmp_path))
         r = d.bigquery_smoke(_settings(), store=_Store(result=True))
         assert _step(r, "connectivity").status == "skipped"
 
     def test_env_present_triggers_check(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/tmp/fake.json")
+        r = d.bigquery_smoke(_settings(), store=_Store(result=True))
+        assert _step(r, "connectivity").status == "ok"
+
+    def test_adc_well_known_file_triggers_check(self, monkeypatch, tmp_path):
+        # 模擬 `gcloud auth application-default login`：env 未設，但 ADC 檔存在。
+        monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+        monkeypatch.setenv("CLOUDSDK_CONFIG", str(tmp_path))
+        (tmp_path / "application_default_credentials.json").write_text("{}")
         r = d.bigquery_smoke(_settings(), store=_Store(result=True))
         assert _step(r, "connectivity").status == "ok"
 
