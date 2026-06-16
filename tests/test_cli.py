@@ -51,9 +51,17 @@ class TestCLIMainFunction:
         assert rc == 0
         assert "Answer" in out
 
-    def test_viewer_default_is_demo_principal(self, capsys):
-        from polaris.cli import _cmd_ask
-        rc = _cmd_ask("台積電", viewer="demo_principal")
+    def test_viewer_default_is_public_sentinel(self, capsys):
+        """Omitting --viewer falls back to the public sentinel (public docs only)."""
+        import inspect
+
+        from polaris.cli import _cmd_ask, main
+        from polaris.retrieval.retriever import PUBLIC_VIEWER
+
+        # default is the sentinel, not a real placeholder principal
+        assert inspect.signature(_cmd_ask).parameters["viewer"].default == PUBLIC_VIEWER
+
+        rc = main(["ask", "台積電"])
         assert rc == 0
 
 
