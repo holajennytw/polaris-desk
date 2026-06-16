@@ -17,6 +17,10 @@ make setup     # 建 Python 3.13 venv + 裝依賴 + 產生 .env 範本（idempot
 
 > `make test` / `make lint` 走 `uv run`，**不需先 `activate` venv**。沒有 `make` 時的等效手動指令見下方「Python 3.13」段。
 
+## 🧪 測試整條流程（UI 未好之前）
+
+UI（R7）未就緒時，系統 **CLI / API 優先**，可不靠前端就端到端驗證。**完整 runbook 見 [`docs/測試指南_無UI.md`](./docs/測試指南_無UI.md)** —— 已標好「🤖 agent 可自動跑」與「🧑 human 必須親自做」（填金鑰 / `gcloud` 登入 / `DEV_DATASET` 改名），每步附預期輸出。要 agent 幫忙建測試環境就請它「依 `docs/測試指南_無UI.md` 執行」。快速入口：`make test` → `python -m polaris.cli ask "…"` → `make eval-smoke` → `make serve-api`。
+
 ## 🐍 Python 3.13（最重要的環境約束）
 
 - 開發 / CI 一律用 **Python 3.13**。版本已鎖在 `.python-version`（uv / pyenv 會自動選），`pyproject.toml` 也設 `requires-python>=3.13`。
