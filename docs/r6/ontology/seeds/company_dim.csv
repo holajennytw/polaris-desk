@@ -1,0 +1,21 @@
+ticker,company_name,english_name,market,industry_id,industry_name,is_financial,aliases,company_id
+1216,統一,Uni-President Enterprises,上市,IND_FOOD,食品,false,"統一,Uni-President,1216",73251209
+2303,聯電,United Microelectronics,上市,IND_FOUNDRY,晶圓代工,false,"聯電,UMC,2303",47217677
+2308,台達電,Delta Electronics,上市,IND_AI_INFRA,AI基礎設施,false,"台達電,Delta,2308",34051920
+2317,鴻海,Hon Hai Precision Industry,上市,IND_EMS,電子代工,false,"鴻海,Hon Hai,2317",04541302
+2330,台積電,Taiwan Semiconductor Manufacturing Company,上市,IND_FOUNDRY,晶圓代工,false,"台積電,TSMC,2330",22099131
+2357,華碩,ASUSTeK Computer,上市,IND_COMPUTER_BRAND,電腦品牌,false,"華碩,ASUS,2357",23638777
+2382,廣達,Quanta Computer,上市,IND_AI_SERVER,AI伺服器,false,"廣達,Quanta,2382",22822281
+2412,中華電,Chunghwa Telecom,上市,IND_TELECOM,電信,false,"中華電信,Chunghwa Telecom,2412",96979933
+2454,聯發科,MediaTek,上市,IND_IC_DESIGN,IC設計,false,"聯發科,MediaTek,2454",84149961
+2881,富邦金,Fubon Financial Holding,上市,IND_FINANCIAL_HOLDING,金融控股,true,"富邦金,Fubon,2881",03374805
+2882,國泰金,Cathay Financial Holding,上市,IND_FINANCIAL_HOLDING,金融控股,true,"國泰金,Cathay FHC,2882",70827406
+2884,玉山金,E.SUN Financial Holding,上市,IND_FINANCIAL_HOLDING,金融控股,true,"玉山金,E.SUN FHC,2884",70796305
+2886,兆豐金,Mega Financial Holding,上市,IND_FINANCIAL_HOLDING,金融控股,true,"兆豐金,Mega FHC,2886",70796754
+2891,中信金,CTBC Financial Holding,上市,IND_FINANCIAL_HOLDING,金融控股,true,"中信金,CTBC,2891",80333992
+2892,第一金,First Financial Holding,上市,IND_FINANCIAL_HOLDING,金融控股,true,"第一金,First FHC,2892",80351999
+3034,聯詠,Novatek Microelectronics,上市,IND_IC_DESIGN,IC設計,false,"聯詠,Novatek,3034",84149955
+3037,欣興,Unimicron Technology,上市,IND_ABF_SUBSTRATE,ABF載板,false,"欣興,Unimicron,3037",23535435
+3231,緯創,Wistron,上市,IND_AI_SERVER,AI伺服器,false,"緯創,Wistron,3231",12868358
+3711,日月光投控,ASE Technology Holding,上市,IND_OSAT,半導體封測,false,"日月光投控,ASEH,3711",29187308
+6669,緯穎,Wiwynn,上市,IND_AI_SERVER,AI伺服器,false,"緯穎,Wiwynn,6669",53687704
