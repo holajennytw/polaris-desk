@@ -1,0 +1,108 @@
+/* ============================================================
+   Phase-1 互動效果樣式（Magic UI 風格 + Aceternity Hero + 載入狀態）
+   全部尊重 prefers-reduced-motion；色彩綁定既有 token。
+   ============================================================ */
+
+/* ── NumberTicker ── */
+.num-ticker { font-variant-numeric: tabular-nums; }
+
+/* ── Ripple ── */
+.btn, .nav-item, .nf-tab, .chip { position: relative; overflow: hidden; }
+.fx-ripple {
+  position: absolute; border-radius: 50%; background: currentColor;
+  opacity: .2; transform: scale(0); pointer-events: none;
+  animation: fx-ripple .6s ease-out forwards;
+}
+@keyframes fx-ripple { to { transform: scale(1); opacity: 0; } }
+
+/* ── MagicCard：聚光跟隨游標 ── */
+.magic-card { position: relative; overflow: hidden; }
+.magic-card::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  border-radius: inherit; transition: opacity .28s ease;
+  background: radial-gradient(180px circle at var(--mx, 50%) var(--my, 50%), rgb(var(--primary) / .16), transparent 60%);
+}
+.magic-card:hover::after { opacity: 1; }
+:root[data-fx="strong"] .magic-card::after {
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgb(var(--primary) / .26), transparent 62%);
+}
+
+/* ── StarLoader：北極星脈衝 ── */
+.star-loader { display: inline-flex; align-items: center; gap: 11px; }
+.sl-orbit { position: relative; display: inline-grid; place-items: center; }
+.sl-orbit::before {
+  content: ''; position: absolute; inset: -3px; border-radius: 50%;
+  border: 2px solid rgb(var(--primary) / .16); border-top-color: rgb(var(--primary));
+  animation: sl-spin 1s linear infinite;
+}
+.sl-star { color: rgb(var(--primary)); display: inline-flex; animation: sl-pulse 1.5s ease-in-out infinite; }
+.sl-label { font-size: 14px; color: rgb(var(--muted)); }
+.sk-loader-row { display: flex; justify-content: center; padding: 18px 0; }
+@keyframes sl-spin { to { transform: rotate(360deg); } }
+@keyframes sl-pulse { 0%, 100% { transform: scale(.82); opacity: .7; } 50% { transform: scale(1.06); opacity: 1; } }
+
+/* ── Skeleton ── */
+.sk {
+  background: linear-gradient(90deg, rgb(var(--muted-bg)) 25%, rgb(var(--border) / .55) 37%, rgb(var(--muted-bg)) 63%);
+  background-size: 400% 100%; animation: sk-shimmer 1.3s ease infinite;
+}
+.sk-card { background: rgb(var(--card)); border: 1px solid rgb(var(--border)); border-radius: var(--radius); padding: 18px; }
+@keyframes sk-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+@keyframes sk-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Hero：北極星劃過地球 ── */
+.hero-globe { position: relative; width: 100%; min-width: 300px; aspect-ratio: 1 / 1; max-height: 470px; margin: 0 auto; }
+.hero-globe canvas { width: 100%; height: 100%; display: block; }
+.hero-globe-cap {
+  position: absolute; bottom: 6px; left: 0; right: 0; text-align: center;
+  font-size: 11px; letter-spacing: .24em; color: rgb(var(--muted)); opacity: .7;
+}
+/* Hero 在窄寬度仍顯示（手機=靜態+微閃），覆蓋既有 .lp-visual{display:none} */
+@media (max-width: 980px) {
+  .lp-visual:has(.hero-globe) { display: block; }
+  .lp-visual:has(.hero-globe) .hero-globe { min-width: 0; max-width: 360px; margin: 0 auto; }
+}
+
+/* ── 頁籤滑動底線 ── */
+.nf-tabs, .news-tabs { position: relative; }
+.tab-underline {
+  position: absolute; bottom: -1px; height: 2px; background: rgb(var(--primary-bright));
+  border-radius: 2px; transition: left .28s cubic-bezier(.4, 0, .2, 1), width .28s cubic-bezier(.4, 0, .2, 1);
+  pointer-events: none;
+}
+.nf-tabs.anim .nf-tab.active { border-bottom-color: transparent; }
+
+/* ── Tweaks 面板 ── */
+.tweaks-fab {
+  position: fixed; right: 18px; bottom: 18px; z-index: 70;
+  width: 46px; height: 46px; border-radius: 50%; border: 1px solid rgb(var(--border));
+  background: rgb(var(--card)); color: rgb(var(--foreground)); display: grid; place-items: center;
+  cursor: pointer; box-shadow: 0 8px 26px rgb(0 0 0 / .2); transition: color .15s, transform .15s;
+}
+.tweaks-fab:hover { color: rgb(var(--primary)); transform: translateY(-1px); }
+.tweaks-panel {
+  position: fixed; right: 18px; bottom: 74px; z-index: 70; width: 300px; max-height: 78vh; overflow: auto;
+  background: rgb(var(--card)); border: 1px solid rgb(var(--border)); border-radius: 16px;
+  box-shadow: 0 20px 54px rgb(0 0 0 / .28); padding: 14px 14px 18px; animation: sk-fade .16s ease;
+}
+.tk-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.tk-title { font-size: 18px; font-weight: 700; }
+.tk-reset { font-size: 12.5px; color: rgb(var(--muted)); background: none; border: none; cursor: pointer; }
+.tk-reset:hover { color: rgb(var(--foreground)); }
+.tk-sec { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: rgb(var(--muted)); margin: 14px 0 2px; }
+.tk-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 4px; background: none; border: none; cursor: pointer; text-align: left; font-family: inherit; }
+.tk-row.seg { cursor: default; }
+.tk-label { font-size: 14.5px; color: rgb(var(--foreground)); display: block; }
+.tk-hint { font-size: 11.5px; color: rgb(var(--muted)); font-family: var(--mono); margin-top: 1px; display: block; }
+.tk-switch { width: 38px; height: 22px; border-radius: 11px; background: rgb(var(--border)); position: relative; transition: background .2s; flex: none; }
+.tk-switch.on { background: rgb(var(--primary)); }
+.tk-knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .2s; }
+.tk-switch.on .tk-knob { left: 18px; }
+.tk-seg { display: flex; gap: 4px; }
+.tk-seg-b { font-size: 12.5px; padding: 5px 9px; border-radius: 8px; border: 1px solid rgb(var(--border)); background: none; color: rgb(var(--muted)); cursor: pointer; font-family: inherit; white-space: nowrap; }
+.tk-seg-b.on { border-color: rgb(var(--primary)); color: rgb(var(--primary)); background: rgb(var(--primary) / .08); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-ripple, .sl-orbit::before, .sl-star, .sk { animation: none; }
+  .magic-card::after, .tab-underline { transition: none; }
+}

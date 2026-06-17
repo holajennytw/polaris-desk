@@ -1,0 +1,162 @@
+"use client";
+import Link from "next/link";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+import { Icon } from "@/components/ui/Icon";
+
+const FEATURES = [
+  { icon: "brain" as const, t: "ReAct 研究助理", d: "輸入問題，模型逐步 THINK／ACT／OBS 規劃、檢索、計算與合規檢查，全程可視。" },
+  { icon: "quote" as const, t: "100% 可溯源引用", d: "每個數字、每句摘要都掛載引用 chip，點擊即開原始財報並逐字高亮。" },
+  { icon: "scale" as const, t: "同業 Calc Grounding", d: "跨公司財務對比逐欄交叉驗證，並以 GICS 拆解解釋毛利率差異來源。" },
+  { icon: "alert" as const, t: "Watchdog 監控", d: "即時擷取 MOPS／法說／新聞，合規初篩標記風險，異動自動觸發重新索引。" },
+  { icon: "shield" as const, t: "NFR-031 合規", d: "所有 AI 輸出皆經合規引擎檢查，標示「事實摘要，非投資建議」。" },
+  { icon: "database" as const, t: "可切換資料源", d: "Mock 與真實 API 一鍵切換，前端契約穩定，後端就緒即可上線。" },
+];
+
+export default function LandingPage() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
+
+  return (
+    <div className="landing">
+      <nav className="lp-nav">
+        <div className="lp-brand">
+          <div className="brand-star">
+            <Icon name="star" size={17} fill="currentColor" sw={0} />
+          </div>
+          <div>
+            <div className="brand-name font-display">Polaris Desk</div>
+            <div className="brand-sub" style={{ color: "rgb(var(--muted))" }}>
+              Equity Research
+            </div>
+          </div>
+        </div>
+        <div className="lp-nav-links">
+          <Link href="/research">研究助理</Link>
+          <Link href="/peer">同業比較</Link>
+          <Link href="/news">新聞</Link>
+          <Link href="/help">說明</Link>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button className="icon-btn" onClick={() => setTheme(isDark ? "light" : "dark")} title="切換主題">
+            <Icon name={isDark ? "sun" : "moon"} size={18} />
+          </button>
+          <Link href="/research" className="btn primary">
+            開始使用 <Icon name="arrowRight" size={15} />
+          </Link>
+        </div>
+      </nav>
+
+      <header className="lp-hero">
+        <div>
+          <span className="lp-eyebrow">
+            <span className="tdot" style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
+            可溯源的 AI 股票研究工作台
+          </span>
+          <h1 className="lp-h1">
+            把財報問題<br />
+            變成<span className="accent">可驗證的答案</span>
+          </h1>
+          <p className="lp-sub">
+            Polaris Desk 結合 ReAct 推理、逐字引用追蹤與合規檢查，讓分析師在數秒內得到有來源、可稽核的研究結論。
+          </p>
+          <div className="lp-cta">
+            <Link href="/research" className="btn primary xl">
+              開始使用 <Icon name="arrowRight" size={17} />
+            </Link>
+            <Link href="/peer" className="btn xl">
+              看同業比較
+            </Link>
+          </div>
+          <div className="lp-stats">
+            <div>
+              <div className="lp-stat-v font-display">100%</div>
+              <div className="lp-stat-l">引用可溯源率</div>
+            </div>
+            <div>
+              <div className="lp-stat-v font-display">1.07s</div>
+              <div className="lp-stat-l">平均回應時間</div>
+            </div>
+            <div>
+              <div className="lp-stat-v font-display">3,481</div>
+              <div className="lp-stat-l">索引文件 chunks</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="lp-visual">
+          <div className="lp-card">
+            <div className="lp-card-bar">
+              <i /><i /><i />
+              <span>polaris-desk / research</span>
+            </div>
+            <div className="lp-card-body">
+              <div className="lp-mini-kpis">
+                <div className="lp-mini-kpi">
+                  <div className="k">毛利率</div>
+                  <div className="v font-display">57.8%</div>
+                  <div className="d">QoQ +0.8pp</div>
+                </div>
+                <div className="lp-mini-kpi">
+                  <div className="k">營益率</div>
+                  <div className="v font-display">47.5%</div>
+                  <div className="d">QoQ +0.4pp</div>
+                </div>
+                <div className="lp-mini-kpi">
+                  <div className="k">EPS</div>
+                  <div className="v font-display">12.54</div>
+                  <div className="d">YoY +54%</div>
+                </div>
+              </div>
+              <div className="lp-mini-row">
+                CoWoS 產能 Q4 預估翻倍<span className="cchip">法說 p.7</span>
+              </div>
+              <div className="lp-mini-row">
+                毛利率 57.8%，季增 0.8pp<span className="cchip">財報 p.11</span>
+              </div>
+              <div className="lp-mini-row" style={{ color: "rgb(var(--success))", background: "rgb(var(--success) / .08)" }}>
+                <Icon name="check" size={14} /> NFR-031 合規檢查通過
+              </div>
+            </div>
+          </div>
+          <div className="lp-float">
+            <div className="lf-ico"><Icon name="brain" size={16} /></div>
+            <div>
+              <div className="lf-t">ReAct 推理完成</div>
+              <div className="lf-s">4 steps · traced</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section className="lp-features">
+        <div className="lp-sec-head">
+          <h2 className="lp-sec-title">為機構研究而生的工作台</h2>
+        </div>
+        <div className="lp-feat-grid">
+          {FEATURES.map((f, i) => (
+            <div className="magic-card lp-feat" key={i}>
+              <div className="lp-feat-ico"><Icon name={f.icon} size={22} /></div>
+              <div className="lp-feat-t">{f.t}</div>
+              <div className="lp-feat-d">{f.d}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <footer className="lp-foot">
+        <div className="lp-brand">
+          <div className="brand-star" style={{ width: 26, height: 26 }}>
+            <Icon name="star" size={14} fill="currentColor" sw={0} />
+          </div>
+          <div className="lp-foot-note">Polaris Desk · 前端參考原型 · 資料為 mock</div>
+        </div>
+        <Link href="/research" className="btn primary">
+          開始使用 <Icon name="arrowRight" size={15} />
+        </Link>
+      </footer>
+    </div>
+  );
+}

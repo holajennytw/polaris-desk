@@ -1,0 +1,84 @@
+/* ============================================================
+   Polaris Desk — Next.js + Tailwind v4 入口樣式表
+   把現有原型設計系統（polaris.css / fx.css）接到 Tailwind v4 + shadcn/ui。
+   檔案位置：app/globals.css（於 app/layout.tsx 以 `import "./globals.css"` 載入）
+   ------------------------------------------------------------
+   分層順序很重要，請勿調換：
+     1) Tailwind v4 本體
+     2) 原型 token + 元件 + 動效（原封沿用）
+     3) dark 變體掛到 [data-theme]
+     4) ★ Bridge：原型 token → Tailwind/shadcn 色彩 token
+     5) 字型接線（next/font 變數）
+   ============================================================ */
+
+/* 1) Tailwind v4 本體 ---------------------------------------- */
+@import "tailwindcss";
+/* shadcn 動畫工具（擇一安裝後再解除註解）：
+   新版 shadcn： npm i tw-animate-css   →  @import "tw-animate-css";
+   舊版：        npm i tailwindcss-animate（在 @plugin 引入） */
+
+/* 2) 現有原型設計系統（原封沿用，定義所有 --background/--primary… 三值 token
+      與 .card/.btn/.tag… 元件、fx 動效；含 [data-theme="dark"] 覆寫） ---- */
+@import "./styles/polaris.css";
+@import "./styles/fx.css";
+
+/* 3) dark 變體：原型用 <html data-theme="dark">（由 app/layout 或 ThemeProvider 設定）
+      讓 Tailwind 的 dark:xxx 工具跟著這個屬性走。 ---------------------- */
+@custom-variant dark (&:is([data-theme="dark"] *), &[data-theme="dark"]);
+
+/* 4) ★ Bridge：把原型 token 暴露成 Tailwind / shadcn 的色彩 token。
+      用 `inline` —— 工具類會直接引用 var()，所以 [data-theme] 的覆寫會自動生效。
+      原型 token 是「R G B」三值，這裡包成 rgb() 成為合法色彩；
+      bg-primary/12 之類的透明度修飾，Tailwind v4 以 color-mix 處理，正常運作。 */
+@theme inline {
+  /* shadcn 必備（元件預設吃這些名字） */
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+  --color-card: rgb(var(--card));
+  --color-card-foreground: rgb(var(--foreground));
+  --color-popover: rgb(var(--card));
+  --color-popover-foreground: rgb(var(--foreground));
+
+  --color-primary: rgb(var(--primary));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+  --color-secondary: rgb(var(--muted-bg));
+  --color-secondary-foreground: rgb(var(--foreground));
+  --color-muted: rgb(var(--muted-bg));
+  --color-muted-foreground: rgb(var(--muted));
+  --color-accent: rgb(var(--muted-bg));
+  --color-accent-foreground: rgb(var(--foreground));
+  --color-destructive: rgb(var(--danger));
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: rgb(var(--border));
+  --color-input: rgb(var(--border-strong));
+  --color-ring: rgb(var(--primary));
+
+  /* 品牌 / severity / rail —— 供 bg-success、text-rail-fg、border-info 等使用 */
+  --color-primary-bright: rgb(var(--primary-bright));
+  --color-success: rgb(var(--success));
+  --color-info: rgb(var(--info));
+  --color-warning: rgb(var(--warning));
+  --color-danger: rgb(var(--danger));
+  --color-rail: rgb(var(--rail));
+  --color-rail-2: rgb(var(--rail-2));
+  --color-rail-fg: rgb(var(--rail-fg));
+  --color-rail-muted: rgb(var(--rail-muted));
+
+  /* 字型：對應 next/font 注入的變數（見 app/fonts.ts） */
+  --font-sans: var(--sans);
+  --font-display: var(--display);
+  --font-mono: var(--mono);
+}
+
+/* 5) 字型接線：把原型的 --sans/--display/--mono 指向 next/font 變數。
+      必須放在 @import 之後（同名後寫覆蓋 polaris.css :root 的字串值）。
+      Noto Sans TC 以 <link> 載入（見 layout.tsx），這裡當 CJK fallback。 */
+:root {
+  --sans: var(--font-dm-sans), "Noto Sans TC", system-ui, sans-serif;
+  --display: var(--font-syne), "Noto Sans TC", system-ui, sans-serif;
+  --mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+/* shadcn 基準圓角：原型 --radius=12px（= --radius-md），shadcn 由此推導 sm/lg。 */
+:root { --radius: var(--radius-md); }
