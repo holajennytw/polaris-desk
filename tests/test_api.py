@@ -113,6 +113,85 @@ class TestResearch:
         assert r.status_code == 200
 
 
+class _StubStructuredStore:
+    """記錄呼叫 + 回 canned 列；讓結構化端點測試 0 GCP / 0 金鑰。"""
+
+    def __init__(self):
+        self.calls: list[tuple] = []
+
+    def list_companies(self):
+        return [
+            {"ticker": "2330", "company_name": "台積電", "english_name": "TSMC",
+             "market": "上市", "industry_id": "IND_FOUNDRY", "industry_name": "晶圓代工",
+             "is_financial": False, "aliases": "台積電,TSMC,2330"},
+        ]
+
+    def list_financials(self, *, ticker=None, period=None, metric=None, limit=None):
+        self.calls.append(("financials", ticker, period, metric, limit))
+        return [
+            {"ticker": "2330", "fiscal_period": "2025Q4", "metric_id": "eps",
+             "value": 13.94, "unit": "新台幣元/股", "source_id": "src-1",
+             "published_at": "2026-01-16"},
+        ]
+
+    def list_events(self, *, ticker=None, event_type=None, limit=None):
+        self.calls.append(("events", ticker, event_type, limit))
+        return [
+            {"event_id": "evt-1", "ticker": "2330", "event_type": "monthly_revenue",
+             "published_at": "2026-06-10", "title": "5月營收", "source_url": "https://mops"},
+        ]
+
+
+@pytest.fixture
+def stub_store(monkeypatch):
+    from polaris import api
+
+    store = _StubStructuredStore()
+    monkeypatch.setattr(api, "_structured_store", store)
+    return store
+
+
+class TestCompanies:
+    def test_returns_company_dim_rows(self, client, stub_store):
+        r = client.get("/companies")
+        assert r.status_code == 200
+        body = r.json()
+        assert isinstance(body, list) and body
+        assert {"ticker", "company_name", "english_name", "industry_name",
+                "is_financial", "aliases"} <= body[0].keys()
+        assert body[0]["ticker"] == "2330"
+
+
+class TestFinancials:
+    def test_returns_contract_shape(self, client, stub_store):
+        r = client.get("/financials")
+        assert r.status_code == 200
+        row = r.json()[0]
+        assert {"ticker", "fiscal_period", "metric_id", "value", "unit",
+                "source_id", "published_at"} <= row.keys()
+
+    def test_filters_forwarded(self, client, stub_store):
+        client.get("/financials?ticker=2330&period=2025Q4&metric=eps&limit=5")
+        assert stub_store.calls[-1] == ("financials", "2330", "2025Q4", "eps", 5)
+
+    def test_limit_out_of_range_is_422(self, client, stub_store):
+        assert client.get("/financials?limit=0").status_code == 422
+        assert client.get("/financials?limit=9999").status_code == 422
+
+
+class TestEvents:
+    def test_returns_contract_shape(self, client, stub_store):
+        r = client.get("/events")
+        assert r.status_code == 200
+        row = r.json()[0]
+        assert {"event_id", "ticker", "event_type", "published_at",
+                "title", "source_url"} <= row.keys()
+
+    def test_type_filter_forwarded_as_event_type(self, client, stub_store):
+        client.get("/events?ticker=2330&type=monthly_revenue")
+        assert stub_store.calls[-1] == ("events", "2330", "monthly_revenue", None)
+
+
 class TestRouting:
     def test_unknown_path_404(self, client):
         assert client.get("/definitely-not-a-route").status_code == 404

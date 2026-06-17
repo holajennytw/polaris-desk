@@ -18,6 +18,12 @@ Watchdog（specs/003，R7 Alert Inbox 消費端）：
 
 - ``GET  /alerts``                      → mock MOPS 事件跑 Watchdog，回 WatchdogAlert 陣列（token-free）
 
+結構化資料讀層（polaris_core 直讀；前端財務卡 / 事件時間軸 / 公司清單）：
+
+- ``GET  /companies``                   → company_dim（ticker→公司/產業）
+- ``GET  /financials``                  → financial_metrics（query: ``ticker`` / ``period`` / ``metric`` / ``limit``）
+- ``GET  /events``                      → events 時間流（query: ``ticker`` / ``type`` / ``limit``）
+
 **欄位名一字不差**（``source_id`` / ``compliance_status`` / ``react_steps`` …）；改契約＝R2/R3/R7 一起改。
 這層只做「HTTP ↔ 既有函式」的薄轉接：不碰 graph/state/compliance/Deep Research 本體。
 無金鑰時引擎走 fallback → 本 API 仍可端到端回應（token-free、CI 可測）。
@@ -26,10 +32,10 @@ Watchdog（specs/003，R7 Alert Inbox 消費端）：
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator
@@ -48,6 +54,7 @@ from polaris.notifications import (
     SlackWebhookChannel,
 )
 from polaris.server import health_payload, resolve_port
+from polaris.structured_store import StructuredStore
 
 _WATCHDOG_MOCK_EVENTS = (
     Path(__file__).resolve().parent / "graph" / "watchdog" / "data" / "watchdog_events.json"
@@ -260,6 +267,85 @@ def alerts() -> list[AlertResponse]:
         )
         for a in (run_watchdog(e) for e in load_mock_events(_WATCHDOG_MOCK_EVENTS))
     ]
+
+
+# --- 結構化資料讀層（polaris_core 直讀，給前端財務卡 / 事件時間軸 / 公司清單）---
+#
+# 「兩者都要」分層：語意問答走 /ask、/research；結構化表（company_dim /
+# financial_metrics / events）由此唯讀端點供給 —— 前端不直連 BQ、不耦合實體 schema。
+# StructuredStore 用注入式 client seam（同 BigQueryStore）：lazy 建立，無查詢不連線，
+# CI / fallback 不需 GCP 金鑰。
+
+_structured_store = StructuredStore(settings)
+
+
+class CompanyResponse(BaseModel):
+    """company_dim 一列（ticker→公司/產業，join key=ticker）。"""
+
+    ticker: str
+    company_name: str | None = None
+    english_name: str | None = None
+    market: str | None = None
+    industry_id: str | None = None
+    industry_name: str | None = None
+    is_financial: bool | None = None
+    aliases: str | None = None
+
+
+class FinancialMetricResponse(BaseModel):
+    """financial_metrics 一列（複合 key：ticker + fiscal_period + metric_id）。"""
+
+    ticker: str | None = None
+    fiscal_period: str | None = None
+    metric_id: str | None = None
+    value: float | None = None
+    unit: str | None = None
+    source_id: str | None = None
+    published_at: date | None = None
+
+
+class EventResponse(BaseModel):
+    """events 一列（時間軸 / 收件匣；body/raw_json 不在列表回應，需細節再查）。"""
+
+    event_id: str | None = None
+    ticker: str | None = None
+    event_type: str | None = None
+    published_at: date | None = None
+    title: str | None = None
+    source_url: str | None = None
+
+
+@app.get("/companies", response_model=list[CompanyResponse], tags=["structured"])
+def companies() -> list[CompanyResponse]:
+    """canonical 公司清單（company_dim，~20 列）。前端顯示用 ticker→公司名對照。"""
+    return [CompanyResponse(**row) for row in _structured_store.list_companies()]
+
+
+@app.get("/financials", response_model=list[FinancialMetricResponse], tags=["structured"])
+def financials(
+    ticker: str | None = Query(default=None, description="股票代號，如 2330"),
+    period: str | None = Query(default=None, description="財報期別，如 2025Q4"),
+    metric: str | None = Query(default=None, description="指標代碼，如 revenue / eps"),
+    limit: int | None = Query(default=None, ge=1, le=1000, description="回傳上限（預設 200）"),
+) -> list[FinancialMetricResponse]:
+    """財務指標（financial_metrics），可依 ticker / period / metric 過濾，時間倒序。"""
+    rows = _structured_store.list_financials(
+        ticker=ticker, period=period, metric=metric, limit=limit
+    )
+    return [FinancialMetricResponse(**row) for row in rows]
+
+
+@app.get("/events", response_model=list[EventResponse], tags=["structured"])
+def events(
+    ticker: str | None = Query(default=None, description="股票代號，如 2330"),
+    type: str | None = Query(  # noqa: A002 — 對齊欄位名 event_type 的對外簡寫
+        default=None, description="事件型別，如 monthly_revenue / earnings_call"
+    ),
+    limit: int | None = Query(default=None, ge=1, le=1000, description="回傳上限（預設 200）"),
+) -> list[EventResponse]:
+    """事件流（events），時間倒序，可依 ticker / type 過濾。做公司動態時間軸用。"""
+    rows = _structured_store.list_events(ticker=ticker, event_type=type, limit=limit)
+    return [EventResponse(**row) for row in rows]
 
 
 def main() -> None:  # pragma: no cover - 進入點，由 `python -m polaris.api` 啟動

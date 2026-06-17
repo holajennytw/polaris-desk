@@ -99,14 +99,19 @@ spec 寫「Next.js / Chainlit」二選一或混用。給你的建議：
 4. **Alert Inbox**：讀 (c) 的 WatchdogAlert 陣列，`severity` 上色、`compliance_status=blocked` 標紅。
 5. **ReAct trace UI**：讀 (b) 的 `react_steps` 逐步畫「想→查→觀察」時間軸。
 
-## 4. ⚠️ 後端接口依賴（要跟 R2 敲）
-目前後端**沒有 HTTP API**，只有 CLI / Python 函式。要上線需要一支 **thin FastAPI**：
+## 4. ✅ 後端 HTTP API（已存在 —— 用法見 [`docs/API_使用指南.md`](./API_使用指南.md)）
+thin FastAPI 已實作（`src/polaris/api.py`），跑法 `python -m polaris.api`，互動文件 `/docs`、契約 `/openapi.json`：
 ```
 POST /ask        body {query}            → §2(a) JSON
 POST /research   body {question}         → §2(b) JSON
 GET  /alerts                             → §2(c) JSON 陣列
+GET  /companies                          → 公司清單（ticker→名稱/產業）
+GET  /financials ?ticker&period&metric   → 財務指標
+GET  /events     ?ticker&type            → 事件流 / 時間軸
 ```
-內部就是包 `build_workflow().invoke({"query": q})` / `run_deep_research(q)`。**誰寫先講好**（R2 owns 前後端接口；你也可自告奮勇寫，反正你最懂前端要什麼）。**在它出現前，你用 mock 全速開發。**
+- 語意問答（`/ask`、`/research`）內部包 `build_workflow().invoke(...)` / `run_deep_research(...)`；無金鑰走 fallback（token-free）。
+- 結構化端點（`/companies`、`/financials`、`/events`）直讀 `polaris_core`（見 §2(d) + 欄位表）。
+- **完整用法、參數、curl 範例**：[`docs/API_使用指南.md`](./API_使用指南.md)。仍可先用 mock 開發，再切真 API。
 
 ## 5. DoD（照順序勾）
 - [ ] 技術選型拍板（Chainlit 核心 + Next.js Landing）
