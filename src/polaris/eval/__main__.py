@@ -41,7 +41,13 @@ def main(argv: list[str] | None = None) -> int:
     # Ragas 真分：有裝 extra + 有金鑰才跑，否則誠實回 None
     r_scores = ragas_score(records)
 
-    print(render_markdown(records, report, ragas_scores=r_scores))
+    # 真檢索是否上線（polaris_core）決定報告標註：有 active_retriever → 真語料煙測，
+    # 否則（CI / 無金鑰）走 stub 語料路徑。誠實原則：標題別騙人。
+    from polaris.retrieval.retriever import active_retriever
+
+    is_stub = active_retriever() is None
+
+    print(render_markdown(records, report, is_stub_corpus=is_stub, ragas_scores=r_scores))
 
     if not ragas_available():
         print("（Ragas 未安裝：`uv pip install -e '.[eval]'` 後可跑 CP/Faithfulness/AR）")
