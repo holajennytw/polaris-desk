@@ -82,6 +82,18 @@ class TestRunner:
         assert record.contexts
         assert record.citation_count >= 3  # FR-004 ≥3 條引用
 
+    def test_scenario_3_visual_not_silent_text_fallback(self):
+        """場景 3（圖表 ColPali）後端未落地前要明確拋錯，
+
+        不得靜默走文字 workflow——否則「視覺路徑沒接」會被誤報成「檢索失敗」。
+        W3 接 ColPali 後本測試改為驗真檢索。
+        """
+        with pytest.raises(NotImplementedError, match="ColPali"):
+            run_item(make_item(
+                item_id="V001", scenario="3", category="圖表",
+                question="從這張營收結構圖看，第三季哪個部門佔比最高？",
+            ))
+
     def test_deterministic(self):
         from polaris.llm.gemini import available as gemini_available
 

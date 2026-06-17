@@ -33,6 +33,20 @@ def _run_workflow(question: str) -> dict:
     return app.invoke({"query": question})
 
 
+def _run_visual(question: str) -> dict:
+    """場景 3（圖表 ColPali）的檢索 seam。
+
+    ColPali 多向量 / late-interaction 圖表檢索排程在 W3（見 dataset.py 場景表）。
+    在後端落地前，這裡**刻意拋錯**而非回退到文字 workflow——場景 3 是看圖題，
+    若靜默走 ``_run_workflow`` 會把「視覺路徑沒接」誤報成「檢索失敗」，違反誠實原則。
+    W3 接 ColPali 後，把本函式換成真檢索即可，runner 分派不用動。
+    """
+    raise NotImplementedError(
+        "場景 3（圖表 ColPali）檢索尚未實作（排程 W3）；"
+        "在 ColPali 後端落地前不得用文字 workflow 代跑看圖題。"
+    )
+
+
 def _run_deep_research(question: str) -> dict:
     from polaris.graph.deep_research.agent import run_deep_research
 
@@ -45,11 +59,16 @@ def _run_deep_research(question: str) -> dict:
     }
 
 
+#: 場景 → 檢索後端分派。未列者落 ``_run_workflow``（5 節點文字 workflow）。
+_DISPATCH = {
+    "2": _run_deep_research,  # 同業比較
+    "3": _run_visual,         # 圖表 ColPali（W3）
+}
+
+
 def run_item(item: EvalItem) -> EvalRecord:
-    """跑一題，回 :class:`EvalRecord`。場景 2 走 Deep Research，其餘走 workflow。"""
-    result = _run_deep_research(item.question) if item.scenario == "2" else _run_workflow(
-        item.question
-    )
+    """跑一題，回 :class:`EvalRecord`。場景 2→Deep Research、場景 3→ColPali，其餘→workflow。"""
+    result = _DISPATCH.get(item.scenario, _run_workflow)(item.question)
     contexts = [c.get("text", "") for c in result.get("contexts", []) if c.get("text")]
     return EvalRecord(
         item=item,
