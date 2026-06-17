@@ -16,6 +16,7 @@ from typing import Any
 
 from rank_bm25 import BM25Okapi
 
+from ..ontology import company_name
 from ..vectorstore import SearchResult, VectorStore, get_vector_store
 
 
@@ -159,13 +160,18 @@ def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[
     if not api_key:
         logger.debug("COHERE_API_KEY not set; skipping rerank, keeping BM25+vector order")
         return results
+    # `rerank-v3.5` 為 Cohere 多語 rerank 文件型號（適合中英財報），可用
+    # COHERE_RERANK_MODEL 覆寫。注意：需「有效」金鑰；型號錯或 key 失效會走下方
+    # except 降級成 BM25+vector（不阻斷檢索）。
+    model = os.environ.get("COHERE_RERANK_MODEL", "rerank-v3.5")
     try:
         import cohere  # type: ignore[import-untyped]
 
-        client = cohere.Client(api_key=api_key)
+        # v2 rerank API 走 ClientV2 + client.rerank（舊 v1 `Client` 無 .rerank v2 契約）。
+        client = cohere.ClientV2(api_key=api_key)
         docs = [r.content for r in results]
-        response = client.v2.rerank(
-            model="rerank-v4.0",
+        response = client.rerank(
+            model=model,
             query=query,
             documents=docs,
             top_n=top_k,
@@ -347,6 +353,7 @@ def make_retriever_search_fn(
                 source_id=sr.id,
                 snippet=sr.content,
                 origin=_citation_origin(sr.metadata.get("origin")),
+                company=company_name(sr.company),
             )
             for sr in r.retrieve(query, filters=combined_filters)
         ]

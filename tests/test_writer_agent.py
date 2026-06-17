@@ -34,6 +34,29 @@ class TestBuildCitations:
         cites = wa.build_citations([{"source_id": "n1", "text": "x", "origin": "news"}])
         assert cites[0].origin == "news"
 
+    def test_citation_carries_company_name_from_ticker(self):
+        """context 帶 company（ticker）→ Citation.company 解析成中文名。"""
+        cites = wa.build_citations(
+            [{"source_id": "d", "text": "毛利率 58%", "company": "2330"}]
+        )
+        assert cites[0].company == "台積電"
+
+    def test_citation_prefers_explicit_company_name(self):
+        """context 已帶 company_name 時直接採用，不再二次查表。"""
+        cites = wa.build_citations(
+            [{"source_id": "d", "text": "x", "company": "2330", "company_name": "台積電"}]
+        )
+        assert cites[0].company == "台積電"
+
+    def test_citation_company_none_when_unknown(self):
+        cites = wa.build_citations([{"source_id": "d", "text": "x"}])
+        assert cites[0].company is None
+
+    def test_context_block_shows_company_label(self):
+        """_format_contexts 在來源標籤帶中文名，讓 LLM 草稿可用「台積電」。"""
+        block = wa._format_contexts([{"source_id": "d", "text": "毛利率 58%", "company": "2330"}])
+        assert "台積電（2330）" in block
+
 
 class TestFallbackDraft:
     def test_is_nonempty_and_deterministic(self):

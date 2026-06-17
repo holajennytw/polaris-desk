@@ -16,6 +16,7 @@ from polaris.graph.nodes.trace import traced
 from polaris.graph.redaction import redact
 from polaris.graph.state import Citation
 from polaris.llm.gemini import active_llm
+from polaris.ontology import company_name
 from polaris.retrieval.retriever import PUBLIC_VIEWER, active_retriever
 
 
@@ -106,6 +107,8 @@ def _real_contexts(
                     "source_id": r.id,
                     "text": r.content,
                     "period": r.period,
+                    "company": r.company,  # ticker
+                    "company_name": company_name(r.company),  # canonical 中文名 / None
                     "origin": _citation_origin((r.metadata or {}).get("origin")),
                 }
             )

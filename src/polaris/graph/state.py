@@ -31,6 +31,10 @@ class Citation(BaseModel):
     source_id: str = Field(min_length=1, description="來源識別（頁碼 hash / URL hash / stub-id）")
     snippet: str = Field(min_length=1, description="被引用的原文片段")
     origin: CitationOrigin = Field(description="檢索來源；W1 固定 'stub'")
+    company: str | None = Field(
+        default=None,
+        description="來源公司中文 canonical 名（由 ticker 經 ontology 解析；未知/無則 None）",
+    )
 
 
 # ---------------------------------------------------------------------------

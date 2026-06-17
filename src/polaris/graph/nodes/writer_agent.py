@@ -15,6 +15,7 @@ from typing import Any, Protocol
 
 from polaris.graph.prompts import WRITER_SYSTEM_PROMPT as SYSTEM_PROMPT
 from polaris.graph.state import Citation
+from polaris.ontology import company_label, company_name
 from polaris.retry import call_with_retry
 
 
@@ -39,6 +40,7 @@ def build_citations(contexts: list[dict[str, Any]]) -> list[Citation]:
                 source_id=str(ctx.get("source_id", "unknown")),
                 snippet=snippet,
                 origin=ctx.get("origin", "stub"),
+                company=ctx.get("company_name") or company_name(ctx.get("company")),
             )
         )
     return cites
@@ -49,7 +51,10 @@ def _format_contexts(contexts: list[dict[str, Any]]) -> str:
     for ctx in contexts or []:
         sid = ctx.get("source_id", "unknown")
         text = ctx.get("snippet") or ctx.get("text") or ""
-        lines.append(f"[{sid}] {text}")
+        # 帶上公司中文名（若可解析），讓 LLM 草稿能用「台積電」而非裸 ticker。
+        label = company_label(ctx.get("company")) if ctx.get("company") else ""
+        prefix = f"[{sid}｜{label}]" if label else f"[{sid}]"
+        lines.append(f"{prefix} {text}")
     return "\n".join(lines) if lines else "（無引用片段）"
 
 

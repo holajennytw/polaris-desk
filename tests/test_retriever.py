@@ -266,6 +266,87 @@ def test_retriever_rerank_exception_falls_back_to_bm25_order():
     assert len(results) > 0
 
 
+def test_rerank_uses_clientv2_and_valid_model(monkeypatch):
+    """成功路徑：走 cohere.ClientV2 + client.rerank，型號為有效的 rerank-v3.5。
+
+    鎖住 2026-06 修正前的 bug（v1 `Client` 呼 .v2.rerank + 不存在的 rerank-v4.0）。
+    """
+    import sys
+    import types
+
+    from polaris.retrieval.retriever import _cohere_rerank
+    from polaris.vectorstore.base import SearchResult as SR
+
+    captured: dict = {}
+
+    class _Hit:
+        def __init__(self, index, score):
+            self.index = index
+            self.relevance_score = score
+
+    class _Resp:
+        # 反轉順序 → 證明 rerank 真的有套用
+        results = [_Hit(1, 0.9), _Hit(0, 0.1)]
+
+    class _FakeClientV2:
+        def __init__(self, *a, **kw):
+            captured["api_key"] = kw.get("api_key")
+
+        def rerank(self, *, model, query, documents, top_n):
+            captured["model"] = model
+            captured["n_docs"] = len(documents)
+            return _Resp()
+
+    fake = types.ModuleType("cohere")
+    fake.ClientV2 = _FakeClientV2
+    monkeypatch.setitem(sys.modules, "cohere", fake)
+    monkeypatch.setenv("COHERE_API_KEY", "test-key")
+    monkeypatch.delenv("COHERE_RERANK_MODEL", raising=False)
+
+    out = [
+        SR(id="a", content="ca", score=0.5, metadata={"origin": "bm25"}),
+        SR(id="b", content="cb", score=0.4, metadata={"origin": "vector"}),
+    ]
+    reranked = _cohere_rerank("q", out, top_k=2)
+
+    assert captured["model"] == "rerank-v3.5"  # 有效型號（非 rerank-v4.0）
+    assert captured["api_key"] == "test-key"
+    assert [r.id for r in reranked] == ["b", "a"]  # 依 rerank 分數重排
+    assert reranked[0].metadata["origin"] == "rerank"
+    assert "rerank" in reranked[0].metadata["retrieval_channels"]
+
+
+def test_rerank_model_override_via_env(monkeypatch):
+    """COHERE_RERANK_MODEL 可覆寫型號（部署彈性）。"""
+    import sys
+    import types
+
+    from polaris.retrieval.retriever import _cohere_rerank
+    from polaris.vectorstore.base import SearchResult as SR
+
+    captured: dict = {}
+
+    class _Resp:
+        results = []  # 空結果 → 回空 list，足以驗證型號傳遞
+
+    class _FakeClientV2:
+        def __init__(self, *a, **kw):
+            pass
+
+        def rerank(self, *, model, query, documents, top_n):
+            captured["model"] = model
+            return _Resp()
+
+    fake = types.ModuleType("cohere")
+    fake.ClientV2 = _FakeClientV2
+    monkeypatch.setitem(sys.modules, "cohere", fake)
+    monkeypatch.setenv("COHERE_API_KEY", "test-key")
+    monkeypatch.setenv("COHERE_RERANK_MODEL", "rerank-multilingual-v3.0")
+
+    _cohere_rerank("q", [SR(id="a", content="ca", score=0.5, metadata={})], top_k=1)
+    assert captured["model"] == "rerank-multilingual-v3.0"
+
+
 def test_rerank_skip_logs_debug_when_no_key(caplog):
     """No COHERE_API_KEY → debug log explains why rerank was skipped (review nit #5)."""
     import logging
