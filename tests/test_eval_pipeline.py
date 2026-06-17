@@ -140,6 +140,18 @@ class TestReport:
         md = render_markdown(records, smoke_score(records))
         assert "煙測分" in md  # 誠實標註，防止誤判 G3 已過
         assert "達標率" in md
+        assert "stub 語料" in md  # 預設 stub 模式明示語料來源
+
+    def test_markdown_real_corpus_drops_stub_warning(self):
+        """真檢索（polaris_core）模式：報告改標真語料煙測、不再宣稱 stub / 非真分。"""
+        from polaris.eval.runner import run_dataset
+
+        items = load_dataset(DATASET)[:3]
+        records = run_dataset(items)
+        md = render_markdown(records, smoke_score(records), is_stub_corpus=False)
+        assert "stub 語料" not in md
+        assert "真資料煙測分" in md
+        assert "煙測分" in md and "達標率" in md  # 仍誠實標註：煙測 ≠ 事實正確率
 
 
 def test_ragas_not_installed_in_ci():

@@ -12,12 +12,25 @@ def render_markdown(
     is_stub_corpus: bool = True,
     ragas_scores: dict[str, float] | None = None,
 ) -> str:
-    """產 Markdown 報告。``is_stub_corpus=True`` 時標明煙測分（誠實原則）。"""
+    """產 Markdown 報告（誠實原則）。
+
+    ``is_stub_corpus=True``（CI / 無金鑰）：contexts 為 stub 語料 → 純 pipeline 煙測。
+    ``is_stub_corpus=False``（真檢索：polaris_core）：達標率即 G3/G4 煙測門檻，但煙測分
+    **不**等於事實正確率——後者要 Ragas 才是完整真分。
+    """
     lines = ["# Polaris Desk Eval 報告", ""]
     if is_stub_corpus:
         lines += [
             "> ⚠️ **pipeline 煙測分**（contexts 為 stub 語料）——證明管線通、合規守住；",
             "> **非 G3 真分**。R4 真資料入庫後重跑才是第一個真分。",
+            "",
+        ]
+    else:
+        lines += [
+            "> ℹ️ **真資料煙測分**（contexts 來自 polaris_core 真語料）——證明管線通、引用接地、"
+            "合規守住；達標率即 G3/G4 煙測門檻（≥ 80%）。",
+            "> 注意：煙測分**不**等於事實正確率；完整 G3 真分需 Ragas "
+            "CP/Faithfulness/AR（裝 `[eval]` extra + 金鑰）。",
             "",
         ]
     lines += [
