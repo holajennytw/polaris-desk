@@ -5,12 +5,16 @@
 """
 from __future__ import annotations
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        populate_by_name=True,
     )
 
     # --- 向量庫後端開關（雲端 ↔ 本地就靠這個）---
@@ -59,8 +63,13 @@ class Settings(BaseSettings):
     top_k: int = 8
 
     # R7 前端跨域（CORS）允許來源；逗號分隔。預設本地 dev（Next.js 3000 / Chainlit 8501）；
-    # 雲端設成 R7 的 Vercel 網域（POLARIS_CORS_ORIGINS=https://<r7-domain>）。
-    cors_origins: str = "http://localhost:3000,http://localhost:8501"
+    # 雲端設成 R7 的 Vercel 網域。env 同時收 `POLARIS_CORS_ORIGINS`（runbook / .env.example /
+    # Cloud Run 部署指令用）與 `CORS_ORIGINS`（API 使用指南用）——兩個歷史名稱都吃，避免
+    # 設了卻被 `extra="ignore"` 默默丟掉、CORS 仍停在 localhost 而擋掉 Vercel 前端。
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:8501",
+        validation_alias=AliasChoices("POLARIS_CORS_ORIGINS", "CORS_ORIGINS", "cors_origins"),
+    )
 
     # 使用者登入（R7-1：Google OAuth + Firestore 活動紀錄）。後端只需 client_id 驗
     # id_token 的 aud；client secret 留前端（NextAuth）。留空 = 任何 token 都驗不過 →
