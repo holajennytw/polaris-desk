@@ -29,7 +29,8 @@
 
 ### 需求（澄清後）
 1. **登入**：前端支援帳號登入（Google OAuth；R7 設定頁 UI 已就緒，按鈕目前無作用）。
-2. **使用者活動紀錄**：登入後記錄使用者在 Polaris Desk 做過的事 —— **類似 Claude Code 左側的歷史 session 側欄**：每跑一次研究 / 同業比較留一筆，之後可回去點開重看。
+2. **使用者活動紀錄**：登入後記錄使用者在 Polaris Desk 做過的事 —— 每跑一次研究 / 同業比較留一筆，之後可回去點開重看。
+   - **版面（2026-06-18 定）**：用 R7 現有的 **`/history` 分頁**呈現即可，**不需**做成 Claude Code 那種常駐側欄（PM 確認「紀錄體驗不一定要接近 Claude Code」）。
 3. （連帶）**訂閱清單** per-user 持久化，與紀錄共用同一儲存後端。
 
 → 這代表真的需要**使用者身分**（綁紀錄到人）+ 一個**非 `polaris_core` 的寫入庫**（憲法：app 不寫 core）。
@@ -48,8 +49,16 @@
 
 ### ✅ 子決策（2026-06-18 已拍板）
 1. **Magic Link** → ❌ **砍**。只做 Google OAuth；設定頁的「工作信箱 Magic Link」UI 移除 / 隱藏，不接寄信服務（省 Resend/SendGrid 一個坑）。
-2. **紀錄深度** → **B. 完整還原**。Firestore 每筆 session 存整包 `answer/evidence/react_steps/citations`，點開歷史直接還原當時答案（真・Claude Code 左欄體驗），**不重打 API**。
+2. **紀錄深度** → **B. 完整還原**。Firestore 每筆 session 存整包 `answer/evidence/react_steps/citations`，在 `/history` 頁點開直接還原當時答案，**不重打 API**。（版面是現有 `/history` 分頁，非側欄；B 級指的是「點開還原」這個行為。）
    - **localStorage** 僅作為**未登入 / 斷網時**的本機降級；登入狀態一律以 Firestore 為準（B 級跨裝置還原）。
+
+### 📍 R7 現有前端要改什麼（2026-06-18 讀 `frontend-UI_2026_0618` 分支實況）
+R7 的 app 已很完整（Next.js，`/history` 分頁已存在、grouped 今日/本週/更早）。要落地本需求，前端需動：
+1. **`/history` 由 A 級升 B 級**：目前點一筆是帶 `?q=` **重跑**查詢（localStorage）；改為讀後端 `GET /history` 列表 + `GET /history/{id}` **還原整包 result**（登入時）；localStorage 退為未登入/斷網 fallback。
+2. **接登入**：設定頁 Google 按鈕目前**無 onClick**、帳號 hardcoded「Jing Chen / 已登入」→ 接 NextAuth `signIn("google")`、AppShell 顯示真實使用者、呼叫後端帶 `Authorization: Bearer`。
+3. **砍 Magic Link**：設定頁「工作郵箱登入」表單**目前仍在**（`setSent` mock）→ 依決議移除。
+4. **寫入紀錄**：研究 / 同業比較拿到結果後 `POST /history`（B 級帶整包 `result`）。
+> 串接細節見 [`3_給R7的串接指南_Auth_Firestore.md`](./3_給R7的串接指南_Auth_Firestore.md) §3。
 
 > 🔧 **串接做法（給 R7 照著做）**：[`3_給R7的串接指南_Auth_Firestore.md`](./3_給R7的串接指南_Auth_Firestore.md)
 > —— 含 NextAuth 設定、後端 JWT 驗證、Firestore 資料模型、`/history`＋`/subscriptions` 端點規格、env 對照、分工。

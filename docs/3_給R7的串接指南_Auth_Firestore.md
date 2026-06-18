@@ -2,7 +2,7 @@
 
 > **誰看**：R7（前端）＋ R2/R3（後端）。**對應決策**：[`2_需求清單_from_R7.md`](./2_需求清單_from_R7.md) R7-1。
 > **目標**：登入用 **Google OAuth**（NextAuth），登入後把每次研究 / 同業比較存成
-> **可完整還原的歷史 session**（B 級，類似 Claude Code 左欄），存進 **Firestore**。
+> **可完整還原的歷史 session**（B 級：點開還原當時答案，呈現於現有 `/history` 分頁，非側欄），存進 **Firestore**。
 > **時程**：登入版在**測試期就接起來、Demo 當天用登入版展示**（含個人歷史）。
 > **不變量**：無 token → 匿名照跑（**僅** token-free CI 與斷網 / Google 不可達時的降級，非預設）；不寫 `polaris_core`；金鑰進 Secret Manager。
 
@@ -297,7 +297,7 @@ def post_subscriptions(body: SubsIn, user=Depends(current_user)):
 ```
 users/{uid}                         # uid = Google sub（穩定、唯一）
   ├─ tickers: ["2330", "2454"]      # 訂閱清單（與 history 共用同一 user doc）
-  └─ sessions/{sessionId}           # 活動歷史（Claude-Code 側欄）
+  └─ sessions/{sessionId}           # 活動歷史（呈現於 /history 分頁）
         origin: "research" | "peer"
         query:  string
         tickers: string[]
