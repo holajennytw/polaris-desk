@@ -1,14 +1,11 @@
-event_id,event_name,category,source_system,required_fields,severity,demo_relevance
-earnings_call,法說會,Investor Relations,公司IR/公開資訊,"日期,簡報,逐字稿或摘要,問答重點",Medium,場景1/3
-earnings_release,財報公告,Financial,MOPS/公司公告,"期間,營收,毛利率,EPS,管理層說明",High,場景1
-monthly_revenue,月營收公告,Financial,MOPS,"年月,本月營收,去年同期,年增率,累計營收",High,投研基礎
-dividend,股利公告,Shareholder,MOPS/董事會,"每股現金股利,股票股利,除權息日,發放日",Medium,
-board_meeting,董事會,Governance,MOPS,"開會日期,決議事項,影響說明",Medium,場景2
-material_info,重大訊息,Disclosure,MOPS,"事實發生日,主旨,說明,對公司影響",High,場景2
-capital_increase,增資,Capital Market,MOPS,"金額,股數,用途,價格,稀釋影響",High,
-capital_reduction,減資,Capital Market,MOPS,"原因,金額,比例,基準日,對股東影響",High,
-share_buyback,庫藏股,Shareholder,MOPS,"買回目的,區間,股數,價格上限",Medium,
-merger,併購,Strategic,MOPS,"交易對象,價格,支付方式,股權比例,綜效",High,
-asset_disposal,處分長期投資/資產,Strategic,MOPS,"處分標的,交易對手,價格,帳列金額,損益,未來影響",High,場景2
-new_factory,擴廠,Operations,公司公告/新聞,"地點,投資金額,產能,時程,客戶",Medium,場景3
-guidance,財測發布/展望,Management,法說會/公告,"期間,假設,區間,主要變因",High,紅隊
+event_key,event_type,event_type_name,event_subtype,event_subtype_name,category,source_system,required_fields,severity,demo_relevance,r6_notes
+earnings_call,earnings_call,法說會,,,Investor Relations,公司 IR / 公開資訊,日期、期間、公司、簡報、逐字稿或摘要、問答重點,Medium,場景1/3,第一層事件類型；用於法說會 / earnings call chunks。
+major_news.capital_increase,major_news,重大訊息,capital_increase,增資,Disclosure,MOPS,金額、股數、用途、價格、稀釋影響,High,場景2,重大訊息子分類；用於資本市場事件。
+major_news.capital_reduction,major_news,重大訊息,capital_reduction,減資,Disclosure,MOPS,原因、金額、比例、基準日、對股東影響,High,場景2,重大訊息子分類；需注意是否涉及彌補虧損或現金減資。
+major_news.share_buyback,major_news,重大訊息,share_buyback,庫藏股,Disclosure,MOPS,買回目的、區間、股數、價格上限,Medium,場景2,重大訊息子分類；避免被誤判為投資建議。
+major_news.merger,major_news,重大訊息,merger,併購,Disclosure,MOPS,交易對象、價格、支付方式、股權比例,High,場景2,重大訊息子分類；包含合併、收購、股份轉換等。
+major_news.asset_disposal,major_news,重大訊息,asset_disposal,處分長期投資 / 資產,Disclosure,MOPS,處分標的、交易對手、價格、帳列金額,High,場景2,重大訊息子分類；可協助排除非營運性損益混淆。
+major_news.new_factory,major_news,重大訊息,new_factory,擴廠,Disclosure,MOPS / 公司公告 / 新聞,地點、投資金額、產能、時程、客戶,Medium,場景3,重大訊息子分類；與產能、供應鏈、AI 需求題可能相關。
+major_news.others,major_news,重大訊息,others,其他重大訊息,Disclosure,MOPS,事件日期、主旨、說明、對公司影響,Medium,場景2,無法歸入上述 subtype 時使用；後續可依測試結果再拆細。
+news,news,新聞,,,News,新聞 / 公開資訊,日期、來源、公司、事件摘要、關聯主題,Medium,場景3,第一層事件類型；非 MOPS 重大訊息，需注意來源可信度。
+monthly_revenue,monthly_revenue,月營收,,,Financial,MOPS / 公司公告,年月、本月營收、年增率、月增率、累計營收,High,投研基礎,第一層事件類型；用於月營收公告，避免混入法說會題。
