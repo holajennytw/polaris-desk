@@ -1,0 +1,19 @@
+# .gitleaks.toml — Polaris Desk 機密掃描設定
+#
+# 延用 gitleaks 內建全部規則（憲法「金鑰永不進 git」仍由預設規則把關）；
+# 僅針對「引用接地」的 cite_key / source_id *範例值* 加白名單。
+#
+# 背景：文件與 mock 內的引用識別碼形如
+#   chunk-2330-2026Q1-fin / stub-2330-2026Q1-call / fin-2330-2026Q1 / news-...
+# （<前綴>-<ticker>-<期間>[-<類型>]），是引用追蹤用的來源 ID，**不是金鑰**。
+# gitleaks 預設 `generic-api-key` 規則因其高 entropy 誤判（PR #110 docs L571/579）。
+# 此白名單只放這種固定形狀的範例值，不放整個 docs/ 目錄，避免遮蔽真實外洩。
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "引用接地 cite_key / source_id 範例值（非金鑰；generic-api-key 高 entropy 誤判）"
+regexes = [
+  '''\b(chunk|stub|fin|call|news|rev|major)-\d{3,4}-\d{4}Q\d(-[a-z]+)?\b''',
+]
