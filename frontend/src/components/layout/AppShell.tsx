@@ -111,7 +111,7 @@ export function AppShell({
           style={{ background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left" }}
         >
           <div className="brand-star">
-            <Icon name="star" size={17} fill="currentColor" sw={0} />
+            <Icon name="star" size={22} fill="currentColor" sw={0} />
           </div>
           <div>
             <div className="brand-name">Polaris Desk</div>

@@ -145,16 +145,15 @@ export function normalizeNews(raw: NewsResponse): NewsVM {
 export function normalizeDoc(raw: DocRaw): DocVM {
   return {
     id: raw.id,
-    title: raw.title,
-    kind: raw.kind,
-    company: raw.company,
-    period: raw.period,
-    pages: raw.pages,
-    size: raw.size,
-    cite: raw.source_key,
+    ticker: raw.ticker ?? raw.company ?? "",
+    company_name: raw.company_name ?? raw.company ?? "",
+    doc_type: raw.doc_type ?? raw.kind ?? "",
+    fiscal_period: raw.fiscal_period ?? raw.period ?? "",
+    source_file: raw.source_file ?? raw.title ?? "",
+    page_count: raw.page_count ?? raw.pages ?? 0,
+    published_at: raw.published_at ?? raw.time ?? "",
+    fetched_at: raw.fetched_at ?? raw.time ?? "",
     ingested: raw.ingested,
-    time: raw.time,
-    tags: raw.tags,
   };
 }
 

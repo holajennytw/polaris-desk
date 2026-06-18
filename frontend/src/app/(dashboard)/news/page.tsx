@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import useSWR from "swr";
+import { Icon } from "@/components/ui/Icon";
 import { api } from "@/lib/api";
 import { useCompanies } from "@/hooks/useCompanies";
 
@@ -26,16 +27,15 @@ export default function NewsPage() {
 
   return (
     <div className="page-scroll">
-      <div className="page" style={{ maxWidth: 800 }}>
+      <div className="page narrow">
         <div className="page-head">
           <div className="page-eyebrow">新聞 · /news</div>
-          <h1 className="page-title" style={{ fontSize: 24 }}>市場新聞</h1>
+          <h1 className="page-title">市場新聞</h1>
           {data?.updated && (
-            <div className="font-mono" style={{ fontSize: 13, color: "rgb(var(--muted))" }}>
-              更新：{data.updated}
-            </div>
+            <p className="page-desc">更新：{data.updated}</p>
           )}
         </div>
+
         <div className="news-tabs">
           {tabs.map((t) => (
             <button
@@ -45,52 +45,79 @@ export default function NewsPage() {
             >
               {t.id === "all" ? "全部" : (tickerToName[t.id] ?? t.label)}
               {t.count > 0 && (
-                <span className="font-mono" style={{ fontSize: 12, marginLeft: 4, color: "rgb(var(--muted))" }}>
+                <span className="font-mono" style={{ fontSize: 16, marginLeft: 5, opacity: 0.6 }}>
                   {t.count}
                 </span>
               )}
             </button>
           ))}
         </div>
-        {isLoading ? (
-          <div style={{ padding: 24, color: "rgb(var(--muted))" }}>載入中...</div>
-        ) : items.length === 0 ? (
-          <div style={{ padding: 24, color: "rgb(var(--muted))" }}>暫無新聞資料</div>
-        ) : (
-          <div className="news-feed">
-            {items.map((item) => (
-              <div key={item.id} className="news-item">
-                <div className="ni-src">
-                  {tickerToName[item.cite] ?? item.cite}
-                  {tickerToName[item.cite] && (
-                    <span className="font-mono" style={{ marginLeft: 5, opacity: 0.6 }}>{item.cite}</span>
-                  )}
-                  {item.time && <> · {fmtDate(item.time)}</>}
-                </div>
-                {item.url ? (
-                  <a
-                    className="ni-title"
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "inherit", textDecoration: "none", display: "block" }}
-                  >
-                    {item.title}
-                  </a>
-                ) : (
-                  <div className="ni-title">{item.title}</div>
-                )}
-                {item.tags.length > 0 && (
-                  <div className="ni-tags">
-                    {item.tags.map((t, i) => (
-                      <span key={i} className="tag muted">{tickerToName[t] ?? t}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+
+        <div className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-head">
+            <span className="panel-title">
+              <Icon name="news" size={15} style={{ color: "rgb(var(--primary))", verticalAlign: "-2px", marginRight: 6 }} />
+              新聞列表
+            </span>
+            {!isLoading && (
+              <span className="panel-meta">{items.length} 則</span>
+            )}
           </div>
-        )}
+
+          {isLoading ? (
+            <div style={{ padding: "48px 16px", textAlign: "center", color: "rgb(var(--muted))" }}>
+              <Icon name="news" size={28} style={{ marginBottom: 10, opacity: 0.25 }} />
+              <div>載入中...</div>
+            </div>
+          ) : items.length === 0 ? (
+            <div style={{ padding: "48px 16px", textAlign: "center", color: "rgb(var(--muted))" }}>
+              <Icon name="news" size={32} style={{ marginBottom: 10, opacity: 0.25 }} />
+              <div style={{ fontWeight: 500, marginBottom: 4 }}>暫無新聞資料</div>
+              <div style={{ fontSize: 13 }}>目前所選分類無可顯示的新聞</div>
+            </div>
+          ) : (
+            items.map((item, i) => {
+              const sourceName = tickerToName[item.cite] ?? item.cite;
+              const row = (
+                <div
+                  key={item.id}
+                  className="news-row"
+                  style={{ animationDelay: `${i * 45}ms` }}
+                >
+                  <div className="ni-icon">
+                    <Icon name="news" size={17} />
+                  </div>
+                  <div className="ni-body">
+                    <div className="ni-title">{item.title}</div>
+                    <div className="ni-meta font-mono">
+                      {sourceName}
+                      {item.cite !== sourceName && (
+                        <span style={{ opacity: 0.55, marginLeft: 4 }}>{item.cite}</span>
+                      )}
+                      {item.time && <> · {fmtDate(item.time)}</>}
+                    </div>
+                    {item.tags.length > 0 && (
+                      <div className="sr-only" aria-label={`標籤：${item.tags.map(t => tickerToName[t] ?? t).join("、")}`} />
+                    )}
+                  </div>
+                  <Icon name="chevR" size={15} style={{ color: "rgb(var(--muted))", flexShrink: 0 }} />
+                </div>
+              );
+
+              return item.url ? (
+                <a
+                  key={item.id}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none", color: "inherit", display: "block" }}
+                >
+                  {row}
+                </a>
+              ) : row;
+            })
+          )}
+        </div>
       </div>
     </div>
   );

@@ -43,7 +43,7 @@ export default function HistoryPage() {
 
   return (
     <div className="page-scroll">
-      <div className="page">
+      <div className="page narrow">
         <div className="page-head">
           <div className="page-eyebrow">對話紀錄 · /history</div>
           <h1 className="page-title">對話紀錄</h1>
@@ -80,22 +80,30 @@ export default function HistoryPage() {
                 }}>
                   {group.label}
                 </div>
-                {group.items.map(item => (
+                {group.items.map((item, i) => (
                   <Link
                     key={item.id}
                     href={"/" + item.page + "?q=" + encodeURIComponent(item.query)}
                     className="history-item"
-                    style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderBottom: "1px solid rgb(var(--border))", textDecoration: "none", color: "inherit", cursor: "pointer" }}
+                    style={{ animationDelay: `${i * 45}ms` }}
                   >
-                    <Icon name={item.page === "peer" ? "scale" : "brain"} size={16} style={{ color: "rgb(var(--primary))", flexShrink: 0 }}/>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 500, marginBottom: 2 }}>{item.query}</div>
-                      <div className="font-mono" style={{ fontSize: 13, color: "rgb(var(--muted))" }}>
+                    <div className="ni-icon">
+                      <Icon name={item.page === "peer" ? "scale" : "brain"} size={17} />
+                    </div>
+                    <div className="history-body">
+                      <div className="history-query">
+                        {item.query || (
+                          <span style={{ color: "rgb(var(--muted))" }}>
+                            {item.page === "peer" ? "同業比較查詢" : "研究助理查詢"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="history-meta font-mono">
                         {item.page === "peer" ? "同業比較" : "研究助理"} · {item.time}
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {item.tags.map((t, i) => <span key={i} className="tag muted" style={{ fontSize: 12 }}>{t}</span>)}
+                    <div className="history-tags">
+                      {item.tags.map((t, ti) => <span key={ti} className="tag muted" style={{ fontSize: 12 }}>{t}</span>)}
                     </div>
                     <Icon name="chevR" size={15} style={{ color: "rgb(var(--muted))", flexShrink: 0 }}/>
                   </Link>

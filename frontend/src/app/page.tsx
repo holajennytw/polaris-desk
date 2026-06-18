@@ -1,9 +1,40 @@
 "use client";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { SpotlightCard } from "@/components/ui/SpotlightCard";
+
+function NumberTicker({ target, suffix = "", decimals = 0, delay = 0, formatter }: {
+  target: number; suffix?: string; decimals?: number; delay?: number;
+  formatter?: (v: number) => string;
+}) {
+  const [val, setVal] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      obs.disconnect();
+      const t0 = performance.now() + delay;
+      const duration = 1400;
+      const tick = (now: number) => {
+        if (now < t0) { requestAnimationFrame(tick); return; }
+        const t = Math.min((now - t0) / duration, 1);
+        const ease = 1 - Math.pow(1 - t, 3);
+        setVal(ease * target);
+        if (t < 1) requestAnimationFrame(tick); else setVal(target);
+      };
+      requestAnimationFrame(tick);
+    }, { threshold: 0.5 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [target, delay]);
+  const display = formatter ? formatter(val) : decimals > 0 ? val.toFixed(decimals) : String(Math.round(val));
+  return <div ref={ref} className="lp-stat-v font-display">{display}{suffix}</div>;
+}
 
 const LP_MOB_NAV = [
   { href: "/",              label: "首頁", icon: "home"  as const },
@@ -34,7 +65,7 @@ export default function LandingPage() {
       <nav className="lp-nav">
         <div className="lp-brand">
           <div className="brand-star">
-            <Icon name="star" size={17} fill="currentColor" sw={0} />
+            <Icon name="star" size={22} fill="currentColor" sw={0} />
           </div>
           <div>
             <div className="brand-name font-display">Polaris Desk</div>
@@ -82,15 +113,15 @@ export default function LandingPage() {
           </div>
           <div className="lp-stats">
             <div>
-              <div className="lp-stat-v font-display">100%</div>
+              <NumberTicker target={100} suffix="%" delay={0}/>
               <div className="lp-stat-l">引用可溯源率</div>
             </div>
             <div>
-              <div className="lp-stat-v font-display">1.07s</div>
+              <NumberTicker target={1.07} suffix="s" decimals={2} delay={200}/>
               <div className="lp-stat-l">平均回應時間</div>
             </div>
             <div>
-              <div className="lp-stat-v font-display">3,481</div>
+              <NumberTicker target={3481} delay={400} formatter={v => Math.round(v).toLocaleString("zh-TW")}/>
               <div className="lp-stat-l">索引文件 chunks</div>
             </div>
           </div>
@@ -147,11 +178,11 @@ export default function LandingPage() {
         </div>
         <div className="lp-feat-grid">
           {FEATURES.map((f, i) => (
-            <div className="magic-card lp-feat" key={i}>
+            <SpotlightCard className="magic-card lp-feat" key={i}>
               <div className="lp-feat-ico"><Icon name={f.icon} size={22} /></div>
               <div className="lp-feat-t">{f.t}</div>
               <div className="lp-feat-d">{f.d}</div>
-            </div>
+            </SpotlightCard>
           ))}
         </div>
       </section>
@@ -168,7 +199,7 @@ export default function LandingPage() {
       <footer className="lp-foot">
         <div className="lp-brand">
           <div className="brand-star">
-            <Icon name="star" size={17} fill="currentColor" sw={0} />
+            <Icon name="star" size={22} fill="currentColor" sw={0} />
           </div>
           <div className="lp-foot-note">Polaris Desk · 前端參考原型 · 資料為 mock</div>
         </div>

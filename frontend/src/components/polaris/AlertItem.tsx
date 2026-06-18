@@ -1,4 +1,6 @@
 "use client";
+import { Icon } from "@/components/ui/Icon";
+import type { IconName } from "@/components/ui/Icon";
 import type { AlertVM } from "@/types/viewmodel";
 
 interface AlertItemProps {
@@ -9,8 +11,10 @@ interface AlertItemProps {
   onDoubleClick?: () => void;
 }
 
-const LEVEL_LABEL: Record<string, string> = {
-  high: "高", mid: "中", info: "低",
+const LEVEL_ICON: Record<string, IconName> = {
+  high: "alert",
+  mid: "alert",
+  info: "bolt",
 };
 
 export function AlertItem({ alert, selected, read, onClick, onDoubleClick }: AlertItemProps) {
@@ -24,10 +28,9 @@ export function AlertItem({ alert, selected, read, onClick, onDoubleClick }: Ale
       onClick={onClick}
       onDoubleClick={onDoubleClick}
     >
-      <span className={"tag " + alert.level}>
-        <span className="tdot" />
-        {LEVEL_LABEL[alert.level] ?? alert.level}
-      </span>
+      <div className={`alert-ico ${alert.level}`}>
+        <Icon name={LEVEL_ICON[alert.level] ?? "alert"} size={17} />
+      </div>
       <div className="alert-body">
         <div className="alert-title">{alert.title}</div>
         <div className="alert-sum">{alert.summary}</div>

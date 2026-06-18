@@ -163,18 +163,18 @@ export interface NewsVM {
   items: NewsItemVM[];
 }
 
+/** BQ-aligned doc view-model（R4 API 接通前部分欄位為 mock 值） */
 export interface DocVM {
   id: string;
-  title: string;
-  kind: string;
-  company: string;
-  period: string;
-  pages: number;
-  size: string;
-  cite: string;
+  ticker: string;
+  company_name: string;
+  doc_type: string;     // major_news | transcript | earnings_call | news
+  fiscal_period: string;
+  source_file: string;
+  page_count: number;
+  published_at: string;
+  fetched_at: string;
   ingested: boolean;
-  time: string;
-  tags: string[];
 }
 
 export interface LibraryVM {

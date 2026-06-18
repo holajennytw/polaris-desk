@@ -8,6 +8,7 @@ import { AlertItem } from "@/components/polaris/AlertItem";
 import { CitationList } from "@/components/polaris/CitationList";
 import { ReActTrace } from "@/components/polaris/ReActTrace";
 import { ComplianceBanner } from "@/components/polaris/ComplianceBanner";
+import { TextGenerate } from "@/components/ui/TextGenerate";
 import { DocViewer, type DocContent } from "@/components/polaris/DocViewer";
 import { ReportModal } from "@/components/polaris/ReportModal";
 import { KpiSkeleton, PanelSkeleton } from "@/components/polaris/Skeleton";
@@ -114,6 +115,7 @@ export default function ResearchPage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [ctxOpen, setCtxOpen] = useState(true);
 
   const startVoice = () => {
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
@@ -255,11 +257,11 @@ export default function ResearchPage() {
   return (
     <>
       <div className="page-scroll">
-        <div className="page research-layout">
+        <div className={"page research-layout" + (ctxOpen ? "" : " ctx-collapsed")}>
           <div className="rcol-main">
             <div className="page-head">
               <div className="page-eyebrow">研究助理 · /research</div>
-              <h1 className="page-title">{query||"研究分析"}</h1>
+              <h1 className="page-title">研究分析</h1>
             </div>
             {!hasQueried ? (
               <div className="peer-empty">
@@ -292,7 +294,7 @@ export default function ResearchPage() {
                         summary.length > 0 ? (
                           <ul className="summary">
                             {summary.map((s,i)=>(
-                              <li key={i}><span className="sum-marker"/><span>{s.text}<span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
+                              <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} /><span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
                             ))}
                           </ul>
                         ) : (
@@ -336,6 +338,10 @@ export default function ResearchPage() {
             </div>
           </div>
           <aside className="rcol-ctx">
+            <button className="ctx-toggle-btn" onClick={()=>setCtxOpen(o=>!o)}>
+              <Icon name={ctxOpen ? "chevR" : "panelLeft"} size={14}/>
+              <span className="ctx-toggle-label">{ctxOpen ? "收起側欄" : "展開側欄"}</span>
+            </button>
             <div className="panel ctx-panel">
               <div className="panel-head">
                 <span className="panel-title"><Icon name="brain" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>模型思考追蹤</span>

@@ -138,8 +138,8 @@ function fmtYoy(v: number | null): string {
 function PeerKpiGrid({ aName, bName, aTicker, bTicker }: {
   aName: string; bName: string; aTicker: string; bTicker: string;
 }) {
-  const aRows = useFinancials(aTicker || null);
-  const bRows = useFinancials(bTicker || null);
+  const { rows: aRows } = useFinancials(aTicker || null);
+  const { rows: bRows } = useFinancials(bTicker || null);
   const aYoy = getLatestYoy(aRows);
   const bYoy = getLatestYoy(bRows);
   const yoyDiff = (aYoy !== null && bYoy !== null)
@@ -336,6 +336,7 @@ export default function PeerPage() {
   const [stepN, setStepN] = useState(0);
   const [isCheckingContra, setIsCheckingContra] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [ctxOpen, setCtxOpen] = useState(true);
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -470,7 +471,7 @@ export default function PeerPage() {
   return (
     <>
       <div className="page-scroll">
-        <div className="page peer-page research-layout">
+        <div className={"page peer-page research-layout" + (ctxOpen ? "" : " ctx-collapsed")}>
           <div className="rcol-main">
             <div className="page-head">
               <div className="page-eyebrow">同業比較 · /peer</div>
@@ -543,6 +544,10 @@ export default function PeerPage() {
 
           {/* Sidebar */}
           <aside className="rcol-ctx">
+            <button className="ctx-toggle-btn" onClick={()=>setCtxOpen(o=>!o)}>
+              <Icon name={ctxOpen ? "chevR" : "panelLeft"} size={14}/>
+              <span className="ctx-toggle-label">{ctxOpen ? "收起側欄" : "展開側欄"}</span>
+            </button>
             <div className="panel ctx-panel">
               <div className="panel-head">
                 <span className="panel-title"><Icon name="brain" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>模型思考追蹤</span>
@@ -562,7 +567,6 @@ export default function PeerPage() {
                 </>
               )}
             </div>
-
             <div className="panel ctx-panel">
               <div className="panel-head">
                 <span className="panel-title"><Icon name="alert" size={14} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>監控系統警示</span>
@@ -581,7 +585,6 @@ export default function PeerPage() {
                 }
               </div>
             </div>
-
             <div className="panel ctx-panel">
               <div className="panel-head">
                 <span className="panel-title"><Icon name="quote" size={14} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>引用追蹤器</span>

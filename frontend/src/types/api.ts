@@ -170,18 +170,27 @@ export interface NewsResponse {
   items: NewsItemRaw[];
 }
 
+/** BQ-aligned: colpali_pages × company_dim JOIN（R4 API 接通前為 mock） */
 export interface DocRaw {
-  id: string;
-  title: string;
-  kind: string;
-  company: string;
-  period: string;
-  pages: number;
-  size: string;
-  source_key: string;
-  ingested: boolean;
-  time: string;
-  tags: string[];
+  id: string;           // page_id 或複合 key
+  ticker: string;       // BQ join key
+  company_name: string; // company_dim.company_name
+  doc_type: string;     // major_news | transcript | earnings_call | news
+  fiscal_period: string; // 如 2025Q4
+  source_file: string;  // 原始檔名
+  page_count: number;   // colpali_pages 中該文件的頁數
+  published_at: string; // ISO date
+  fetched_at: string;   // 抓取日 ISO date
+  ingested: boolean;    // 是否已建 chunks 索引
+  // 向下相容舊 mock 欄位（接通 BQ API 後移除）
+  title?: string;
+  kind?: string;
+  company?: string;
+  period?: string;
+  pages?: number;
+  size?: string;
+  time?: string;
+  tags?: string[];
 }
 
 export interface LibraryStats {
