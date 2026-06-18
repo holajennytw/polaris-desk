@@ -23,7 +23,7 @@ ADD COLUMN IF NOT EXISTS event_key STRING,
 ADD COLUMN IF NOT EXISTS source_key STRING,
 ADD COLUMN IF NOT EXISTS published_year INT64,
 ADD COLUMN IF NOT EXISTS published_month INT64,
-ADD COLUMN IF NOT EXISTS published_yyyymm STRING;
+ADD COLUMN IF NOT EXISTS published_yyyymm INT64;
 
 UPDATE `polaris-desk-team.polaris_core.colpali_pages`
 SET
@@ -31,7 +31,7 @@ SET
   source_key = 'PRIMARY_COMPANY_IR',
   published_year = EXTRACT(YEAR FROM published_at),
   published_month = EXTRACT(MONTH FROM published_at),
-  published_yyyymm = FORMAT_DATE('%Y%m', published_at)
+  published_yyyymm = CAST(FORMAT_DATE('%Y%m', published_at) AS INT64)
 WHERE TRUE;
 
 -- ── 套用後驗證（預期 5701，且新欄位皆無 NULL）─────────────────────────────
