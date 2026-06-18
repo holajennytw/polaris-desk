@@ -21,10 +21,10 @@ async function fetchFinancials(ticker: string): Promise<FinancialRow[]> {
 
 export function useFinancials(ticker: string | null) {
   const key = ticker ? `financials-${ticker}` : null;
-  const { data } = useSWR<FinancialRow[]>(key, () => fetchFinancials(ticker!), {
+  const { data, isLoading } = useSWR<FinancialRow[]>(key, () => fetchFinancials(ticker!), {
     revalidateOnFocus: false,
   });
-  return data ?? [];
+  return { rows: data ?? [], isLoading: !!ticker && isLoading };
 }
 
 // 從 query 文字 + 已知公司清單推斷 ticker

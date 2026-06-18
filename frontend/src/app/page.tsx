@@ -2,7 +2,16 @@
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+
+const LP_MOB_NAV = [
+  { href: "/",              label: "首頁", icon: "home"  as const },
+  { href: "/peer",          label: "同業", icon: "scale" as const },
+  { href: "/research",      label: "研究", icon: "brain" as const },
+  { href: "/notifications", label: "通知", icon: "bell"  as const },
+  { href: "/settings",      label: "設定", icon: "settings" as const },
+];
 
 const FEATURES = [
   { icon: "brain" as const, t: "ReAct 研究助理", d: "輸入問題，模型逐步 THINK／ACT／OBS 規劃、檢索、計算與合規檢查，全程可視。" },
@@ -18,6 +27,7 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const isDark = mounted && resolvedTheme === "dark";
+  const pathname = usePathname();
 
   return (
     <div className="landing">
@@ -146,10 +156,19 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <nav className="mobnav">
+        {LP_MOB_NAV.map(it => (
+          <Link key={it.href} href={it.href} className={"mobnav-item" + (pathname === it.href ? " active" : "")}>
+            <span className="mobnav-ico"><Icon name={it.icon} size={20} /></span>
+            <span>{it.label}</span>
+          </Link>
+        ))}
+      </nav>
+
       <footer className="lp-foot">
         <div className="lp-brand">
-          <div className="brand-star" style={{ width: 26, height: 26 }}>
-            <Icon name="star" size={14} fill="currentColor" sw={0} />
+          <div className="brand-star">
+            <Icon name="star" size={17} fill="currentColor" sw={0} />
           </div>
           <div className="lp-foot-note">Polaris Desk · 前端參考原型 · 資料為 mock</div>
         </div>

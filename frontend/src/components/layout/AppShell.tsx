@@ -37,7 +37,7 @@ const MOB_NAV: NavItem[] = [
   { href: "/peer", label: "同業", icon: "scale" },
   { href: "/research", label: "研究", icon: "brain" },
   { href: "/notifications", label: "通知", icon: "bell", badge: true },
-  { href: "/settings", label: "設定", icon: "gear" },
+  { href: "/settings", label: "設定", icon: "settings" },
 ];
 
 const CRUMB: Record<string, string> = {
@@ -133,7 +133,7 @@ export function AppShell({
               <div className="user-role">分析師 · R7</div>
             </div>
             <span className="uc-gear">
-              <Icon name="gear" size={16} />
+              <Icon name="settings" size={16} />
             </span>
           </Link>
         </div>

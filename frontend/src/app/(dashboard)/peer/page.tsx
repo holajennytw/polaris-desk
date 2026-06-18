@@ -526,7 +526,7 @@ export default function PeerPage() {
             ) : (
               <div className="peer-empty">
                 <Icon name="scale" size={28} style={{color:"rgb(var(--muted))",marginBottom:12}}/>
-                <p>{!readyToCompare ? "請選擇兩間公司後送出查詢" : "選擇完成，送出查詢後顯示比較結果"}</p>
+                <p>{!readyToCompare ? "請從上方選擇，或是輸入問題後開始分析" : "公司已選定，送出查詢後顯示比較結果"}</p>
               </div>
             )}
 

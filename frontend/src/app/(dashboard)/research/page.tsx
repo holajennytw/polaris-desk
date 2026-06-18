@@ -137,7 +137,7 @@ export default function ResearchPage() {
   const reactSteps = data?.react ?? [];
   const citations = data?.citations ?? [];
 
-  const financialRows = useFinancials(inferredTicker);
+  const { rows: financialRows, isLoading: isLoadingFinancials } = useFinancials(inferredTicker);
   const financialKpis = financialsToKpis(financialRows);
 
   const researchAlerts = [
@@ -209,7 +209,10 @@ export default function ResearchPage() {
           setProgress(_ => 30 + Math.round(((i + 1) / total) * 70));
         }, 220 * (i + 1)));
       });
-      timers.current.push(setTimeout(() => setPhase("done"), 220 * total + 300));
+      timers.current.push(setTimeout(() => {
+        setPhase("done");
+        runContradictionCheck(result?.kpis ?? [], result?.summary ?? []);
+      }, 220 * total + 300));
 
     } catch {
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
@@ -266,7 +269,7 @@ export default function ResearchPage() {
             ) : (
               <>
                 <ComplianceBanner/>
-                {isMutating ? <KpiSkeleton/> : (
+                {(isMutating || isLoadingFinancials) ? <KpiSkeleton/> : (
                   (kpis.length > 0 || financialKpis.length > 0) && (
                     <div className="kpi-grid">
                       {kpis.length > 0
@@ -289,7 +292,7 @@ export default function ResearchPage() {
                         summary.length > 0 ? (
                           <ul className="summary">
                             {summary.map((s,i)=>(
-                              <li key={i}><span className="sum-marker"/><span>{s.text}<span className="cchip" onClick={()=>handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
+                              <li key={i}><span className="sum-marker"/><span>{s.text}<span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
                             ))}
                           </ul>
                         ) : (
