@@ -46,12 +46,13 @@
 | **紀錄 + 訂閱共用** | history 與 subscriptions **同一個 Firestore**，一次到位 | 避免日後兩次遷移（對應開會議題 A / E） |
 | **金鑰** | Google client secret / NextAuth secret → **Secret Manager**（憲法 III），不 commit | |
 
-### 🔶 仍待 R7 / PM 拍板的 2 個子決策
-1. **Magic Link 砍不砍**：R7 設定頁另有「工作信箱 Magic Link」UI。**R2 建議 Demo 階段砍掉**（多一條 auth 路徑 + 多一個寄信服務 Resend/SendGrid 的坑，Google OAuth 已足以提供身分）。→ 待 R7 確認。
-2. **紀錄深度 A 或 B**：
-   - **A. 只記清單 + 重跑**（`{query, page, tickers, time}`，點開重打 API）— R7 localStorage MVP 已是這個。
-   - **B. 完整還原**（額外存整包 `answer/evidence/react_steps` → 點開直接還原當時答案）— 真・Claude Code 體驗。
-   - **R2 建議**：Demo 走 A（localStorage 撐，後端零改動）；**v1（Demo 後）走 B + Firestore**。
+### ✅ 子決策（2026-06-18 已拍板）
+1. **Magic Link** → ❌ **砍**。只做 Google OAuth；設定頁的「工作信箱 Magic Link」UI 移除 / 隱藏，不接寄信服務（省 Resend/SendGrid 一個坑）。
+2. **紀錄深度** → **B. 完整還原**。Firestore 每筆 session 存整包 `answer/evidence/react_steps/citations`，點開歷史直接還原當時答案（真・Claude Code 左欄體驗），**不重打 API**。
+   - **Demo 過渡**：localStorage MVP 先頂著（同瀏覽器可用）；v1 切 Firestore 做正式 B 級跨裝置還原。
+
+> 🔧 **串接做法（給 R7 照著做）**：[`3_給R7的串接指南_Auth_Firestore.md`](./3_給R7的串接指南_Auth_Firestore.md)
+> —— 含 NextAuth 設定、後端 JWT 驗證、Firestore 資料模型、`/history`＋`/subscriptions` 端點規格、env 對照、分工。
 
 ### 時程定位
 - **Demo 階段**：維持**免登入** + localStorage 紀錄 MVP → Demo 不擋路、備援路徑單純。
@@ -64,7 +65,8 @@
 ### 待辦
 - [x] R2 回覆架構評估（Auth provider / 框架 / 驗證層 / 儲存後端）
 - [x] 儲存後端拍板 → **Firestore**
-- [ ] R7 確認：Magic Link 砍不砍（建議砍）
-- [ ] R7 / PM 確認：紀錄深度 A 或 B（建議 Demo=A、v1=B）
-- [ ] （v1）R2 立 Firestore + schema → R3 接 `/history`、`/subscriptions` 端點（或 workflow 結尾自動寫）
+- [x] Magic Link → **砍**
+- [x] 紀錄深度 → **B（完整還原）**
+- [ ] R7：設定頁移除 / 隱藏 Magic Link UI
+- [ ] （v1，Demo 後）R2 立 Firestore + schema（per-user session 文件存整包 result）→ R3 接 `/history`、`/subscriptions`（或 workflow 結尾自動寫）→ R7 切換掉 localStorage
 - [ ] merge 後把本結論回填 `feature/my-frontend-work_2026_0617` 的開會決策表（議題 A/E + Auth）
