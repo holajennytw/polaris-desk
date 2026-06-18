@@ -1,0 +1,52 @@
+[
+  {
+    "item_id": "news-2330-001",
+    "ticker": "2330",
+    "published_at": "2026-06-10T09:00:00",
+    "source": "經濟日報",
+    "url": "https://example.com/news/2330-001",
+    "title": "台積電 2025Q1 營收較去年同期成長，AI 需求帶動",
+    "content": "台積電公布 2025 年第一季合併營收，較去年同期成長，公司表示主要動能來自高效能運算與 AI 相關需求。",
+    "credibility": "A"
+  },
+  {
+    "item_id": "news-2330-002",
+    "ticker": "2330",
+    "published_at": "2026-06-10T11:30:00",
+    "source": "工商時報",
+    "url": "https://example.com/news/2330-002",
+    "title": "台積電宣布先進製程擴廠計畫",
+    "content": "台積電董事會通過先進製程擴廠案，以因應未來數年客戶在先進節點的產能需求。",
+    "credibility": "A"
+  },
+  {
+    "item_id": "news-2454-pos",
+    "ticker": "2454",
+    "published_at": "2026-06-11T08:30:00",
+    "source": "鉅亨網",
+    "url": "https://example.com/news/2454-pos",
+    "title": "聯發科 2026Q1 營收創新高、獲利成長優於預期",
+    "content": "聯發科公布第一季財報，營收創同期新高，獲利成長且優於市場原先預期。",
+    "credibility": "B"
+  },
+  {
+    "item_id": "news-2454-neg",
+    "ticker": "2454",
+    "published_at": "2026-06-11T15:00:00",
+    "source": "時報資訊",
+    "url": "https://example.com/news/2454-neg",
+    "title": "分析師：聯發科第二季營收恐下滑、終端需求疲弱",
+    "content": "部分分析師指出，受終端需求疲弱影響，聯發科第二季營收恐較第一季下滑。",
+    "credibility": "B"
+  },
+  {
+    "item_id": "news-redteam-001",
+    "ticker": "9999",
+    "published_at": "2026-06-12T10:00:00",
+    "source": "某論壇",
+    "url": "https://example.com/news/redteam-001",
+    "title": "某分析師喊進這檔",
+    "content": "獲利前景看好，建議買進！目前股價偏低，是加碼的好時機，看多後市。",
+    "credibility": null
+  }
+]
