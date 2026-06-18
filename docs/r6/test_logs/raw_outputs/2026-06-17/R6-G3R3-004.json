@@ -1,0 +1,151 @@
+{
+  "test_id": "R6-G3R3-004",
+  "query": "3034 聯詠 2025Q1 法說會提到哪些展望？",
+  "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+  "method": "POST",
+  "content_type": "application/json",
+  "started_at_utc": "2026-06-17T09:32:33.318473+00:00",
+  "finished_at_utc": "2026-06-17T09:32:58.888098+00:00",
+  "elapsed_seconds": 25.57,
+  "http_status": 200,
+  "request_body": {
+    "query": "3034 聯詠 2025Q1 法說會提到哪些展望？"
+  },
+  "response": {
+    "answer": "根據提供的引用片段，關於聯詠（3034）2025年第一季法說會所提到的展望與業務重點摘要如下：\n\n### 一、 法說會召開背景\n聯詠於2025年5月7日召開2025年第一季法人說明會 [2b4b9fac-8efd-4275-a825-1804dec9e350]。會議由副董事長王守仁針對第一季結果進行說明，並報告2025年第二季的營運展望 [2b4b9fac-8efd-4275-a825-1804dec9e350]。\n\n### 二、 產品技術與市佔展望\n1.  **平板 TDDI 市佔率提升**：聯詠近兩年在平板 TDDI（觸控與驅動整合 IC）的市佔率持續增加 [46ba9bd0-cd21-41f3-9e7a-cf6172a444fd]。\n2.  **競爭優勢**：市佔成長主因在於技術開發與產品設計獲得客戶肯定，特別是公司自主設計的 **e-pen（手寫筆）應用**以及**觸控體驗（touch experience）** [46ba9bd0-cd21-41f3-9e7a-cf6172a444fd]。\n\n### 三、 財務與營運展望\n1.  **第二季展望**：副董事長王守仁於會中報告了2025年第二季的展望 [2b4b9fac-8efd-4275-a825-1804dec9e350]，但提供的引用片段中未包含具體的營收指引數字或毛利率預估區間。\n2.  **資料不足說明**：部分引用片段（如 [7554a530-b24f-4364-b2d9-06048097d0c8]）提及之 AI 伺服器與雲端網路產品佔比，經核對上下文應屬於鴻海（Foxconn）之法說會內容 [93767102-64d8-4b45-b084-ba681cb59a84]，並非聯詠之業務展望，故不予採納。\n\n**結論：** 聯詠在2025Q1法說會中強調其平板 TDDI 產品憑藉手寫筆與觸控技術優勢，市佔率維持成長態勢；關於2025Q2的具體財務預測數字，現有資料片段記載不足。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "mops_f056750830fbf4ec",
+        "snippet": "聯詠科技公佈113年度自結數合併財務報告及114年第一季業績展望",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "2b4b9fac-8efd-4275-a825-1804dec9e350",
+        "snippet": "Novatek Microelectronics Corp. 2025 Q1 Earnings\nCall\nMay 7, 2025\nDavid Chen:\n各位投資人、分析師、媒體，大家午安。我是聯詠科技的副總經理以及發言人陳健興。非常歡\n迎大家再次來參加聯詠科技 2025 年第一季的法人\u0000明會。今天線上跟我們在一起的有我們聯\n詠科技的副董事長王守仁先生，還有財務長周聖呈先生，還有投資關係的處長 Tony 還有 Yvo\nnne。很高興能再一次跟大家在線上見面。今天的法\u0000會同時會用中英文來進行。今天的會議\n的整個議程如下。首先會有 Tony 這邊用英文報告聯詠 2025 年第一季的結果。接下來會由我\n們王守仁副董事長針對第一季的結果做進一步的\u0000明，同時也報告 2025 年第二季的這個展望\n。最後會開放給各位問答的時間。目前我們手上有收到的一些投資人的問題，各位若還有任何\n的問題想要問的，可以上傳給我們，我們收集以後，會有 Tony\n這邊來發問，那再由我們副董，還有財務長還有本人用中文來回答，然後再翻譯成英文。\nGood afternoon everyone. I would like to",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_a10a5fec5ca347a5",
+        "snippet": "公告本公司114年第一季法人說明會將於114年4月17日召開",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "93767102-64d8-4b45-b084-ba681cb59a84",
+        "snippet": "法說會逐字稿\n鴻海精密工業股份有限公司 2025 年第一季法人說明會\n會議日期及時間 ：2025 年 5 月14 日 台北時間下午3 點\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n鴻海精密工業股份有限公司\n2025 年第一季法人說明會\n公司與會者\n劉揚偉 Young Liu 鴻海精密工業股份有限公司 董事長\n黃德才 David Huang 鴻海精密工業股份有限公司 財務長\n巫俊毅 James Wu 鴻海精密工業股份有限公司 發言人\n方文妍 Kristen Fang 鴻海精密工業股份有限公司 投資人關係資深經理\n法說會提問者\nSharon Shih Morgan Stanley-分析師\nAngela Hsiang 凱基投顧-分析師\nCarrie Liu Citi-分析師\n方昱翔 三立財經-記者\n謝佩穎 TVBS新聞網-記者\nAlbert Hong J.P. Morgan-分析師\nArthur Liao 富邦投顧-分析師\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com |",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_70fa1e76f716baae",
+        "snippet": "公告本公司將受邀參加「BofA Securities 2025 Asia Tech Conference」之法說訊息",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "46ba9bd0-cd21-41f3-9e7a-cf6172a444fd",
+        "snippet": "cally are expecting to decrease sequentially.\n下一個問題是想請問就公司最近幾年在平板的 TDDI 市佔率有持續的增加。請問主要的原因為\n何？那不知道管理層是不是可以分享一下他的毛利率跟你手機相比情況是如何？\nSteve Wang:\n由於在這個技術開發和\u0000品設計上呢，聯詠的這個 tablet TDDI IC\n呢深受這個客\u0000的肯定。特別是我們裡面有這個自己設計的這種 e-pen\n就是筆的這個手寫，筆寫的這個應用，還有 touch 的這個體驗，客\u0000覺得相當肯定。所以\nNovatek 最近兩年他在這個 tablet TDDI\n的這個市佔呢，持續上升的這個情形，也是持續的在增加。\nTony Tseng:\nAccording to third-party research, Novatek has expanded share at tablet TDDI over\nthe past two years. What are major factors? Also wonder if you can share with us\nabout the gro",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_9cb3ca21b79f4a61",
+        "snippet": "公告本公司召開2024年第四季法人說明會",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "7554a530-b24f-4364-b2d9-06048097d0c8",
+        "snippet": "上次法說會的預期大致相當。\n從產品組合的角度來看，在 AI 伺服器的強勁成長帶動下，雲端網路產品的佔比顯著提升，相\n較去年第一季增加了6%，達到了34%的水準。同樣期間，消費智能產品的營收相較於去年也\n有一些成長，但是佔比降低到40%，顯示我們的產品組合持續朝向更均衡的方向發展。\n如同我在上次法說會提到的，今年全年雲端網路產品的占比將會接近消費智能產品。以四大產\n品來看，電腦終端的表現比預期還要好，但是消費智能和雲端網路都稍微的落後預期。不過整\n體上都還是維持平穩的表現。從整體獲利性來看，我們在毛利、營業利益及稅後淨利，都創下\n了歷史同期新高的表現。\n接下來，我來說明今年第二季的展望。\n過去一個多月來，美國關稅政策變化快速，對於全球供應鏈產生不小的影響。最近又加上匯率\n變動的因素，所以我們對於接下來的展望，會先抱持比較審慎的看法。整體來看，預期第二季\n相較於第一季，以及去年同期都將有顯著成長。\n從四個產品來看，在消費智能產品方面，主要的產品進入新舊產品交換期，再加上第一季有新\n產品推出，以及近期匯率的因素，我們預期季對季會有略為衰退的情況，相較於去年同期則大\n致持平。在雲端網路產品，隨",
+        "origin": "embedding"
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5273
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1422
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 14794
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3840
+      }
+    ]
+  },
+  "error": null
+}
