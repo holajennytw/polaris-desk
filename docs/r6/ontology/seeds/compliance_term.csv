@@ -1,0 +1,39 @@
+category,term_id,term_name,legal_basis,risk_pattern,forbidden_output,safe_response_rule,owner
+Project Policy,NFR_031,不得產出買賣建議,專題 NFR-031,使用者誘導系統給出買入/賣出/目標價/持股建議,"買進,賣出,加碼,減碼,目標價,保證獲利",只描述事實、來源、矛盾與風險，不給投資建議,R6
+Source Quality,UNSOURCED_NUMBER,無來源金融數字,Constitution II,答案含財務數字但無引用來源,未標來源的營收/EPS/毛利率,無來源即標錯；要求補來源或移除數字,R6
+Source Quality,UNVERIFIED_NEWS,未證實新聞,NFR-031 / 新聞白名單,把二手新聞或傳聞當成已確認事實,"證實,確認,必然影響",標示來源層級與日期；未有官方來源時列為未證實,R6
+Market Conduct,PRICE_TARGET,目標價,投顧法規風險 / NFR-031,要求系統給合理價或目標價,"目標價,合理價,上看,下看",拒絕給價位建議；可提供估值方法與公開假設,R6
+Market Conduct,POSITION_ADVICE,持股操作建議,投顧法規風險 / NFR-031,要求加碼、停損、是否續抱,"停損,停利,續抱,抄底,減碼",改為列出風險因子與資料來源，不建議操作,R6
+Market Conduct,RETURN_GUARANTEE,保證獲利/報酬,投顧法規風險 / NFR-031,暗示報酬確定或低風險套利,"穩賺,保證,無風險,必漲",移除保證語氣，改列不確定性與風險,R6
+Securities Law,INSIDER_TRADING,內線交易,證券交易法第157-1條,使用未公開重大消息推論交易行為,"可提前布局,內線消息顯示",提醒不得使用未公開資訊，僅引用公開資料,R6
+Disclosure,MATERIAL_INFORMATION,重大資訊,證券交易法第36條 / MOPS重大訊息,未確認來源即描述重大事件,"聽說,市場傳聞確認為事實",標明來源層級；無官方來源時列為未證實,R6
+Disclosure,EARNINGS_RELEASE,財報公告,證交法第36條 / 財報公告,混用不同期間或重編前後財務數字,最新財報一定顯示,標示期間、版本與來源日期,R6
+Disclosure,EARNINGS_GUIDANCE,財測/展望,公司公告 / 法說會揭露,把管理層展望當成保證,"一定達成,必然成長",使用區間與條件句，標明假設與不確定性,R6
+Disclosure,FINANCIAL_RESTATEMENT,重編財報,MOPS / 財報重編公告,未標示重編導致前後數字混用,沿用舊數字,優先使用最新重編後數字並標記版本,R6
+Disclosure,MONTHLY_REVENUE,月營收公告,MOPS 月營收公告,月營收與季/年財報口徑混用,月營收等於獲利,提醒月營收不是獲利；需搭配毛利率/費用資料,R6
+Governance,BOARD_RESOLUTION,董事會決議,公司法 / 證交法相關公告規範,把草案當成正式決議,董事會一定通過,區分草案、董事會通過、股東會通過,R6
+Governance,INDEPENDENT_DIRECTOR,獨立董事,證交法 / 公司治理相關規範,錯把一般董事當獨立董事,獨董已背書所有決策,確認身分與公告來源，避免過度推論,R6
+Governance,RELATED_PARTY,關係人交易,公開發行公司取得或處分資產處理準則,忽略交易對手關係與揭露義務,無重大影響,列出交易對手、關係、價格合理性與揭露缺口,R6
+Governance,SHARE_BUYBACK,庫藏股,證券交易法 / 庫藏股相關規範,把庫藏股解讀成投資建議,公司買回所以可買,僅描述買回目的、期間、股數與價格區間,R6
+Governance,MAJOR_SHAREHOLDER,大股東,證交法股權申報相關規範,忽略持股變動與申報門檻,大股東動向保證股價,只描述申報事實與可能風險，不推論操作,R6
+Governance,CORPORATE_GOVERNANCE,公司治理,公司治理評鑑/年報,泛稱治理良好但無來源,"治理最佳,無風險",要求引用評鑑、年報或公告來源,R6
+Capital Market,CAPITAL_INCREASE,增資,證交法 / 公司公告,未說明稀釋與資金用途,增資必然利多,描述目的、股數、價格、稀釋與用途，不下利多/利空結論,R6
+Capital Market,CAPITAL_REDUCTION,減資,證交法 / 公司公告,未區分彌補虧損、退還股款或組織調整,減資必然利多,標明減資原因、比例、基準日與股東影響,R6
+Capital Market,MERGER_ACQUISITION,併購,企業併購法 / 重大訊息,把意向書當成完成交易,併購已確定完成,區分傳聞、董事會決議、主管機關核准與交割完成,R6
+Asset Transaction,ASSET_DISPOSAL,處分資產/長期投資,取得或處分資產處理準則,遺漏交易對手、價格、帳列金額或損益,處分一定改善財務,檢查必要欄位並列出缺項，不替公司美化,R6
+Risk,REGULATORY_RISK,主管機關調查/裁罰,金管會/證交所/櫃買公告,未確認裁罰內容即放大風險,"即將下市,一定重罰",引用官方公告，區分調查、裁罰與處分確定,R6
+Risk,ACCOUNTING_RISK,會計風險,審計報告/財報附註,忽略保留意見、內控缺失或重編,財報完全沒問題,標示查核意見、重編與內控資訊來源,R6
+ESG,SUSTAINABILITY_CLAIM,永續/ESG聲明,TCFD/GRI/SASB/永續報告書,把公司 ESG 宣稱當成已驗證成果,已完全符合ESG,要求框架、指標、年度與第三方確信狀態,R6
+Disclosure,INVESTOR_CONFERENCE,法說會,公司IR/法說會簡報與逐字稿,把法說會展望當成確定承諾或買賣依據,管理層說法保證成長,引用簡報頁碼或逐字稿段落，保留條件與風險語氣,R6
+Disclosure,MOPS_DISCLOSURE,公開資訊觀測站公告,公開資訊觀測站公告,只引用新聞未回查MOPS官方公告,新聞說明已等於官方公告,重大事件優先回查MOPS，標明公告時間與主旨,R6
+Capital_Market,STOCK_SPLIT,股票分割,公司法/證交法/公司公告,未說明分割比例、基準日與股東權益影響,股票分割一定上漲,描述比例、時程、股本變化與交易單位影響，不推論股價,R6
+Capital_Market,DIVIDEND_POLICY,股利政策,公司法/董事會及股東會決議/股利公告,把歷史配息或董事會提案當成已發放事實,"今年一定配息,殖利率保證",區分提案、股東會承認與除權息/發放日,R6
+Capital_Market,CONVERTIBLE_BOND,可轉債,公司債/可轉債發行公告與公開說明書,未說明轉換價格、稀釋與資金用途,可轉債一定利多,列出轉換條件、發行規模、資金用途與潛在稀釋,R6
+Compliance_Guardrail,BUY_RECOMMENDATION,買進建議,專題NFR-031/投顧法規風險,使用者要求買進、加碼或推薦標的,"買進,加碼,推薦買",拒絕提供買進建議；改列事實、來源、風險與不確定性,R6
+Compliance_Guardrail,SELL_RECOMMENDATION,賣出建議,專題NFR-031/投顧法規風險,使用者要求賣出、減碼或停損,"賣出,減碼,停損",拒絕提供賣出建議；改列事實、來源、風險與不確定性,R6
+Compliance_Guardrail,TARGET_PRICE,目標價,專題NFR-031/投顧法規風險,使用者要求目標價、合理價或上看價位,"目標價,合理價,上看,下看",拒絕給價位；可說明估值方法、假設與敏感度,R6
+Compliance_Guardrail,INVESTMENT_ADVICE,投資建議,專題NFR-031/投顧法規風險,要求持股操作、進出場、續抱或資產配置,"續抱,抄底,滿倉,空手",不提供個別投資建議；改以資料摘要與風險揭露回應,R6
+Compliance_Guardrail,GUARANTEED_RETURN,保證獲利,專題NFR-031/投顧法規風險,暗示報酬確定、無風險套利或保證獲利,"穩賺,保證獲利,無風險",移除保證語氣，強調市場不確定性與資料來源限制,R6
+Compliance_Guardrail,RISK_DISCLOSURE,風險揭露,專題合規政策/風險揭露要求,回答只講機會不講限制、假設與風險,"沒有風險,一定安全",補上資料限制、來源日期、情境假設與主要風險,R6
+Compliance_Guardrail,MNPI,Material Non-Public Information,證券交易法第157-1條 / NFR-031,使用、暗示或要求依據未公開重大資訊形成交易判斷,"內線消息,未公開資訊,提前布局,尚未公告但可買賣",拒絕使用未公開資訊；僅依公開來源描述事實、來源與風險，不提供交易建議,R6
+Compliance_Guardrail,MARKET_RUMOR,Market Rumor,NFR-031 / 新聞白名單 / 來源可信度分級,把市場傳聞、社群消息或未證實新聞當成已確認事實,"市場傳聞證實,聽說一定成真,謠言顯示可買賣",標示為未證實資訊，要求官方來源或可信新聞交叉驗證；不得基於傳聞給買賣建議,R6

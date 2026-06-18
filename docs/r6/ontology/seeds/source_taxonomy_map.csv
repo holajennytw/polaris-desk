@@ -1,0 +1,15 @@
+canonical_source_enum,ontology_source_type,annotation_source_type_allowed,question_bank_source_type,ground_truth_source_prefix,citation_required_default,description
+mops,MOPS,mops,Multi-Source,MOPS,Y,Official MOPS disclosure and official financial filing source.
+twse,TWSE,official_source,Multi-Source,TWSE,Y,Official Taiwan Stock Exchange source for listed company and market information.
+tpex,TPEx,official_source,Multi-Source,TPEx,Y,Official Taipei Exchange source for listed or OTC market reference when applicable.
+company_ir,Company IR,official_source; whitelisted_source; company_specific_source,Company Profile,02_company,Y,"Official company investor relations, company profile, and company-specific disclosures."
+earnings_call_transcript,Transcript; Company IR,earnings_call_transcript,Earnings Call,Earnings Call Transcript,Y,Official earnings call transcript or equivalent company IR transcript.
+ir_presentation,Company IR,ir_presentation,Earnings Call,Earnings Call Transcript,Y,Official IR presentation used with earnings call or management commentary.
+financial_report,MOPS; Company IR,financial_report,Multi-Source,Multi-Source,Y,"Official financial report used for financial metrics, statements, and numeric validation."
+annual_report,MOPS; Company IR,annual_report,Multi-Source,Multi-Source,Y,"Official annual report used for business profile, risk, governance, and financial validation."
+news_whitelist,News,news_whitelist; whitelisted_source,News,News Whitelist,Y,Approved news source listed by source governance and eligible for news retrieval/citation.
+answer_supporting_source,MOPS; Company IR; News; Transcript,answer_supporting_source,Multi-Source,Multi-Source,Y,Any source that directly supports a specific answer claim and can be traced by citation checker.
+compliance_rule,Policy,official_source,Red Team,Compliance Rule,Y,"Governance and compliance rule source for refusal, no-evidence, and red-team safety checks."
+news_data,News/Data,official_source; whitelisted_source,Multi-Source,Multi-Source,Y,Approved market or news data source used for source-backed factual lookup when present in ontology whitelist.
+social_unverified,Social,not_allowed_for_fact,Red Team,Compliance Rule,N,Social or forum source; not acceptable as standalone financial fact source and should trigger verification or refusal.
+mops_monthly_revenue,MOPS,mops,Multi-Source,MOPS Monthly Revenue Announcement,Y,"Official MOPS monthly revenue announcement source for current-month, prior-year, and cumulative revenue metrics. Storage unit must remain TWD_thousand."

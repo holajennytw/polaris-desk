@@ -1,0 +1,28 @@
+ticker,company_id,company_name,industry_id,industry_name,mapping_type,primary_rank,revenue_pct,review_status,priority,source_note,source_rank
+2330,22099131,台積電,IND_FOUNDRY,晶圓代工,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,1
+2317,04541302,鴻海,IND_EMS,電子代工,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,2
+2308,34051920,台達電,IND_AI_INFRA,AI基礎設施,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,3
+2454,84149961,聯發科,IND_IC_DESIGN,IC設計,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,4
+2891,80333992,中信金,IND_FINANCIAL_HOLDING,金融控股,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,5
+2881,03374805,富邦金,IND_FINANCIAL_HOLDING,金融控股,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,6
+2382,22822281,廣達,IND_AI_SERVER,AI伺服器,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,7
+3711,29187308,日月光投控,IND_OSAT,半導體封測,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,8
+2882,70827406,國泰金,IND_FINANCIAL_HOLDING,金融控股,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,9
+2303,47217677,聯電,IND_FOUNDRY,晶圓代工,primary,1,,G1可凍結,A,混合型清單主產業；可作 v0.5/G1 主分類,10
+2412,96979933,中華電,IND_TELECOM,電信,primary,1,,G1可凍結,B,混合型清單主產業；可作 v0.5/G1 主分類,11
+2886,70796754,兆豐金,IND_FINANCIAL_HOLDING,金融控股,primary,1,,G1可凍結,B,混合型清單主產業；可作 v0.5/G1 主分類,12
+2884,70796305,玉山金,IND_FINANCIAL_HOLDING,金融控股,primary,1,,G1可凍結,B,混合型清單主產業；可作 v0.5/G1 主分類,13
+2892,80351999,第一金,IND_FINANCIAL_HOLDING,金融控股,primary,1,,G1可凍結,B,混合型清單主產業；可作 v0.5/G1 主分類,14
+3034,84149955,聯詠,IND_IC_DESIGN,IC設計,primary,1,,G1可凍結,B,混合型清單主產業；可作 v0.5/G1 主分類,15
+2357,23638777,華碩,IND_COMPUTER_BRAND,電腦品牌,primary,1,,G1可凍結,B,混合型清單主產業；可作 v0.5/G1 主分類,16
+6669,53687704,緯穎,IND_AI_SERVER,AI伺服器,primary,1,,G1可凍結,C,混合型清單主產業；可作 v0.5/G1 主分類,17
+3231,12868358,緯創,IND_AI_SERVER,AI伺服器,primary,1,,G1可凍結,C,混合型清單主產業；可作 v0.5/G1 主分類,18
+3037,23535435,欣興,IND_ABF_SUBSTRATE,ABF載板,primary,1,,G1可凍結,C,混合型清單主產業；可作 v0.5/G1 主分類,19
+1216,73251209,統一,IND_FOOD,食品,primary,1,,G1可凍結,C,混合型清單主產業；可作 v0.5/G1 主分類,20
+2317,04541302,鴻海,IND_AI_SERVER,AI伺服器,secondary_candidate,,,v1後續查核,A,多產業候選；需以年報/法說稿營收拆分或公司IR確認後再填 revenue_pct,2
+2317,04541302,鴻海,IND_EV_SUPPLY_CHAIN,電動車供應鏈,secondary_candidate,,,v1後續查核,A,多產業候選；需以年報/法說稿營收拆分或公司IR確認後再填 revenue_pct,2
+2308,34051920,台達電,IND_EV_SUPPLY_CHAIN,電動車供應鏈,secondary_candidate,,,v1後續查核,A,多產業候選；需以年報/法說稿營收拆分或公司IR確認後再填 revenue_pct,3
+2308,34051920,台達電,IND_GREEN_POWER,電源/節能,secondary_candidate,,,v1後續查核,A,多產業候選；需以年報/法說稿營收拆分或公司IR確認後再填 revenue_pct,3
+2412,96979933,中華電,IND_CLOUD_IDC,IDC/雲端,secondary_candidate,,,v1後續查核,B,多產業候選；需以年報/法說稿營收拆分或公司IR確認後再填 revenue_pct,11
+2357,23638777,華碩,IND_AI_PC,AI PC,secondary_candidate,,,v1後續查核,B,多產業候選；需以年報/法說稿營收拆分或公司IR確認後再填 revenue_pct,16
+1216,73251209,統一,IND_RETAIL_CHANNEL,通路,secondary_candidate,,,v1後續查核,C,多產業候選；需以年報/法說稿營收拆分或公司IR確認後再填 revenue_pct,20

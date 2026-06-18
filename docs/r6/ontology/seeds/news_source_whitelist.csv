@@ -1,0 +1,14 @@
+source_key,source_name,trust_tier,source_type,use_case,allowed_for_fact,r6_note,citation_required
+PRIMARY_MOPS,公開資訊觀測站,Primary,MOPS,公告/重大訊息/財報,Y,官方一手來源，最高優先,Y
+PRIMARY_TWSE,臺灣證券交易所,Primary,TWSE,上市公司資訊/指數/交易制度,Y,官方一手來源,Y
+PRIMARY_TPEX,櫃買中心,Primary,TPEx,上櫃公司資訊,Y,官方一手來源,Y
+PRIMARY_COMPANY_IR,公司 IR 官網,Primary,Company IR,法說會簡報/年報/新聞稿,Y,需確認網址為公司官方網域,Y
+SECONDARY_CTEE,工商時報,Secondary,News,財經新聞,Y,二手來源，需與一手資料交叉檢查,Y
+SECONDARY_UDN_ECON,經濟日報,Secondary,News,財經新聞,Y,二手來源，需標示新聞日期,Y
+SECONDARY_MONEYDJ,MoneyDJ,Secondary,News/Data,財經新聞/產業資料,Y,可作線索，不可替代官方財務數字,Y
+SECONDARY_CNA,中央社,Secondary,News,新聞,Y,可作事件線索,Y
+LOW_SOCIAL,社群/論壇,Low,Social,討論/傳聞,N,僅作輿情，不作事實依據,Y
+PRIMARY_COMPANY_IR_EN,Company IR Website,Primary,Company IR,法說會簡報/年報/新聞稿,Y,官方公司投資人關係網站；需確認為公司官方網域,Y
+PRIMARY_EC_TRANSCRIPT,Earnings Call Transcript,Primary,Transcript,法說會逐字稿/問答紀錄,Y,若為第三方轉錄，需同時標示轉錄來源與公司法說會日期,Y
+PRIMARY_TWSE_ANNOUNCEMENT,TWSE Announcement,Primary,TWSE,上市公司公告/交易所資訊,Y,官方一手來源，適合驗證公告與制度資訊,Y
+PRIMARY_TPEX_ANNOUNCEMENT,TPEx Announcement,Primary,TPEx,上櫃公司公告/櫃買資訊,Y,官方一手來源，適合驗證上櫃公司公告,Y

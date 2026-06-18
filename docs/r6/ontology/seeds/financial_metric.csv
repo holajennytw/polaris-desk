@@ -1,0 +1,23 @@
+metric_id,metric_name,alias,category,unit,formula_or_definition,source_grain,frequency,zero_tolerance,r6_note,standard_code
+revenue,營業收入,"營收,sales",成長,新台幣千元,營業收入,財報/IFRS,月/季/年,Y,所有數字必須有來源,TBD
+gross_profit,營業毛利,毛利,獲利,新台幣千元,營業收入 - 營業成本,財報/IFRS,季/年,Y,不得由 LLM 直接推算,TBD
+gross_margin,毛利率,GM,獲利,%,營業毛利 / 營業收入,財報/IFRS,季/年,Y,公式分母為營業收入,TBD
+operating_income,營業利益,"營利,operating profit",獲利,新台幣千元,營業毛利 - 營業費用,財報/IFRS,季/年,Y,,TBD
+operating_margin,營業利益率,OPM,獲利,%,營業利益 / 營業收入,財報/IFRS,季/年,Y,,TBD
+net_income,歸屬母公司淨利,"稅後淨利,net profit",獲利,新台幣千元,歸屬母公司業主之本期淨利,財報/IFRS,季/年,Y,需確認是否為歸屬母公司,TBD
+net_margin,淨利率,NPM,獲利,%,歸屬母公司淨利 / 營業收入,財報/IFRS,季/年,Y,,TBD
+eps,EPS,每股盈餘,獲利,新台幣元/股,基本每股盈餘,財報/IFRS,季/年,Y,基本/稀釋需分清楚,TBD
+roe,ROE,股東權益報酬率,效率,%,歸屬母公司淨利 / 平均股東權益,財報/IFRS,年,Y,平均權益口徑需一致,TBD
+roa,ROA,資產報酬率,效率,%,淨利 / 平均總資產,財報/IFRS,年,Y,,TBD
+yoy,年增率,YoY,成長,%,(本期 - 去年同期) / 去年同期,計算指標,月/季/年,Y,期間必須對齊,TBD
+qoq,季增率,QoQ,成長,%,(本季 - 上季) / 上季,計算指標,季,Y,避免跨年度錯位,TBD
+capex,資本支出,CAPEX,投資,新台幣千元,購置不動產廠房及設備等現金流出,現金流量表,季/年,Y,科目口徑需與資料源一致,TBD
+dividend,股利,"現金股利,stock dividend",股東回報,新台幣元/股,董事會/股東會決議之配息配股,公告/年報,年,Y,,TBD
+free_cash_flow,自由現金流,FCF,現金流,新台幣千元,營業現金流 - 資本支出,現金流量表,季/年,Y,需標明公式口徑,TBD
+debt_ratio,負債比率,debt ratio,財務結構,%,負債總額 / 資產總額,資產負債表,季/年,Y,,TBD
+ytd_revenue,本年累計營收,"累計營收,YTD revenue",成長,TWD_thousand,Current year cumulative revenue from January through current reporting month.,MOPS Monthly Revenue Announcement,月,Y,currency=TWD; unit=TWD_thousand; stored fact,mops_monthly_revenue
+revenue_prior_year,去年同期營收,"去年同月營收,prior-year same-month revenue",成長,TWD_thousand,Revenue for the same reporting month in the prior year.,MOPS Monthly Revenue Announcement,月,Y,currency=TWD; unit=TWD_thousand; stored fact,mops_monthly_revenue
+revenue_mom_delta,本月增減金額,"月增減金額,MoM delta amount",成長,TWD_thousand,current_month_revenue - prior_month_revenue,計算指標 / MOPS Monthly Revenue Announcement,月,Y,currency=TWD; unit=TWD_thousand; derived field,mops_monthly_revenue
+ytd_revenue_prior_year,去年累計營收,"去年同期累計營收,prior-year YTD revenue",成長,TWD_thousand,Prior year cumulative revenue from January through the same reporting month.,MOPS Monthly Revenue Announcement,月,Y,currency=TWD; unit=TWD_thousand; stored fact,mops_monthly_revenue
+ytd_yoy,累計增減百分比,"累計年增率,YTD YoY",成長,%,((ytd_revenue - ytd_revenue_prior_year) / ytd_revenue_prior_year) * 100,計算指標 / MOPS Monthly Revenue Announcement,月,Y,percentage derived from TWD_thousand stored facts,mops_monthly_revenue
+ytd_delta,累計增減金額,"累計增減,YTD delta amount",成長,TWD_thousand,ytd_revenue - ytd_revenue_prior_year,計算指標 / MOPS Monthly Revenue Announcement,月,Y,currency=TWD; unit=TWD_thousand; derived field,mops_monthly_revenue
