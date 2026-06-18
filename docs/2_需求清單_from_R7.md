@@ -14,7 +14,7 @@
 
 | # | 需求 | 對象 | 優先級 | 狀態 |
 |---|---|---|---|---|
-| R7-1 | 帳號登入（Google OAuth）+ 使用者活動紀錄儲存 | R2 | 🟡 排期內（建議 Demo 後） | ✅ 結論已出（架構拍板） |
+| R7-1 | 帳號登入（Google OAuth）+ 使用者活動紀錄儲存 | R2 | 🟡 排期內（測試 + Demo 皆可用） | ✅ 結論已出（架構拍板） |
 
 > ⚠️ **文件分流提醒**：R7 在 branch `feature/my-frontend-work_2026_0617` 的
 > `docs/cross-role-collab/` 下另有更完整的 `R2_需求清單_from_R7.md` 與
@@ -23,7 +23,7 @@
 
 ---
 
-## R7-1 · 帳號登入（Google OAuth）+ 使用者活動紀錄儲存 〔🟡 排期內，建議 Demo 後〕
+## R7-1 · 帳號登入（Google OAuth）+ 使用者活動紀錄儲存 〔🟡 排期內，測試 + Demo 皆可用〕
 
 **提出者**：R7　**對象**：R2　**優先級**：🟡 排期內　**狀態**：✅ 結論已出（2026-06-18，R2 架構拍板）
 
@@ -49,15 +49,15 @@
 ### ✅ 子決策（2026-06-18 已拍板）
 1. **Magic Link** → ❌ **砍**。只做 Google OAuth；設定頁的「工作信箱 Magic Link」UI 移除 / 隱藏，不接寄信服務（省 Resend/SendGrid 一個坑）。
 2. **紀錄深度** → **B. 完整還原**。Firestore 每筆 session 存整包 `answer/evidence/react_steps/citations`，點開歷史直接還原當時答案（真・Claude Code 左欄體驗），**不重打 API**。
-   - **Demo 過渡**：localStorage MVP 先頂著（同瀏覽器可用）；v1 切 Firestore 做正式 B 級跨裝置還原。
+   - **localStorage** 僅作為**未登入 / 斷網時**的本機降級；登入狀態一律以 Firestore 為準（B 級跨裝置還原）。
 
 > 🔧 **串接做法（給 R7 照著做）**：[`3_給R7的串接指南_Auth_Firestore.md`](./3_給R7的串接指南_Auth_Firestore.md)
 > —— 含 NextAuth 設定、後端 JWT 驗證、Firestore 資料模型、`/history`＋`/subscriptions` 端點規格、env 對照、分工。
 
 ### 時程定位
-- **Demo 階段**：維持**免登入** + localStorage 紀錄 MVP → Demo 不擋路、備援路徑單純。
-- **Demo 後 v1**：才接 Google OAuth + Firestore（B 級完整還原 + 訂閱）。
-- 理由：R7 自己的 UX 評估也把 Auth 列「⚪ 不影響核心分析流程」；真正的 Demo 風險在 R3 端點與 NFR-031，不在 Auth。
+- **測試 + Demo 都要能用登入**：Google OAuth + Firestore 在測試期就接起來、登入流程可實際操作；Demo 當天**用登入版**展示（含個人歷史紀錄）。
+- **匿名只是降級 fallback**：無 token 時後端走匿名、不寫 Firestore，**僅供 token-free CI 與斷網 / Google 不可達時的備援**（憲法 V），不是預設體驗。
+- 真正的 Demo 風險仍在 R3 端點與 NFR-031；Auth 不擋這些，但本身要在測試 / Demo 可用。
 
 ### 個資 / 合規（B 級才觸發）
 - 存「使用者問過什麼 + 系統答過什麼」= 使用者研究軌跡 → **真實隱私面**：設保留期、嚴格按 `sub` 隔離、答案內容不得跨使用者外洩。NFR-031 不受影響（auth 不碰生成）。
@@ -68,5 +68,5 @@
 - [x] Magic Link → **砍**
 - [x] 紀錄深度 → **B（完整還原）**
 - [ ] R7：設定頁移除 / 隱藏 Magic Link UI
-- [ ] （v1，Demo 後）R2 立 Firestore + schema（per-user session 文件存整包 result）→ R3 接 `/history`、`/subscriptions`（或 workflow 結尾自動寫）→ R7 切換掉 localStorage
+- [ ] R2 立 Firestore + schema（per-user session 文件存整包 result）→ R3 接 `/history`、`/subscriptions`（或 workflow 結尾自動寫）→ R7 接 OAuth + 切 Firestore（測試期就接起來、登入版可實操）
 - [ ] merge 後把本結論回填 `feature/my-frontend-work_2026_0617` 的開會決策表（議題 A/E + Auth）

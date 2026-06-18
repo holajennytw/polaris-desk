@@ -3,8 +3,8 @@
 > **誰看**：R7（前端）＋ R2/R3（後端）。**對應決策**：[`2_需求清單_from_R7.md`](./2_需求清單_from_R7.md) R7-1。
 > **目標**：登入用 **Google OAuth**（NextAuth），登入後把每次研究 / 同業比較存成
 > **可完整還原的歷史 session**（B 級，類似 Claude Code 左欄），存進 **Firestore**。
-> **時程**：Demo 維持免登入 + localStorage；本指南是 **Demo 後 v1** 的接線方式。
-> **不變量**：無 token → 匿名照跑（保 Demo / 斷網備援）；不寫 `polaris_core`；金鑰進 Secret Manager。
+> **時程**：登入版在**測試期就接起來、Demo 當天用登入版展示**（含個人歷史）。
+> **不變量**：無 token → 匿名照跑（**僅** token-free CI 與斷網 / Google 不可達時的降級，非預設）；不寫 `polaris_core`；金鑰進 Secret Manager。
 
 ---
 
@@ -147,9 +147,10 @@ const full = await fetch(`${API}/history/${id}`, { headers: await authHeaders() 
 renderResult(full.result);   // full.result 就是當初存的整包
 ```
 
-### 3-6. 匿名 / 斷網 fallback（保 Demo）
-- `getSession()` 無 → 不帶 Authorization → 後端回匿名、不寫 Firestore。
-- 此時 /history 仍走現有 **localStorage MVP**。→ Demo / 斷網照常運作。
+### 3-6. 匿名 / 斷網降級（fallback，非預設）
+- 預設體驗是**登入版**（測試 + Demo 都用它）。
+- 但若 `getSession()` 無（未登入 / Google 不可達 / 斷網）→ 不帶 Authorization → 後端回匿名、不寫 Firestore，/history 退回 **localStorage MVP**。
+- 這條路只是**降級保命**（保 token-free CI 與斷網備援，憲法 V），不是給 Demo 用的主路徑。
 
 ---
 
@@ -314,7 +315,7 @@ users/{uid}                         # uid = Google sub（穩定、唯一）
 ---
 
 ## 8. 提醒
-- **這是 Demo 後 v1**：Demo 當天維持免登入 + localStorage，別讓登入牆擋住備援（憲法 V）。
-- **後端驗證一定要「可選」**：無 token = 匿名，否則 token-free CI 與斷網備援會掛。
+- **測試 + Demo 都用登入版**：登入流程在測試期就要能實際操作，Demo 當天展示登入 + 個人歷史。
+- **後端驗證仍要「可選」**：無 token = 匿名（**僅** token-free CI 與斷網 / Google 不可達時的降級），否則 CI 與備援會掛 —— 但這是 fallback，不是 Demo 主路徑。
 - **`sub` 當主鍵，不要用 email**（email 可變）。
 - **Firestore ≠ `polaris_core`**：完全獨立的庫，天然避開「app 不寫 core」的約束。
