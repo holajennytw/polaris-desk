@@ -33,13 +33,13 @@ function normalizeGrounded(g: GroundedValue): GroundedVM {
 export function normalizeAlert(raw: AlertRaw): AlertVM {
   return {
     id: raw.event_id,
-    origin: raw.origin,
+    origin: "research",  // watchdog alerts 顯示於所有面板，filter 已移至 pages
     level: sevToLevel(raw.severity),
-    title: raw.title,
+    title: raw.ticker ? `${raw.ticker} · MOPS 監控` : "系統警示",
     summary: raw.summary,
-    source: raw.source,
-    time: raw.time,
-    stock: raw.stock_id,
+    source: raw.ticker ?? "MOPS Watchdog",
+    time: "",
+    stock: raw.ticker,
   };
 }
 
@@ -85,7 +85,11 @@ export function normalizeAsk(raw: AskResponse): AskVM {
 }
 
 export function normalizeCompany(raw: CompanyRaw): CompanyVM {
-  return { id: raw.id, name: raw.name, provenance: raw.provenance === "mock" ? "mock" : "real" };
+  return {
+    id: raw.ticker,
+    name: raw.company_name ?? raw.ticker,
+    provenance: "real",
+  };
 }
 
 export function normalizeComparison(raw: CompanyResponse): ComparisonVM {
@@ -171,7 +175,7 @@ export function normalizeNotificationItem(raw: NotificationItemRaw): Notificatio
 }
 
 export function normalizeNotifications(raw: NotificationsResponse): NotificationsVM {
-  return { items: raw.items.map(normalizeNotificationItem), unread: raw.unread };
+  return { items: raw.items.map(normalizeNotificationItem), unread: raw.unread_count };
 }
 
 export function normalizeResolve(raw: ResolveResponse): ResolveVM {

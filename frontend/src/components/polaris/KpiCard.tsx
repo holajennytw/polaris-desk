@@ -8,6 +8,8 @@ interface KpiCardProps {
 }
 
 export function KpiCard({ k, onCite }: KpiCardProps) {
+  const hasValue = k.value !== "" && k.value != null;
+  const hasDelta = k.delta !== "" && k.delta != null;
   return (
     <button
       className="magic-card kpi"
@@ -15,13 +17,17 @@ export function KpiCard({ k, onCite }: KpiCardProps) {
     >
       <div className="kpi-label">{k.label}</div>
       <div className="kpi-value font-display">
-        {k.value}
-        <span className="kpi-unit">{k.unit}</span>
+        {hasValue
+          ? <>{k.value}{k.unit && <span className="kpi-unit">{k.unit}</span>}</>
+          : <span className="kpi-unknown">不知道</span>
+        }
       </div>
-      <div className={"kpi-delta " + k.trend}>
-        <Icon name={k.trend === "up" ? "arrowUp" : "arrowDown"} size={13} />
-        {k.delta}
-      </div>
+      {hasDelta && (
+        <div className={"kpi-delta " + k.trend}>
+          <Icon name={k.trend === "up" ? "arrowUp" : "arrowDown"} size={13} />
+          {k.delta}
+        </div>
+      )}
     </button>
   );
 }

@@ -7,13 +7,16 @@ export type Severity = "alert" | "watch" | "info";
 
 export interface AlertRaw {
   event_id: string;
-  origin: "research" | "peer";
-  severity: Severity;
-  title: string;
+  ticker: string;
   summary: string;
-  source: string;
-  time: string;
-  stock_id: string;
+  compliance_status: string;
+  severity: Severity;
+  evidence: Array<{
+    source_id: string;
+    snippet: string;
+    origin: string;
+    company: string | null;
+  }>;
 }
 
 export interface CitationRaw {
@@ -61,9 +64,14 @@ export interface AskResponse {
 }
 
 export interface CompanyRaw {
-  id: string;
-  name: string;
-  provenance?: "real" | "mock";
+  ticker: string;
+  company_name: string | null;
+  english_name: string | null;
+  market: string | null;
+  industry_id: string | null;
+  industry_name: string | null;
+  is_financial: boolean | null;
+  aliases: string | null;
 }
 
 export interface PeerKpiRaw {
@@ -206,7 +214,8 @@ export interface NotificationItemRaw {
 
 export interface NotificationsResponse {
   items: NotificationItemRaw[];
-  unread: number;
+  unread_count: number;
+  delivery_failures?: string[];
 }
 
 export interface ResolveResponse {

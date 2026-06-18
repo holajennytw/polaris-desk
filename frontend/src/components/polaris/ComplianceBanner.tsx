@@ -8,7 +8,7 @@ export function ComplianceBanner({ message }: { message?: string }) {
       <span>
         <b>NFR-031</b>{" "}
         <span className="ctxt">
-          {message ?? "以上為事實摘要，非投資建議。合規檢查通過。"}
+          {message ?? "以下為事實摘要，非投資建議。"}
         </span>
       </span>
     </div>

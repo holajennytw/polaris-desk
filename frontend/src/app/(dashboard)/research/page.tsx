@@ -16,6 +16,8 @@ import { useAlerts } from "@/hooks/useAlerts";
 import { useReadStore } from "@/hooks/useReadStore";
 import { useSuggestions } from "@/hooks/useSuggestions";
 import { useContraAlerts } from "@/hooks/useContraAlerts";
+import { useCompanies } from "@/hooks/useCompanies";
+import { useFinancials, inferTickerFromQuery, financialsToKpis } from "@/hooks/useFinancials";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import type { KpiVM } from "@/types/viewmodel";
 import { historyStore, extractTickers } from "@/lib/historyStore";
@@ -96,9 +98,11 @@ export default function ResearchPage() {
   const router = useRouter();
   const { suggestions: dynamicSuggestions, fading: chipsFading } = useSuggestions();
   const contraAlerts = useContraAlerts();
+  const companies = useCompanies();
   const chips = dynamicSuggestions ?? PRESETS;
   const [query, setQuery] = useState("");
   const [hasQueried, setHasQueried] = useState(false);
+  const [inferredTicker, setInferredTicker] = useState<string | null>(null);
   const [selectedAlertIdx, setSelectedAlertIdx] = useState<number|null>(null);
   const [modalAlert, setModalAlert] = useState<any>(null);
   const [isCheckingContra, setIsCheckingContra] = useState(false);
@@ -132,8 +136,12 @@ export default function ResearchPage() {
   const summary = data?.summary ?? [];
   const reactSteps = data?.react ?? [];
   const citations = data?.citations ?? [];
+
+  const financialRows = useFinancials(inferredTicker);
+  const financialKpis = financialsToKpis(financialRows);
+
   const researchAlerts = [
-    ...(alerts ?? []).filter(a => a.origin === "research"),
+    ...(alerts ?? []),  // watchdog alerts 不區分 origin，兩頁共用；等 R3 補 origin 欄位後再加 filter
     ...contraAlerts,
   ];
 
@@ -171,6 +179,11 @@ export default function ResearchPage() {
     setSelectedAlertIdx(null);
     setHasQueried(true);
     setPhase("running"); setStepN(0); setProgress(0);
+
+    // 從查詢推斷 ticker，讓 useFinancials 預先取 R4 財務資料
+    const resolvedQ = q ?? query;
+    const ticker = inferTickerFromQuery(resolvedQ, companies);
+    setInferredTicker(ticker);
 
     // 階段一：API 等待期間，爬升至 30%
     intervalRef.current = setInterval(() => {
@@ -252,26 +265,41 @@ export default function ResearchPage() {
               </div>
             ) : (
               <>
+                <ComplianceBanner/>
                 {isMutating ? <KpiSkeleton/> : (
-                  <div className="kpi-grid">
-                    {kpis.map((k,i)=><KpiCard key={i} k={k} onCite={handleOpenDoc}/>)}
-                  </div>
+                  (kpis.length > 0 || financialKpis.length > 0) && (
+                    <div className="kpi-grid">
+                      {kpis.length > 0
+                        ? kpis.map((k,i)=><KpiCard key={i} k={k} onCite={handleOpenDoc}/>)
+                        : financialKpis.map((k,i)=>(
+                            <KpiCard key={i} k={{...k, cite:""}} onCite={()=>{}}/>
+                          ))
+                      }
+                    </div>
+                  )
                 )}
                 <div className="rcol-stack">
                   <div className="panel">
                     <div className="panel-head">
                       <span className="panel-title"><Icon name="layers" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>營運重點摘要</span>
-                      <span className="panel-meta">{summary.length} 條 · 全數可溯源</span>
+                      <span className="panel-meta">{summary.length > 0 ? `${summary.length} 條 · 全數可溯源` : "查無資料"}</span>
                     </div>
                     <div className="panel-body">
                       {isMutating ? <PanelSkeleton/> : (
-                        <ul className="summary">
-                          {summary.map((s,i)=>(
-                            <li key={i}><span className="sum-marker"/><span>{s.text}<span className="cchip" onClick={()=>handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
-                          ))}
-                        </ul>
+                        summary.length > 0 ? (
+                          <ul className="summary">
+                            {summary.map((s,i)=>(
+                              <li key={i}><span className="sum-marker"/><span>{s.text}<span className="cchip" onClick={()=>handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="chart-empty">
+                            <Icon name="layers" size={20} style={{color:"rgb(var(--muted))",marginBottom:8}}/>
+                            <span>查詢的資料未涵蓋於現有資料庫</span>
+                            <span className="font-mono" style={{fontSize:"0.72rem",color:"rgb(var(--muted))"}}>請確認公司代號及財報期別是否已入庫</span>
+                          </div>
+                        )
                       )}
-                      <ComplianceBanner/>
                     </div>
                   </div>
                   <div className="panel">

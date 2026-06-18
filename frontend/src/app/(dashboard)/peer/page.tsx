@@ -17,6 +17,7 @@ import { useSuggestions } from "@/hooks/useSuggestions";
 import { toast } from "sonner";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import { parseQuery } from "@/lib/peer";
+import { useFinancials, type FinancialRow } from "@/hooks/useFinancials";
 import type { ReActStepVM, CompanyVM, KpiVM, SummaryItemVM } from "@/types/viewmodel";
 
 const PEER_TABS = [
@@ -122,11 +123,34 @@ function PeerSummaryPanel({ aName, bName }: { aName: string; bName: string }) {
 
 // ── Comparison blocks ─────────────────────────────────────────
 
-function PeerKpiGrid({ aName, bName }: { aName:string; bName:string }) {
+function getLatestYoy(rows: FinancialRow[]): number | null {
+  if (!rows.length) return null;
+  const periods = [...new Set(rows.map(r => r.fiscal_period).filter(Boolean))].sort() as string[];
+  const latestPeriod = periods.at(-1);
+  return rows.find(r => r.fiscal_period === latestPeriod && r.metric_id === "revenue_yoy")?.value ?? null;
+}
+
+function fmtYoy(v: number | null): string {
+  if (v === null) return "—";
+  return `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+}
+
+function PeerKpiGrid({ aName, bName, aTicker, bTicker }: {
+  aName: string; bName: string; aTicker: string; bTicker: string;
+}) {
+  const aRows = useFinancials(aTicker || null);
+  const bRows = useFinancials(bTicker || null);
+  const aYoy = getLatestYoy(aRows);
+  const bYoy = getLatestYoy(bRows);
+  const yoyDiff = (aYoy !== null && bYoy !== null)
+    ? `${(aYoy - bYoy) >= 0 ? "+" : ""}${(aYoy - bYoy).toFixed(1)}pp`
+    : "—";
+  const yoyBetter = (aYoy !== null && bYoy !== null) ? (aYoy >= bYoy ? "a" : "b") : "";
+
   const kpis = [
-    { label:"毛利率",      a:"57.8%", b:"38.3%", diff:"+19.5pp", better:"a" },
-    { label:"營業利益率",  a:"47.5%", b:"20.1%", diff:"+27.4pp", better:"a" },
-    { label:"營收 YoY",   a:"+39%",  b:"+17%",  diff:"+22pp",   better:"a" },
+    { label:"毛利率",     a:"—", b:"—", diff:"待接後端", better:"" },
+    { label:"營業利益率", a:"—", b:"—", diff:"待接後端", better:"" },
+    { label:"營收 YoY",  a:fmtYoy(aYoy), b:fmtYoy(bYoy), diff:yoyDiff, better:yoyBetter },
   ];
   return (
     <div className="peer-kpi-grid">
@@ -258,7 +282,7 @@ interface SlotProps {
 }
 function CompanySlot({ company, open, search, options, placeholder, onToggle, onSearch, onSelect }: SlotProps) {
 
-  const filtered = options.filter(c => c.name.includes(search) || c.id.includes(search));
+  const filtered = options.filter(c => (c.name ?? "").includes(search) || c.id.includes(search));
   return (
     <div className="cpick-wrap">
       <button className={"cpick-btn"+(company ? "" : " empty")} onClick={onToggle}>
@@ -340,7 +364,7 @@ export default function PeerPage() {
   const curPhase = running ? PHASES[Math.min(Math.floor((stepN / total) * PHASES.length), PHASES.length - 1)] : null;
 
   const peerAlerts = [
-    ...(alerts ?? []).filter(a => a.origin === "peer"),
+    ...(alerts ?? []),  // watchdog alerts 不區分 origin，兩頁共用；等 R3 補 origin 欄位後再加 filter
     ...contraAlerts,
   ];
 
@@ -484,7 +508,11 @@ export default function PeerPage() {
             {/* Comparison content */}
             {hasQueried && readyToCompare ? (
               <>
-                <div className="peer-l2"><PeerKpiGrid aName={A?.name??""} bName={B?.name??""}/></div>
+                <div className="mock-note">
+                  <Icon name="alert" size={15}/>
+                  <span><b>部分待接後端</b> — 「營收 YoY」已串接真實財務資料；毛利率、營業利益率等指標待 <code>POST /peer-compare</code> 上線後顯示，請勿引用。</span>
+                </div>
+                <div className="peer-l2"><PeerKpiGrid aName={A?.name??""} bName={B?.name??""} aTicker={aId} bTicker={bId}/></div>
                 <TrendPanel aName={A?.name??""} bName={B?.name??""}/>
                 <PeerSummaryPanel aName={A?.name??""} bName={B?.name??""}/>
                 <div className="news-tabs peer-tabs">
