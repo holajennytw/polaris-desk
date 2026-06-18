@@ -21,6 +21,12 @@
 
 ## 3. Tasks by Week（可勾選）
 
+> **📌 2026-06-18 更新 —— R2 依賴已全部解除，可全速開工**
+> - ✅ thin HTTP API 已上 **Cloud Run**（`https://polaris-api-14326813937.asia-east1.run.app`，G4 雲端 4 場景 PASS）；`/ask`·`/research`·`/alerts`·`/companies`·`/financials`·`/events` 全可達，契約對齊 §2。
+> - ✅ **TS 型別 + 三份真實 mock 已備好**於 [`../../frontend/`](../../frontend/)（PR #101）→ 「mocks 建好」這格已可勾。
+> - **剩下純 R7 in-scope**：選型拍板 → 做 5 畫面 → 接真 API（保留 mock 當斷網 Plan B）→ W4 Vercel 上雲 + Landing + Demo 備援影片。
+> - **要敲的人換了**：API 不必再追 R2；剩 **R3（Watchdog 事件格式）**、**R4（離線 mock trace / 備援素材）**。詳見開工指南頂部狀態更新。
+>
 > **📌 2026-06-04 進度快照（PM 站會）**
 > repo 無前端碼、`05_Demo資料` 空 → **尚未開工**。
 > - **可即刻開工、不必等後端**：前端吃固定 JSON、用 mock 先行。開工指南 [`../R7_frontend_開工指南.md`](../R7_frontend_開工指南.md)（含三個真實 JSON 契約 + Chainlit/Next.js 選型）。
