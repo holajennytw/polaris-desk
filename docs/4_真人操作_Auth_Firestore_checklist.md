@@ -23,8 +23,12 @@ gcloud config set project "$PROJECT"
 > gcloud 無法建 OAuth Client ID，必走 Console。
 
 1. **OAuth 同意畫面**：Console → 「API 和服務 → OAuth 同意畫面」
-   - User Type：**Internal**（同 Google Workspace 組織內）或 **External**（要加測試使用者 email）。
+   - User Type：本專案用個人 `@gmail.com`（非 Google Workspace 組織）→ **只能選
+     External**；Internal 僅 Workspace 組織可用。
+   - 模式留 **Testing**：到「Test users」把每個會登入的 Google 帳號都加進去
+     （上限 100；**沒加進去的帳號會被 Google 擋掉**，含驗收用的「另一個帳號」）。
    - 填 App name、support email、developer email → 儲存。
+   - 建立 client 時用有本專案權限的帳號登入（目前 owner＝`waynehuichi@gmail.com`）。
 2. **建 OAuth Client**：Console → 「API 和服務 → 憑證 → 建立憑證 → OAuth 用戶端 ID」
    - 應用程式類型：**Web application**
    - **Authorized JavaScript origins**：`https://<R7-的-vercel-網域>`
