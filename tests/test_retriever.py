@@ -428,3 +428,20 @@ def test_make_retriever_search_fn_maps_vector_origin_to_embedding():
     assert any(c.source_id == "v1" for c in cites)
     assert all(c.origin in {"stub", "bm25", "embedding", "colpali", "rerank", "news"} for c in cites)
     assert next(c for c in cites if c.source_id == "v1").origin == "embedding"
+
+
+def test_retrieve_results_always_carry_citation_metadata_keys():
+    """Every retrieve() result carries doc_type / published_at / fiscal_period in
+    metadata so api.py /research + Deep Research adapters can read them safely on
+    any channel — incl. the BM25/stub fallback that doesn't set them natively
+    (prevents R7 ``metadata["published_at"]`` KeyError).
+    """
+    retriever = HybridRetriever(top_k=5)  # BM25-only (no Gemini key/real data in CI)
+    results = retriever.retrieve("台積電 2025Q1 毛利率")
+
+    assert results
+    for r in results:
+        assert "doc_type" in r.metadata
+        assert "published_at" in r.metadata
+        assert "fiscal_period" in r.metadata
+        assert r.metadata["fiscal_period"] == r.period  # mirrors typed period field

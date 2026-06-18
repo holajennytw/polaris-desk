@@ -1,0 +1,151 @@
+{
+  "test_id": "R6-G3R3-005",
+  "query": "請比較 2330 台積電與 2454 聯發科 2025Q1 法說會中對 AI 需求的看法。",
+  "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+  "method": "POST",
+  "content_type": "application/json",
+  "started_at_utc": "2026-06-17T09:32:58.890838+00:00",
+  "finished_at_utc": "2026-06-17T09:33:22.848457+00:00",
+  "elapsed_seconds": 23.96,
+  "http_status": 200,
+  "request_body": {
+    "query": "請比較 2330 台積電與 2454 聯發科 2025Q1 法說會中對 AI 需求的看法。"
+  },
+  "response": {
+    "answer": "根據 2025 年第一季法說會引用片段，台積電（2330）與聯發科（2454）對 AI 需求的看法整理如下：\n\n### 1. 台積電 (2330)：強勁的 AI 相關需求支撐產業成長\n*   **AI 需求展望：** 台積電表示，2025 年全年的 Foundry 2.0 產業成長將受到「強勁的 AI 相關需求」（robust AI related demand）以及其他終端市場輕微復甦的支撐 [5a5e9c5f-568c-4b77-805e-c7d70ff261e5]。\n*   **技術製程驅動：** 進入 2025 年第二季，台積電預期業務將受到 3 奈米與 5 奈米技術強勁成長的驅動 [5a5e9c5f-568c-4b77-805e-c7d70ff261e5]。\n*   **產業預測：** 台積電維持對 2025 年 Foundry 2.0 產業年成長約 10% 的預測（此數據與 IDC 預測一致） [5a5e9c5f-568c-4b77-805e-c7d70ff261e5]。\n\n### 2. 聯發科 (2454)：AI 普及化帶動旗艦產品線與 ASP\n*   **AI 普及化趨勢：** 聯發科認為隨著 AI 變得更加普及（as AI becomes more pervasive），其強大的旗艦產品線將持續獲得市佔率並提升綜合平均售價（ASP） [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。\n*   **產品採用狀況：** 聯發科指出其下一代旗艦 SoC 已獲得比前代更多的客戶採用 [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。\n*   **第二季展望與市場分化：** \n    *   受惠於 AI SoC（如天璣 Dimensity 9400+ 及 8000 系列）的更多採用，聯發科預期第二季在旗艦與高階市場將有所成長 [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。\n    *   然而，主流（mainstream）與入門級（entry）市場的需求在經歷強勁表現後正在放緩 [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。\n\n### 3. 綜合比較\n| 比較項目 | 台積電 (2330) | 聯發科 (2454) |\n| :--- | :--- | :--- |\n| **AI 需求定位** | 強調 AI 是支撐晶圓代工產業成長的核心動能 [5a5e9c5f-568c-4b77-805e-c7d70ff261e5]。 | 強調 AI 普及化有助於提升旗艦產品市佔與 ASP [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。 |\n| **受惠產品/技術** | 3 奈米及 5 奈米先進製程 [5a5e9c5f-568c-4b77-805e-c7d70ff261e5]。 | 天璣 9400+ 與 8000 系列 AI SoC [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。 |\n| **市場觀察** | 預期 Foundry 2.0 產業整體成長 [5a5e9c5f-568c-4b77-805e-c7d70ff261e5]。 | 高階市場受 AI 帶動成長，但入門與主流市場需求放緩 [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。 |\n\n**資料不足說明：** 提供的引用片段中，台積電關於 AI 需求展望的部分文字有截斷現象 [0203bf5e-8b77-4728-b701-e05397596399]，且未提及具體的 AI 營收佔比數字。聯發科片段亦未提供具體的財務預測數值。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "5e444001-5e31-47a0-a1b0-fd221e6ea08d",
+        "snippet": "MediaTek 1Q25 Earnings Call\nWednesday, April 30, 2025, 3:00pm Taiwan Time\nPREPARED REMARKS\nJessie Wang, IR Deputy Director\nGood afternoon, everyone. Joining us today are Dr. Rick Tsai, MediaTek CEO and Mr. David Ku, MediaTek\nCFO. Mr. Ku will report our first quarter results and then Dr. Tsai will provide our prepared remarks. After\nthat, we will open for Q&A.\nAs a reminder: Today’s presentation will provide forward looking statements based on our current\nexpectations. The statements are subject ",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "0203bf5e-8b77-4728-b701-e05397596399",
+        "snippet": "025.\n4\nREFINITIV STREETEVENTS | www.refinitiv.com | Contact Us\n©2025 Refinitiv. All rights reserved. Republication or redistribution of Refinitiv content, including by framing or similar means, is prohibited without the prior written\nconsent of Refinitiv. 'Refinitiv' and the Refinitiv logo are registered trademarks of Refinitiv and its affiliated companies.\nAPRIL 17, 2025 / 6:00AM, 2330.TW - Q1 2025 Taiwan Semiconductor Manufacturing Co Ltd Earnings Call\nNow, I will talk about our AI demand outl",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "3c68fddb-9c9b-498e-a8be-f7ffd2acec5a",
+        "snippet": "unch our next generation flagship SoC, which has gained better\ntraction with more customers than the previous ones. We expect our strong flagship product line-up to\ncontinue gaining shares and enhancing our blended ASP as AI becomes more pervasive.\nFor the second quarter, thanks to more adoptions of our AI SoCs, Dimensity 9400+ and Dimensity 8000\nseries, we will grow our business in the flagship and premium segments. However, as demand in\nmainstream and entry segments slow down after the strong ",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "93767102-64d8-4b45-b084-ba681cb59a84",
+        "snippet": "法說會逐字稿\n鴻海精密工業股份有限公司 2025 年第一季法人說明會\n會議日期及時間 ：2025 年 5 月14 日 台北時間下午3 點\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n鴻海精密工業股份有限公司\n2025 年第一季法人說明會\n公司與會者\n劉揚偉 Young Liu 鴻海精密工業股份有限公司 董事長\n黃德才 David Huang 鴻海精密工業股份有限公司 財務長\n巫俊毅 James Wu 鴻海精密工業股份有限公司 發言人\n方文妍 Kristen Fang 鴻海精密工業股份有限公司 投資人關係資深經理\n法說會提問者\nSharon Shih Morgan Stanley-分析師\nAngela Hsiang 凱基投顧-分析師\nCarrie Liu Citi-分析師\n方昱翔 三立財經-記者\n謝佩穎 TVBS新聞網-記者\nAlbert Hong J.P. Morgan-分析師\nArthur Liao 富邦投顧-分析師\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com |",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "f8352363-0099-412a-b337-d3c165690527",
+        "snippet": "REFINITIV STREETEVENTS\nEDITED TRANSCRIPT\n2330.TW - Q1 2025 Taiwan Semiconductor Manufacturing Co Ltd\nEarnings Call\nEVENT DATE/TIME: APRIL 17, 2025 / 6:00AM GMT\nREFINITIV STREETEVENTS | www.refinitiv.com | Contact Us\n©2025 Refinitiv. All rights reserved. Republication or redistribution of Refinitiv content, including by framing or similar means, is prohibited without the prior written\nconsent of Refinitiv. 'Refinitiv' and the Refinitiv logo are registered trademarks of Refinitiv and its affiliate",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "7554a530-b24f-4364-b2d9-06048097d0c8",
+        "snippet": "上次法說會的預期大致相當。\n從產品組合的角度來看，在 AI 伺服器的強勁成長帶動下，雲端網路產品的佔比顯著提升，相\n較去年第一季增加了6%，達到了34%的水準。同樣期間，消費智能產品的營收相較於去年也\n有一些成長，但是佔比降低到40%，顯示我們的產品組合持續朝向更均衡的方向發展。\n如同我在上次法說會提到的，今年全年雲端網路產品的占比將會接近消費智能產品。以四大產\n品來看，電腦終端的表現比預期還要好，但是消費智能和雲端網路都稍微的落後預期。不過整\n體上都還是維持平穩的表現。從整體獲利性來看，我們在毛利、營業利益及稅後淨利，都創下\n了歷史同期新高的表現。\n接下來，我來說明今年第二季的展望。\n過去一個多月來，美國關稅政策變化快速，對於全球供應鏈產生不小的影響。最近又加上匯率\n變動的因素，所以我們對於接下來的展望，會先抱持比較審慎的看法。整體來看，預期第二季\n相較於第一季，以及去年同期都將有顯著成長。\n從四個產品來看，在消費智能產品方面，主要的產品進入新舊產品交換期，再加上第一季有新\n產品推出，以及近期匯率的因素，我們預期季對季會有略為衰退的情況，相較於去年同期則大\n致持平。在雲端網路產品，隨",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "2b4b9fac-8efd-4275-a825-1804dec9e350",
+        "snippet": "Novatek Microelectronics Corp. 2025 Q1 Earnings\nCall\nMay 7, 2025\nDavid Chen:\n各位投資人、分析師、媒體，大家午安。我是聯詠科技的副總經理以及發言人陳健興。非常歡\n迎大家再次來參加聯詠科技 2025 年第一季的法人\u0000明會。今天線上跟我們在一起的有我們聯\n詠科技的副董事長王守仁先生，還有財務長周聖呈先生，還有投資關係的處長 Tony 還有 Yvo\nnne。很高興能再一次跟大家在線上見面。今天的法\u0000會同時會用中英文來進行。今天的會議\n的整個議程如下。首先會有 Tony 這邊用英文報告聯詠 2025 年第一季的結果。接下來會由我\n們王守仁副董事長針對第一季的結果做進一步的\u0000明，同時也報告 2025 年第二季的這個展望\n。最後會開放給各位問答的時間。目前我們手上有收到的一些投資人的問題，各位若還有任何\n的問題想要問的，可以上傳給我們，我們收集以後，會有 Tony\n這邊來發問，那再由我們副董，還有財務長還有本人用中文來回答，然後再翻譯成英文。\nGood afternoon everyone. I would like to",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "5a5e9c5f-568c-4b77-805e-c7d70ff261e5",
+        "snippet": "I related demand.\nMoving into second quarter 2025, we expect our business to be supported by strong growth of our 3-nanometer and 5-nanometer technologies.\nLooking at the full year of 2025, we expect Foundry 2.0 industry growth to be supported by robust AI related demand and a mild recovery in other\nend market segments. In January, we had a forecast of Foundry 2.0 industry to grow [10%] (corrected by company after the call) year over year in\n2025, which is consistent with the IDC's forecast of 1",
+        "origin": "embedding"
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4792
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1310
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 13287
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4403
+      }
+    ]
+  },
+  "error": null
+}

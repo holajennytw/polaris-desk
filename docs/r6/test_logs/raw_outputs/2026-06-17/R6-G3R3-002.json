@@ -1,0 +1,151 @@
+{
+  "test_id": "R6-G3R3-002",
+  "query": "2454 聯發科 2025Q1 法說會重點是什麼？",
+  "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+  "method": "POST",
+  "content_type": "application/json",
+  "started_at_utc": "2026-06-17T09:31:42.907184+00:00",
+  "finished_at_utc": "2026-06-17T09:32:04.409272+00:00",
+  "elapsed_seconds": 21.5,
+  "http_status": 200,
+  "request_body": {
+    "query": "2454 聯發科 2025Q1 法說會重點是什麼？"
+  },
+  "response": {
+    "answer": "根據提供的引用片段，關於聯發科（2454）2025年第一季法人說明會的重點摘要如下：\n\n### 1. 法說會召開資訊與日期爭議\n資料中對於法說會召開日期存在資訊衝突：\n*   **公告日期：** 根據公開資訊觀測站公告，聯發科 114 年第一季法人說明會預計於 **114 年 4 月 17 日**召開 [mops_a10a5fec5ca347a5]。\n*   **講稿日期：** 另一份英文法說會預備講稿則顯示日期為 **2025 年 4 月 30 日**（星期三）台北時間下午 3:00 [5e444001-5e31-47a0-a1b0-fd221e6ea08d]。\n\n### 2. 出席人員\n法說會由以下主管代表出席並進行報告：\n*   執行長：蔡力行（Dr. Rick Tsai）[5e444001-5e31-47a0-a1b0-fd221e6ea08d]。\n*   財務長：顧大為（Mr. David Ku）[5e444001-5e31-47a0-a1b0-fd221e6ea08d]。\n*   投資關係處副處長：王家慈（Jessie Wang）[5e444001-5e31-47a0-a1b0-fd221e6ea08d]。\n\n### 3. 營運與財務重點\n**資料不足。** 提供的引用片段僅包含法說會的開場介紹與程序說明（由財務長報告第一季業績，隨後由執行長發表預備演說並進入問答環節），但**未包含**具體的財務數字、營運成果、市場展望或任何關於 2025Q1 的實質業務重點 [5e444001-5e31-47a0-a1b0-fd221e6ea08d]。\n\n此外，資料中雖提及 114 年 1 月及 2 月的自結合併營收公告標題，但未提供具體營收金額或成長率數據 [mops_99213f5b3a367333], [mops_e97d447bec06001d]。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "mops_e97d447bec06001d",
+        "snippet": "聯發科技114年2月份自結合併營收淨額公告",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_99213f5b3a367333",
+        "snippet": "聯發科技114年1月份自結合併營收淨額公告",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_3418ff9754714a4a",
+        "snippet": "聯發科技113年12月份自結合併營收淨額公告",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_a10a5fec5ca347a5",
+        "snippet": "公告本公司114年第一季法人說明會將於114年4月17日召開",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "5e444001-5e31-47a0-a1b0-fd221e6ea08d",
+        "snippet": "MediaTek 1Q25 Earnings Call\nWednesday, April 30, 2025, 3:00pm Taiwan Time\nPREPARED REMARKS\nJessie Wang, IR Deputy Director\nGood afternoon, everyone. Joining us today are Dr. Rick Tsai, MediaTek CEO and Mr. David Ku, MediaTek\nCFO. Mr. Ku will report our first quarter results and then Dr. Tsai will provide our prepared remarks. After\nthat, we will open for Q&A.\nAs a reminder: Today’s presentation will provide forward looking statements based on our current\nexpectations. The statements are subject ",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_99fca8476460980a",
+        "snippet": "代重要子公司MediaTek Investment Singapore Pte. Ltd.\n公告董事會決議發放股利",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "2b4b9fac-8efd-4275-a825-1804dec9e350",
+        "snippet": "Novatek Microelectronics Corp. 2025 Q1 Earnings\nCall\nMay 7, 2025\nDavid Chen:\n各位投資人、分析師、媒體，大家午安。我是聯詠科技的副總經理以及發言人陳健興。非常歡\n迎大家再次來參加聯詠科技 2025 年第一季的法人\u0000明會。今天線上跟我們在一起的有我們聯\n詠科技的副董事長王守仁先生，還有財務長周聖呈先生，還有投資關係的處長 Tony 還有 Yvo\nnne。很高興能再一次跟大家在線上見面。今天的法\u0000會同時會用中英文來進行。今天的會議\n的整個議程如下。首先會有 Tony 這邊用英文報告聯詠 2025 年第一季的結果。接下來會由我\n們王守仁副董事長針對第一季的結果做進一步的\u0000明，同時也報告 2025 年第二季的這個展望\n。最後會開放給各位問答的時間。目前我們手上有收到的一些投資人的問題，各位若還有任何\n的問題想要問的，可以上傳給我們，我們收集以後，會有 Tony\n這邊來發問，那再由我們副董，還有財務長還有本人用中文來回答，然後再翻譯成英文。\nGood afternoon everyone. I would like to",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_3c85c361ae40fc1d",
+        "snippet": "代重要子公司MEDIATEK SINGAPORE PTE. LTD.\n公告董事會決議發放股利",
+        "origin": "embedding"
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5672
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1131
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 11306
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3164
+      }
+    ]
+  },
+  "error": null
+}
