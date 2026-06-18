@@ -15,7 +15,7 @@
 
 兩個登入方式都需要 R2 先決策架構，R7 再接前端部分。
 
-### R2 需要決定的事
+### 待確認事項
 
 | 決策項目 | 選項建議 | 說明 |
 |----------|----------|------|
@@ -24,7 +24,7 @@
 | **Google OAuth 憑證** | Google Cloud Console 建立 OAuth App | 需設定 Callback URL：`https://<domain>/api/auth/callback/google` |
 | **Magic Link 寄信服務** | Resend / SendGrid / Gmail SMTP | 需要寄件 API key，存入 Secret Manager |
 
-### R2 需要提供給 R7 的內容
+### 前端串接所需資訊（確認後提供）
 
 ```
 GOOGLE_CLIENT_ID=...
@@ -40,7 +40,7 @@ EMAIL_FROM=noreply@polaris.dev
 
 以上填入 `.env`，R7 接到這些 key 後即可完成前端串接。
 
-### R7 負責的前端部分（等 R2 決策後實作）
+### 前端接線計畫（確認架構後實作）
 
 - `src/app/api/auth/[...nextauth]/route.ts`：NextAuth API route（R2 確認架構後 R7 建立）
 - 設定頁 Google 按鈕：`signIn("google")` 呼叫
@@ -48,9 +48,9 @@ EMAIL_FROM=noreply@polaris.dev
 - `AppShell` 顯示真實登入用戶名稱與頭像（目前是 hardcoded "Jing Chen"）
 - Magic Link 表單：呼叫 `POST /auth/email` 或 NextAuth Email Provider
 
-### 後端端點需求（若不用 NextAuth）
+### 若不用 NextAuth，前端需要的端點
 
-若 R2 選擇自建 auth（不用 NextAuth.js），R7 需要以下端點：
+若選擇自建 auth（不用 NextAuth.js），前端需要以下端點：
 
 | 方法 | 路徑 | 說明 |
 |------|------|------|
@@ -86,7 +86,7 @@ src/lib/api.ts            ← api.history() 改讀 localStorage
 
 研究助理頁與同業比較頁查詢完成後自動寫入，對話紀錄頁點擊跳轉已完成。
 
-### R2 決策後 R7 需要的端點
+### 確認架構後，前端需要的端點
 
 ```
 POST /history   { origin, query, tickers, timestamp } → { record_id, status }
