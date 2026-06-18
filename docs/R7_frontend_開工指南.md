@@ -6,9 +6,33 @@
 
 ---
 
+> ## 📌 2026-06-18 狀態更新 —— R2 依賴已全部解除，原料也備好了
+>
+> **與 R2 有關的依賴，現在 0 個擋路：**
+> 1. ✅ **thin HTTP API 已實作**（`src/polaris/api.py`，PR #45）。
+> 2. ✅ **後端已真上 Cloud Run 並可達**（PR #79/#82/#83，G4 雲端 4 場景驗收 PASS）：
+>    `https://polaris-api-14326813937.asia-east1.run.app`
+>    （`/health`、`/openapi.json`、`/ask`、`/research`、`/alerts` 實測全 200，契約欄位與 §2 一字不差）。
+> 3. ✅ **結構化端點也補齊**（PR #92）：`/companies`、`/financials`、`/events`（直讀 `polaris_core`）。
+> 4. ✅ **API 契約穩定**：TS 型別可由 live `/openapi.json` 生（`npx openapi-typescript`）；R7 前端已自帶 `public/mocks`。
+>
+> **所以你接下來該做的（關鍵路徑，都在你 in-scope）：**
+> 1. **拍板技術選型**（§1：Chainlit 核心 demo + Next.js Landing）。
+> 2. 用 live `/openapi.json` 生 TS 型別 + 既有 mock，**做完 5 個畫面**（§3）。
+> 3. **接 live API、換掉 mock**，但**保留 mock 當斷網 Plan B**（憲法 V）。
+> 4. **W4：Vercel 上雲 + Landing（配 R1 文案）+ Demo 備援影片定稿 + 斷網切換演練**。
+>
+> **⚠️ 一個雷**：`/ask`、`/research` 走 Vertex LLM，實測 **23–34 秒**（含冷啟動）。
+> 對話 UI 一定要做 loading 狀態 + 逾時 fallback；Demo 前先打一發暖機。結構化端點（`/alerts` 等）才 ~0.1 秒。
+>
+> **要去敲的人換了**：JSON 契約 / API 已不需要再追 R2；剩下的跨角色依賴是
+> **R3（Watchdog 事件格式）** 與 **R4（離線 mock trace / 備援素材）**。
+
+---
+
 ## 0. 為何不等後端
 - 後端的輸出**已經有確定形狀**（見 §2，都從現有程式碼抓出來的真欄位）→ 你照這形狀做 mock JSON，UI 先全做。
-- 真 API 還沒有 HTTP 端點（目前只有 CLI / Python `build_workflow().invoke(...)`）→ **這是要跟 R2 敲的依賴**（見 §4），但**不擋你用 mock 開發**。
+- ~~真 API 還沒有 HTTP 端點~~ → **已不成立**：thin FastAPI 已上 Cloud Run（見上方狀態更新與 §4）。你可以直接接真 API，或仍用 mock 先行、最後一步換真 API。
 
 ## 1. 技術選型（先決定，省得改兩次）
 spec 寫「Next.js / Chainlit」二選一或混用。給你的建議：
@@ -99,8 +123,13 @@ spec 寫「Next.js / Chainlit」二選一或混用。給你的建議：
 4. **Alert Inbox**：讀 (c) 的 WatchdogAlert 陣列，`severity` 上色、`compliance_status=blocked` 標紅。
 5. **ReAct trace UI**：讀 (b) 的 `react_steps` 逐步畫「想→查→觀察」時間軸。
 
-## 4. ✅ 後端 HTTP API（已存在 —— 用法見 [`docs/API_使用指南.md`](./API_使用指南.md)）
-thin FastAPI 已實作（`src/polaris/api.py`），跑法 `python -m polaris.api`，互動文件 `/docs`、契約 `/openapi.json`：
+## 4. ✅ 後端 HTTP API（已上線可達 —— 用法見 [`docs/API_使用指南.md`](./API_使用指南.md)）
+
+> **Live（2026-06-16 起，G4 PASS）**：`https://polaris-api-14326813937.asia-east1.run.app`
+> 雲端健康探針走 `GET /health`（GFE 攔 `/healthz`）；互動文件 `/docs`、契約 `/openapi.json`。
+> 本機跑：`python -m polaris.api`。**TS 型別**：`npx openapi-typescript <API_URL>/openapi.json -o src/types/api.ts`。
+
+端點：
 ```
 POST /ask        body {query}            → §2(a) JSON
 POST /research   body {question}         → §2(b) JSON
@@ -115,7 +144,7 @@ GET  /events     ?ticker&type            → 事件流 / 時間軸
 
 ## 5. DoD（照順序勾）
 - [ ] 技術選型拍板（Chainlit 核心 + Next.js Landing）
-- [ ] `mocks/*.json` 依 §2 三契約建好
+- [x] `mocks/*.json` 依 §2 三契約建好 — ✅ R7 前端已自帶 `public/mocks`；TS 型別由 `/openapi.json` 生成
 - [ ] 對話+引用 UI 跑通（讀 mock）
 - [ ] Citation Tracer 點擊跳轉**正確率 100%**
 - [ ] Alert Inbox + ReAct trace UI（讀 mock (c)/(b)）

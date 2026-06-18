@@ -1,0 +1,18 @@
+theme_id,theme_name,theme_category,description
+AI,人工智慧,Technology,AI 需求、AI PC、AI server 與推論/訓練應用
+HPC,高效能運算,Technology,高效能運算、先進製程與資料中心
+SERVER,AI伺服器,Technology,AI server 與雲端伺服器供應鏈
+CLOUD,雲端運算,Technology,雲端服務、IDC 與資料中心
+SEMICON,半導體,Technology,半導體設計、製造、封測與材料
+EV,電動車,Industry Trend,電動車、車用電子與充電/電源
+GREEN,綠能,Industry Trend,節能、電源管理、再生能源
+5G,5G通訊,Technology,5G 通訊、網通與電信基礎建設
+IOT,物聯網,Technology,IoT、邊緣裝置與連網設備
+INSURANCE,保險,Financial,壽險、產險與保險資產配置
+BANKING,銀行,Financial,銀行業、授信、存放款與手續費
+USD_RATE,美元/利率敏感,Macro,美元匯率、利率與金融資產評價敏感
+FOOD,食品民生,Consumer,食品、通路與民生消費
+TELECOM,電信服務,Communication,電信、行動服務與 IDC
+PCB,PCB/載板,Technology,PCB、ABF 載板與高階基板
+CONSUMER_PC,消費性電腦,Technology,PC、筆電、周邊與品牌通路
+EMS,電子代工,Technology,電子代工、ODM/OEM 與供應鏈管理

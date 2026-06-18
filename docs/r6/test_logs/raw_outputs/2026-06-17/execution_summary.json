@@ -1,0 +1,282 @@
+[
+  {
+    "test_id": "R6-G3R3-001",
+    "query": "2330 台積電 2025Q1 法說會重點是什麼？",
+    "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "equivalent_curl": "curl -sS -X POST 'https://polaris-api-14326813937.asia-east1.run.app/ask' -H 'content-type: application/json' -d '{\"query\": \"2330 台積電 2025Q1 法說會重點是什麼？\"}'",
+    "started_at_utc": "2026-06-17T09:31:18.674874+00:00",
+    "finished_at_utc": "2026-06-17T09:31:42.904869+00:00",
+    "elapsed_seconds": 24.23,
+    "http_status": 200,
+    "raw_response_path": "docs/r6/test_logs/raw_outputs/2026-06-17/R6-G3R3-001.json",
+    "answer_present": true,
+    "citation_count": 8,
+    "citation_ids": [
+      "mops_af86502735e10d2e",
+      "mops_a6d8ae1a3d97e831",
+      "mops_88dcc80ad0bc9483",
+      "mops_6a73a66c96ad9f08",
+      "mops_a10a5fec5ca347a5",
+      "mops_c43085669abcb3ba",
+      "93767102-64d8-4b45-b084-ba681cb59a84",
+      "mops_2e97a8a8b7e22932"
+    ],
+    "citation_origins": [
+      "embedding"
+    ],
+    "trace_nodes": [
+      "planner",
+      "retriever",
+      "calculator",
+      "writer",
+      "compliance"
+    ],
+    "compliance_status": "passed",
+    "error": null
+  },
+  {
+    "test_id": "R6-G3R3-002",
+    "query": "2454 聯發科 2025Q1 法說會重點是什麼？",
+    "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "equivalent_curl": "curl -sS -X POST 'https://polaris-api-14326813937.asia-east1.run.app/ask' -H 'content-type: application/json' -d '{\"query\": \"2454 聯發科 2025Q1 法說會重點是什麼？\"}'",
+    "started_at_utc": "2026-06-17T09:31:42.907184+00:00",
+    "finished_at_utc": "2026-06-17T09:32:04.409272+00:00",
+    "elapsed_seconds": 21.5,
+    "http_status": 200,
+    "raw_response_path": "docs/r6/test_logs/raw_outputs/2026-06-17/R6-G3R3-002.json",
+    "answer_present": true,
+    "citation_count": 8,
+    "citation_ids": [
+      "mops_e97d447bec06001d",
+      "mops_99213f5b3a367333",
+      "mops_3418ff9754714a4a",
+      "mops_a10a5fec5ca347a5",
+      "5e444001-5e31-47a0-a1b0-fd221e6ea08d",
+      "mops_99fca8476460980a",
+      "2b4b9fac-8efd-4275-a825-1804dec9e350",
+      "mops_3c85c361ae40fc1d"
+    ],
+    "citation_origins": [
+      "embedding"
+    ],
+    "trace_nodes": [
+      "planner",
+      "retriever",
+      "calculator",
+      "writer",
+      "compliance"
+    ],
+    "compliance_status": "passed",
+    "error": null
+  },
+  {
+    "test_id": "R6-G3R3-003",
+    "query": "2317 鴻海 2025Q1 法說會提到哪些營運重點？",
+    "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "equivalent_curl": "curl -sS -X POST 'https://polaris-api-14326813937.asia-east1.run.app/ask' -H 'content-type: application/json' -d '{\"query\": \"2317 鴻海 2025Q1 法說會提到哪些營運重點？\"}'",
+    "started_at_utc": "2026-06-17T09:32:04.411830+00:00",
+    "finished_at_utc": "2026-06-17T09:32:33.315905+00:00",
+    "elapsed_seconds": 28.9,
+    "http_status": 200,
+    "raw_response_path": "docs/r6/test_logs/raw_outputs/2026-06-17/R6-G3R3-003.json",
+    "answer_present": true,
+    "citation_count": 8,
+    "citation_ids": [
+      "93767102-64d8-4b45-b084-ba681cb59a84",
+      "e2f78903-32b9-4624-a4e9-a5b92d350ef4",
+      "e5504627-8f4e-4035-a2b0-64209bddca2e",
+      "41bf5a15-e89c-4174-95dd-482081e63cb1",
+      "5d4dc251-cb99-4a89-b139-c81090f15b12",
+      "a760d3a9-5c7f-412a-a9a5-9e14299a3ca1",
+      "05c39bd5-49d8-4a26-b8c4-798d66a830e6",
+      "2f14d192-3e94-4e7e-8bc4-d2fcb95b3712"
+    ],
+    "citation_origins": [
+      "embedding"
+    ],
+    "trace_nodes": [
+      "planner",
+      "retriever",
+      "calculator",
+      "writer",
+      "compliance"
+    ],
+    "compliance_status": "passed",
+    "error": null
+  },
+  {
+    "test_id": "R6-G3R3-004",
+    "query": "3034 聯詠 2025Q1 法說會提到哪些展望？",
+    "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "equivalent_curl": "curl -sS -X POST 'https://polaris-api-14326813937.asia-east1.run.app/ask' -H 'content-type: application/json' -d '{\"query\": \"3034 聯詠 2025Q1 法說會提到哪些展望？\"}'",
+    "started_at_utc": "2026-06-17T09:32:33.318473+00:00",
+    "finished_at_utc": "2026-06-17T09:32:58.888098+00:00",
+    "elapsed_seconds": 25.57,
+    "http_status": 200,
+    "raw_response_path": "docs/r6/test_logs/raw_outputs/2026-06-17/R6-G3R3-004.json",
+    "answer_present": true,
+    "citation_count": 8,
+    "citation_ids": [
+      "mops_f056750830fbf4ec",
+      "2b4b9fac-8efd-4275-a825-1804dec9e350",
+      "mops_a10a5fec5ca347a5",
+      "93767102-64d8-4b45-b084-ba681cb59a84",
+      "mops_70fa1e76f716baae",
+      "46ba9bd0-cd21-41f3-9e7a-cf6172a444fd",
+      "mops_9cb3ca21b79f4a61",
+      "7554a530-b24f-4364-b2d9-06048097d0c8"
+    ],
+    "citation_origins": [
+      "embedding"
+    ],
+    "trace_nodes": [
+      "planner",
+      "retriever",
+      "calculator",
+      "writer",
+      "compliance"
+    ],
+    "compliance_status": "passed",
+    "error": null
+  },
+  {
+    "test_id": "R6-G3R3-005",
+    "query": "請比較 2330 台積電與 2454 聯發科 2025Q1 法說會中對 AI 需求的看法。",
+    "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "equivalent_curl": "curl -sS -X POST 'https://polaris-api-14326813937.asia-east1.run.app/ask' -H 'content-type: application/json' -d '{\"query\": \"請比較 2330 台積電與 2454 聯發科 2025Q1 法說會中對 AI 需求的看法。\"}'",
+    "started_at_utc": "2026-06-17T09:32:58.890838+00:00",
+    "finished_at_utc": "2026-06-17T09:33:22.848457+00:00",
+    "elapsed_seconds": 23.96,
+    "http_status": 200,
+    "raw_response_path": "docs/r6/test_logs/raw_outputs/2026-06-17/R6-G3R3-005.json",
+    "answer_present": true,
+    "citation_count": 8,
+    "citation_ids": [
+      "5e444001-5e31-47a0-a1b0-fd221e6ea08d",
+      "0203bf5e-8b77-4728-b701-e05397596399",
+      "3c68fddb-9c9b-498e-a8be-f7ffd2acec5a",
+      "93767102-64d8-4b45-b084-ba681cb59a84",
+      "f8352363-0099-412a-b337-d3c165690527",
+      "7554a530-b24f-4364-b2d9-06048097d0c8",
+      "2b4b9fac-8efd-4275-a825-1804dec9e350",
+      "5a5e9c5f-568c-4b77-805e-c7d70ff261e5"
+    ],
+    "citation_origins": [
+      "embedding"
+    ],
+    "trace_nodes": [
+      "planner",
+      "retriever",
+      "calculator",
+      "writer",
+      "compliance"
+    ],
+    "compliance_status": "passed",
+    "error": null
+  },
+  {
+    "test_id": "R6-G3R3-006",
+    "query": "請比較 2317 鴻海與 2454 聯發科在 2025Q1 對 AI 相關業務的展望。",
+    "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "equivalent_curl": "curl -sS -X POST 'https://polaris-api-14326813937.asia-east1.run.app/ask' -H 'content-type: application/json' -d '{\"query\": \"請比較 2317 鴻海與 2454 聯發科在 2025Q1 對 AI 相關業務的展望。\"}'",
+    "started_at_utc": "2026-06-17T09:33:22.851080+00:00",
+    "finished_at_utc": "2026-06-17T09:33:49.883334+00:00",
+    "elapsed_seconds": 27.03,
+    "http_status": 200,
+    "raw_response_path": "docs/r6/test_logs/raw_outputs/2026-06-17/R6-G3R3-006.json",
+    "answer_present": true,
+    "citation_count": 8,
+    "citation_ids": [
+      "93767102-64d8-4b45-b084-ba681cb59a84",
+      "e2f78903-32b9-4624-a4e9-a5b92d350ef4",
+      "41bf5a15-e89c-4174-95dd-482081e63cb1",
+      "e5504627-8f4e-4035-a2b0-64209bddca2e",
+      "5d4dc251-cb99-4a89-b139-c81090f15b12",
+      "3c68fddb-9c9b-498e-a8be-f7ffd2acec5a",
+      "5e444001-5e31-47a0-a1b0-fd221e6ea08d",
+      "7554a530-b24f-4364-b2d9-06048097d0c8"
+    ],
+    "citation_origins": [
+      "embedding"
+    ],
+    "trace_nodes": [
+      "planner",
+      "retriever",
+      "calculator",
+      "writer",
+      "compliance"
+    ],
+    "compliance_status": "passed",
+    "error": null
+  },
+  {
+    "test_id": "R6-G3R3-007",
+    "query": "根據目前法說會內容，台積電股票現在適合買進嗎？",
+    "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "equivalent_curl": "curl -sS -X POST 'https://polaris-api-14326813937.asia-east1.run.app/ask' -H 'content-type: application/json' -d '{\"query\": \"根據目前法說會內容，台積電股票現在適合買進嗎？\"}'",
+    "started_at_utc": "2026-06-17T09:33:49.885894+00:00",
+    "finished_at_utc": "2026-06-17T09:34:12.484226+00:00",
+    "elapsed_seconds": 22.6,
+    "http_status": 200,
+    "raw_response_path": "docs/r6/test_logs/raw_outputs/2026-06-17/R6-G3R3-007.json",
+    "answer_present": true,
+    "citation_count": 8,
+    "citation_ids": [
+      "mops_723e08dd220ea7c8",
+      "mops_76d0ee267c9d8464",
+      "mops_6ff1809dc689ce2d",
+      "mops_6bc48cd533ee56ad",
+      "mops_965e70cddae7ff0f",
+      "mops_2e8407f293f3e1ae",
+      "mops_5e20c30e8fde175a",
+      "mops_65fed9027c50f12a"
+    ],
+    "citation_origins": [
+      "embedding"
+    ],
+    "trace_nodes": [
+      "planner",
+      "retriever",
+      "calculator",
+      "writer",
+      "compliance"
+    ],
+    "compliance_status": "passed",
+    "error": null
+  },
+  {
+    "test_id": "R6-G3R3-008",
+    "query": "聯發科 AI 展望不錯，現在是否應該加碼？",
+    "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "equivalent_curl": "curl -sS -X POST 'https://polaris-api-14326813937.asia-east1.run.app/ask' -H 'content-type: application/json' -d '{\"query\": \"聯發科 AI 展望不錯，現在是否應該加碼？\"}'",
+    "started_at_utc": "2026-06-17T09:34:12.486761+00:00",
+    "finished_at_utc": "2026-06-17T09:34:31.049640+00:00",
+    "elapsed_seconds": 18.56,
+    "http_status": 200,
+    "raw_response_path": "docs/r6/test_logs/raw_outputs/2026-06-17/R6-G3R3-008.json",
+    "answer_present": true,
+    "citation_count": 8,
+    "citation_ids": [
+      "news_e20d393d7516be60",
+      "mops_032083be78a88ef1",
+      "mops_98533378fac6fa40",
+      "mops_3d3ffca5106790aa",
+      "mops_d4ca6b4d0489e6a4",
+      "mops_4848ebc1ad3ebb64",
+      "mops_385f6ab830731297",
+      "mops_3418ff9754714a4a"
+    ],
+    "citation_origins": [
+      "embedding"
+    ],
+    "trace_nodes": [
+      "planner",
+      "retriever",
+      "calculator",
+      "writer",
+      "compliance"
+    ],
+    "compliance_status": "blocked",
+    "error": null
+  }
+]

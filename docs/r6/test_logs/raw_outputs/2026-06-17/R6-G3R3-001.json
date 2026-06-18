@@ -1,0 +1,151 @@
+{
+  "test_id": "R6-G3R3-001",
+  "query": "2330 台積電 2025Q1 法說會重點是什麼？",
+  "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+  "method": "POST",
+  "content_type": "application/json",
+  "started_at_utc": "2026-06-17T09:31:18.674874+00:00",
+  "finished_at_utc": "2026-06-17T09:31:42.904869+00:00",
+  "elapsed_seconds": 24.23,
+  "http_status": 200,
+  "request_body": {
+    "query": "2330 台積電 2025Q1 法說會重點是什麼？"
+  },
+  "response": {
+    "answer": "根據提供的引用片段，關於台積電（2330）2025年第一季法說會的重點說明如下：\n\n### 一、 法說會召開時間\n台積電已公告 114 年（2025 年）第一季法人說明會預計於 **114 年 4 月 17 日**召開 [mops_a10a5fec5ca347a5]。\n\n### 二、 資料不足說明\n目前提供的引用片段中，**未包含台積電 2025Q1 法說會的具體內容或重點摘要**。相關限制如下：\n1. **會議尚未召開或缺乏紀錄**：根據公告，法說會日期為 2025 年 4 月 17 日 [mops_a10a5fec5ca347a5]，而提供的引用片段中並無該場會議的逐字稿或結果摘要。\n2. **引用資料對象不符**：片段中雖有一份「2025 年第一季法人說明會」逐字稿 [93767102-64d8-4b45-b084-ba681cb59a84]，但其內容屬於**鴻海精密工業股份有限公司**（會議日期為 2025 年 5 月 14 日），並非台積電之法說會資料。\n3. **現有資料僅限營收報告**：片段中僅包含台積電 2025 年 1 月及 2 月的營收報告 [mops_a6d8ae1a3d97e831, mops_af86502735e10d2e]，以及 2024 年第四季的盈餘數據（EPS 14.45 元）[mops_88dcc80ad0bc9483]，不足以歸納 2025Q1 法說會的經營展望或重點。\n\n**結論：** 由於提供的資料中缺乏台積電 2025Q1 法說會的實際內容，且部分逐字稿資料屬於其他公司，故無法提供該場法說會的重點摘要。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "mops_af86502735e10d2e",
+        "snippet": "台積公司2025年2月營收報告",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_a6d8ae1a3d97e831",
+        "snippet": "台積公司2025年1月營收報告與地震影響說明",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_88dcc80ad0bc9483",
+        "snippet": "台積公司2024年第四季每股盈餘新台幣14.45元",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_6a73a66c96ad9f08",
+        "snippet": "台積公司2024年12月營收報告",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_a10a5fec5ca347a5",
+        "snippet": "公告本公司114年第一季法人說明會將於114年4月17日召開",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_c43085669abcb3ba",
+        "snippet": "台積公司董事會決議",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "93767102-64d8-4b45-b084-ba681cb59a84",
+        "snippet": "法說會逐字稿\n鴻海精密工業股份有限公司 2025 年第一季法人說明會\n會議日期及時間 ：2025 年 5 月14 日 台北時間下午3 點\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n鴻海精密工業股份有限公司\n2025 年第一季法人說明會\n公司與會者\n劉揚偉 Young Liu 鴻海精密工業股份有限公司 董事長\n黃德才 David Huang 鴻海精密工業股份有限公司 財務長\n巫俊毅 James Wu 鴻海精密工業股份有限公司 發言人\n方文妍 Kristen Fang 鴻海精密工業股份有限公司 投資人關係資深經理\n法說會提問者\nSharon Shih Morgan Stanley-分析師\nAngela Hsiang 凱基投顧-分析師\nCarrie Liu Citi-分析師\n方昱翔 三立財經-記者\n謝佩穎 TVBS新聞網-記者\nAlbert Hong J.P. Morgan-分析師\nArthur Liao 富邦投顧-分析師\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com |",
+        "origin": "embedding"
+      },
+      {
+        "source_id": "mops_2e97a8a8b7e22932",
+        "snippet": "公告本公司將受邀參加「JP Morgan Taiwan CEO-CFO Conference 2025」之法說訊息",
+        "origin": "embedding"
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4899
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1116
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 9203
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 8598
+      }
+    ]
+  },
+  "error": null
+}

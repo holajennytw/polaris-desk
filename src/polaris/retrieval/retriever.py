@@ -148,6 +148,32 @@ def _normalize_vector_result(result: SearchResult) -> SearchResult:
     )
 
 
+# Citation-facing metadata keys that downstream adapters (api.py /research,
+# Deep Research SearchResult→Citation) read off SearchResult.metadata. The
+# vector (BigQuery) path already populates them; BM25/stub results don't — so
+# the final output is normalised to always carry the keys, letting consumers do
+# metadata["published_at"] safely on any channel (issue: R7 /research KeyError).
+_CITATION_METADATA_KEYS = ("doc_type", "published_at", "fiscal_period")
+
+
+def _ensure_citation_metadata(result: SearchResult) -> SearchResult:
+    missing = [k for k in _CITATION_METADATA_KEYS if k not in result.metadata]
+    if not missing:
+        return result
+    metadata = dict(result.metadata)
+    for key in missing:
+        # fiscal_period mirrors the typed period field; others default to None.
+        metadata[key] = result.period if key == "fiscal_period" else None
+    return SearchResult(
+        id=result.id,
+        content=result.content,
+        score=result.score,
+        company=result.company,
+        period=result.period,
+        metadata=metadata,
+    )
+
+
 def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[SearchResult]:
     """Default Cohere rerank implementation using ``COHERE_API_KEY`` from env.
 
@@ -307,7 +333,10 @@ class HybridRetriever:
 
         reranker = self.rerank_fn if self.rerank_fn is not None else _cohere_rerank
         candidates = reranker(query, candidates, self.top_k)
-        return candidates
+        # Every result must carry the citation-facing metadata keys so downstream
+        # adapters (api.py /research, Deep Research) can read metadata["doc_type"/
+        # "published_at"] safely regardless of channel (incl. BM25/stub fallback).
+        return [_ensure_citation_metadata(r) for r in candidates]
 
 
 # ---------------------------------------------------------------------------
