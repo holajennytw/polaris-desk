@@ -80,6 +80,7 @@
 | `polaris_core` 真實語料入庫 | **R4** | 真分 Ragas 需要；目前 stub 語料 | ⏳ R4 ingestion SOP §4 |
 | COHERE_API_KEY 設定 | **全員** | Cohere Rerank 啟用（無 key → 優雅 skip，不阻 CI） | ⏳ Secret Manager 設定 |
 | ColPali | ~~R4~~ **TD-01 cut** | G3 場景 3 砍除 | ✅ 已裁定 |
+| 視覺檢索第 4 路（接既有 colpali_pages）| **R3/R4** | **TD-02（提案，待 PM 簽核）**：逆轉 TD-01 檢索整合決定。查證後事實——R4 早已將圖表頁以 ColPali 入庫（`polaris_core.colpali_pages`，5701 頁、20 tickers、128 維池化向量），僅 R3 未接。本案接上既有表為**第 4 路（gated，場景 3 專用）**，`origin="colpali"`，**零資料架構變更**（只讀既有表，不動 chunks 768 庫）。Phase 1 檢索+命中率（≥70%），Phase 2 vision 讀數字回答。依賴 R4 提供 query encoder。設計見 `docs/superpowers/specs/2026-06-20-restore-4th-retrieval-path-vision-design.md` | ⏳ 待 PM 簽核 |
 | Cloud Run 部署（6/15）| **R4/R7** | 需 GCP 憑證 | ⏳ 不在 R2 範圍 |
 
 ---
