@@ -76,6 +76,27 @@ class Settings(BaseSettings):
     # 全程匿名（token-free CI / 斷網降級照常）。Firestore 認證走 ADC（runtime SA），免金鑰。
     google_client_id: str = ""
 
+    # --- 多金鑰輪替（429 配額耗盡時換把金鑰）---
+    # GEMINI_API_KEY / COHERE_API_KEY 支援逗號分隔多把金鑰（單把無逗號 = 1 元素，
+    # 向後相容）。429 時 client 端自動輪到下一把；全數耗盡才由 retry 退避重試。
+    @property
+    def gemini_api_keys(self) -> list[str]:
+        return _split_keys(self.gemini_api_key)
+
+    @property
+    def cohere_api_keys(self) -> list[str]:
+        return _split_keys(self.cohere_api_key)
+
+
+def _split_keys(raw: str) -> list[str]:
+    """逗號分隔字串 → 金鑰 list；去空白、丟空字串與 ``#`` 開頭佔位。"""
+    keys: list[str] = []
+    for part in raw.split(","):
+        stripped = part.strip()
+        if stripped and not stripped.startswith("#"):
+            keys.append(stripped)
+    return keys
+
 
 # 全域單例 —— 其他模組 `from polaris.config import settings`
 settings = Settings()

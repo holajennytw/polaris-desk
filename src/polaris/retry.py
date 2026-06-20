@@ -51,6 +51,22 @@ def is_transient(exc: BaseException) -> bool:
     return any(hint in name for hint in _TRANSIENT_NAME_HINTS)
 
 
+def is_quota_error(exc: BaseException) -> bool:
+    """例外是否為「配額耗盡」（429 / RESOURCE_EXHAUSTED）。
+
+    專供金鑰輪替判斷：只有配額類 429 換把金鑰才有意義；其餘暫時性錯誤
+    （timeout / 503 …）輪 key 無濟於事，交給 :func:`call_with_retry` 退避即可。
+    """
+    for attr in ("code", "status_code", "status"):
+        val = getattr(exc, attr, None)
+        if isinstance(val, bool):  # bool 是 int 子類，排除掉
+            continue
+        if isinstance(val, int) and val == 429:
+            return True
+    msg = str(exc)
+    return "429" in msg or "RESOURCE_EXHAUSTED" in msg
+
+
 def default_sleep(seconds: float) -> None:
     """退避等待的預設實作；獨立成函式讓測試可 monkeypatch 成 no-op。"""
     time.sleep(seconds)
@@ -85,4 +101,4 @@ def call_with_retry(
     raise RuntimeError("unreachable")  # pragma: no cover — 迴圈必 return 或 raise
 
 
-__all__ = ["is_transient", "default_sleep", "call_with_retry"]
+__all__ = ["is_transient", "is_quota_error", "default_sleep", "call_with_retry"]

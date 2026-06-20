@@ -104,7 +104,10 @@ def ragas_score(records: list[EvalRecord]) -> dict[str, float] | None:
     if not ragas_available():
         return None
 
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    # GEMINI_API_KEY 可為逗號分隔多把（client 端 429 輪替用）；Ragas judge 不輪替，
+    # 取第一把即可——別把整串 "k1,k2" 當成單一金鑰傳給 ChatGoogleGenerativeAI。
+    raw_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    api_key = raw_key.split(",")[0].strip() if raw_key else None
     if not api_key:
         return None
 

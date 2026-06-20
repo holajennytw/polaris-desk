@@ -27,8 +27,8 @@ def is_real_key(key: str | None) -> bool:
 
 
 def available() -> bool:
-    """目前 settings 內是否有可用的 Gemini 金鑰。"""
-    return is_real_key(settings.gemini_api_key)
+    """目前 settings 內是否有可用的 Gemini 金鑰（含逗號分隔多把）。"""
+    return len(settings.gemini_api_keys) > 0
 
 
 def active_llm() -> "GeminiClient | None":
@@ -51,21 +51,43 @@ class GeminiClient:
     """
 
     def __init__(self) -> None:
-        if not is_real_key(settings.gemini_api_key):
+        keys = settings.gemini_api_keys
+        if not keys:
             raise RuntimeError("缺少有效 GEMINI_API_KEY，請在 .env 填入真實金鑰")
         from google import genai  # 延遲 import
 
-        # 嵌入恆走 api_key（向量空間與 polaris_core 一致）。
-        self._embed_client = genai.Client(api_key=settings.gemini_api_key)
-        # 生成：Vertex（專案配額）或 api_key。
+        # 嵌入恆走 api_key（向量空間與 polaris_core 一致）；逗號分隔多把 → 一把一個
+        # client，429 配額耗盡時 generate/embed 自動輪到下一把。
+        self._embed_clients = [genai.Client(api_key=k) for k in keys]
+        # 生成：Vertex（專案配額，ADC 認證、無 api_key 可輪）或 api_key（同嵌入，可輪）。
         if settings.gemini_use_vertex:
-            self._gen_client = genai.Client(
-                vertexai=True,
-                project=settings.gcp_project,
-                location=settings.vertex_location,
-            )
+            self._gen_clients = [
+                genai.Client(
+                    vertexai=True,
+                    project=settings.gcp_project,
+                    location=settings.vertex_location,
+                )
+            ]
         else:
-            self._gen_client = self._embed_client
+            self._gen_clients = self._embed_clients
+
+    @staticmethod
+    def _call_rotating(clients: list, fn):
+        """對每個 client 依序試 ``fn(client)``；遇 429 配額耗盡輪到下一把，
+        全數耗盡則拋出最後一個 429（交給外層 ``call_with_retry`` 退避重試）。
+        非配額錯誤（400 / 連線等）不輪 key，立刻拋出。"""
+        from polaris.retry import is_quota_error
+
+        last_exc: BaseException | None = None
+        for client in clients:
+            try:
+                return fn(client)
+            except Exception as exc:  # noqa: BLE001 — 僅 429 吞下輪 key，其餘照拋
+                if not is_quota_error(exc):
+                    raise
+                last_exc = exc
+        assert last_exc is not None  # clients 非空 → 走到這裡必有 429
+        raise last_exc
 
     def generate(
         self,
@@ -87,8 +109,11 @@ class GeminiClient:
             max_output_tokens=settings.llm_max_output_tokens,
             temperature=0.0,
         )
-        resp = self._gen_client.models.generate_content(
-            model=model, contents=prompt, config=config
+        resp = self._call_rotating(
+            self._gen_clients,
+            lambda client: client.models.generate_content(
+                model=model, contents=prompt, config=config
+            ),
         )
         # LLM10：把本次估算用量記入 process 預算（超限會 raise，擋住後續呼叫）。
         default_budget.charge(count_tokens(prompt) + count_tokens(resp.text or ""))
@@ -101,9 +126,14 @@ class GeminiClient:
         """
         from google.genai import types  # 延遲 import
 
-        resp = self._embed_client.models.embed_content(
-            model=settings.embedding_model,
-            contents=text,
-            config=types.EmbedContentConfig(output_dimensionality=settings.embedding_dim),
+        resp = self._call_rotating(
+            self._embed_clients,
+            lambda client: client.models.embed_content(
+                model=settings.embedding_model,
+                contents=text,
+                config=types.EmbedContentConfig(
+                    output_dimensionality=settings.embedding_dim
+                ),
+            ),
         )
         return list(resp.embeddings[0].values)

@@ -87,6 +87,108 @@ def _patch_genai(monkeypatch, *, use_vertex, key="AIzaSyReal123"):
     return inits, log
 
 
+class _Quota429(Exception):
+    """模擬 google-genai 配額耗盡（429 / RESOURCE_EXHAUSTED）。"""
+
+    def __init__(self) -> None:
+        super().__init__("429 RESOURCE_EXHAUSTED")
+        self.code = 429
+
+
+def _patch_genai_rotating(monkeypatch, *, exhausted_keys, keys):
+    """Fake genai.Client where clients built with a key in ``exhausted_keys``
+    raise 429 on every call; others succeed. Returns the call log [(key, op)]."""
+    import google.genai as genai_mod
+
+    from polaris.config import settings
+
+    log: list[tuple[str, str]] = []
+
+    class _FakeModels:
+        def __init__(self, key: str) -> None:
+            self.key = key
+
+        def _maybe_429(self, op: str):
+            log.append((self.key, op))
+            if self.key in exhausted_keys:
+                raise _Quota429()
+
+        def generate_content(self, model, contents, config):  # noqa: ARG002
+            self._maybe_429("generate")
+            return type("R", (), {"text": f"gen::{self.key}", "candidates": []})()
+
+        def embed_content(self, model, contents, config):  # noqa: ARG002
+            self._maybe_429("embed")
+            return type(
+                "R", (), {"embeddings": [type("E", (), {"values": [0.1, 0.2, 0.3]})()]}
+            )()
+
+    def _fake_client(**kw):
+        return type("C", (), {"models": _FakeModels(kw.get("api_key", "vertex"))})()
+
+    monkeypatch.setattr(genai_mod, "Client", _fake_client)
+    monkeypatch.setattr(settings, "gemini_api_key", ",".join(keys))
+    monkeypatch.setattr(settings, "gemini_use_vertex", False)
+    return log
+
+
+class TestKeyRotation:
+    def test_generate_rotates_to_second_key_on_429(self, monkeypatch):
+        log = _patch_genai_rotating(monkeypatch, exhausted_keys={"k1"}, keys=["k1", "k2"])
+        c = gemini.GeminiClient()
+        # k1 配額耗盡 → 自動輪到 k2 成功
+        assert c.generate("hi") == "gen::k2"
+        assert log == [("k1", "generate"), ("k2", "generate")]
+
+    def test_embed_rotates_to_second_key_on_429(self, monkeypatch):
+        log = _patch_genai_rotating(monkeypatch, exhausted_keys={"k1"}, keys=["k1", "k2"])
+        c = gemini.GeminiClient()
+        assert c.embed("台積電") == [0.1, 0.2, 0.3]
+        assert log == [("k1", "embed"), ("k2", "embed")]
+
+    def test_all_keys_exhausted_raises_429(self, monkeypatch):
+        import pytest
+
+        _patch_genai_rotating(monkeypatch, exhausted_keys={"k1", "k2"}, keys=["k1", "k2"])
+        c = gemini.GeminiClient()
+        # 全數 429 → 拋出（由外層 call_with_retry 接手退避）
+        with pytest.raises(_Quota429):
+            c.generate("hi")
+
+    def test_non_quota_error_does_not_rotate(self, monkeypatch):
+        """非 429 錯誤（如 400）不輪 key——立刻拋出。"""
+        import google.genai as genai_mod
+        import pytest
+
+        from polaris.config import settings
+
+        log: list[str] = []
+
+        class _Bad(Exception):
+            def __init__(self):
+                super().__init__("bad request")
+                self.code = 400
+
+        class _FakeModels:
+            def __init__(self, key):
+                self.key = key
+
+            def generate_content(self, model, contents, config):  # noqa: ARG002
+                log.append(self.key)
+                raise _Bad()
+
+        monkeypatch.setattr(
+            genai_mod, "Client",
+            lambda **kw: type("C", (), {"models": _FakeModels(kw.get("api_key"))})(),
+        )
+        monkeypatch.setattr(settings, "gemini_api_key", "k1,k2")
+        monkeypatch.setattr(settings, "gemini_use_vertex", False)
+        c = gemini.GeminiClient()
+        with pytest.raises(_Bad):
+            c.generate("hi")
+        assert log == ["k1"]  # 不輪到 k2
+
+
 class TestVertexGeneration:
     def test_vertex_mode_routes_generation_to_vertex_embeddings_to_apikey(self, monkeypatch):
         inits, log = _patch_genai(monkeypatch, use_vertex=True)
