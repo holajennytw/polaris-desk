@@ -148,6 +148,24 @@
 | `.research-layout` | `grid-template-columns` | `0.22s ease` |
 | `.app`（rail collapse） | `grid-template-columns` | `0.22s ease` |
 | `.brand-name`, `.nav-item span` | `opacity`, `max-width` | `0.15s / 0.22s ease` |
+| `.nav-item` | `background / color / border-color / transform` | `0.18s ease / 0.1s ease` |
+| `.nav-item svg` | `transform`（hover → active svg scale） | `0.2s cubic-bezier(.22,1,.36,1)` |
+| `.mobnav-item` | `color` | `0.18s ease` |
+| `.mobnav-ico svg` | `transform`（active icon scale） | `0.2s cubic-bezier(.22,1,.36,1)` |
+
+### Nav Item 點擊壓下效果（2026-06-20 補回）
+
+```css
+/* 桌機 sidebar */
+.nav-item:active:not(.active) { transform: scale(0.97); }   /* 非 active 按下有縮放感 */
+.nav-item.active svg           { transform: scale(1.08); }  /* active icon 放大 */
+
+/* 手機底部導覽 */
+.mobnav-item:active                     { transform: scale(0.94); }
+.mobnav-item.active .mobnav-ico svg     { transform: scale(1.1); }
+```
+
+**來源**：原存於 stash `local-changes-before-merge-main-20260620`，merge main 時未自動恢復，於 2026-06-20 手動補入。
 
 ---
 

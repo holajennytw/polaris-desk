@@ -335,3 +335,103 @@ Step 4（summary）→ Step 5（ReAct）→ Step 6（monitor）→ Step 7（cita
 - [x] Feature：`Step` 介面加 `secondarySelector`；`applyHighlight` 支援雙元素高亮
 - [x] Feature：側欄收縮步驟手機版 fallback 高亮 `.mobnav`，說明文字標示桌機限定
 - [x] 後端零異動
+
+---
+
+## 2026-06-20 追加改動
+
+### Bug 12（RWD）— Tour Card 手機版按鈕過大、卡片過高
+
+**現象**：手機板（≤1230px）引導卡的按鈕受全域 `.btn { min-height: 44px }` 影響，footer 過高；≤560px 時按鈕超出螢幕右邊
+
+**根因**：全域觸控目標規則 `min-height: 44px` 套用至 tour card 內的所有 `.btn`，footer 的三顆按鈕橫排寬度超出 `min(520px, 96vw)`
+
+**修法**（`polaris.css`）：
+```css
+/* ≤1230px */
+.tour-card { width: min(520px, 96vw); }
+.tour-card .btn { min-height: 32px; font-size: 12.5px; padding: 5px 10px; }
+.tour-card-head { padding: 10px 14px 8px; }
+.tour-card-body { padding: 10px 14px 8px; font-size: 13px; line-height: 1.65; }
+.tour-card-footer { padding: 8px 14px 10px; flex-wrap: wrap; gap: 6px; }
+.tour-sample-btn { font-size: 12.5px; padding: 5px 12px; }
+.tour-dots { flex: 1; }
+.tour-actions { margin-left: auto; gap: 5px; }
+
+/* ≤560px */
+.tour-card { bottom: 188px; }
+.tour-card-footer { flex-wrap: wrap; }
+.tour-dots { flex: 0 0 100%; order: 2; justify-content: center; padding-top: 4px; }
+.tour-actions { order: 1; margin-left: auto; }
+```
+
+---
+
+### RWD 全站整體縮小（2026-06-20）
+
+**影響檔案**：`frontend/src/app/styles/polaris.css`
+
+#### 手機整體內文字體縮小
+
+`body { font-size: 17.5px }` 在手機過大，財報摘要、KPI 數字佔滿版面：
+```css
+/* ≤1230px */
+body { font-size: 16px; }
+.summary li { font-size: 15.5px; }
+.rs-text { font-size: 14px; }
+.qb-input { font-size: 17px; }
+.kpi-value { font-size: 21px; }
+/* ...其他 kpi-label / chart-foot / compliance / tag / panel-meta */
+
+/* ≤560px */
+body { font-size: 14.5px; }
+.summary li { font-size: 14px; }
+.rs-text { font-size: 13px; }
+.kpi-value { font-size: 19px; }
+.page-desc { font-size: 14px; }
+.panel-title { font-size: 14px; }
+```
+
+#### peer-toolbar 手機 RWD
+
+`.ptb-vs`（兩個 `.cpick-btn` 橫排）在 400px 手機超出螢幕；`.cpick-dropdown` 絕對定位可能超出右邊：
+```css
+/* ≤1230px */
+.peer-toolbar { gap: 10px; padding: 10px 14px; }
+.ptb-vs { gap: 8px; flex-wrap: wrap; }
+.cpick-btn { font-size: 14.5px; padding: 5px 10px; }
+.cpick-dropdown { max-width: calc(100vw - 32px); }
+
+/* ≤560px */
+.peer-toolbar { flex-direction: column; align-items: stretch; }
+.ptb-vs { width: 100%; flex-wrap: nowrap; }
+.ptb-vs .cpick-wrap { flex: 1; min-width: 0; }
+.cpick-btn { width: 100%; justify-content: space-between; font-size: 14px; }
+.ptb-period select { width: 100%; }
+```
+
+---
+
+### UI 調整（2026-06-20）
+
+#### AppShell user-card 移除 user-role 標籤
+
+`frontend/src/components/layout/AppShell.tsx` 中 `.user-card` 移除 `<div className="user-role">分析師 · R7</div>`，sidebar 底部帳號卡只保留使用者名稱。
+
+#### Sidebar / mobnav click 效果補回（stash 遺失）
+
+stash `local-changes-before-merge-main-20260620` 中的 nav 互動效果在 merge 時未被恢復，手動補回：
+
+```css
+/* 桌機 nav-item */
+.nav-item { position: relative; transition: background .18s ease, color .18s ease, border-color .18s ease, gap .22s ease, transform .1s ease; }
+.nav-item svg { transition: transform .2s cubic-bezier(.22,1,.36,1); }
+.nav-item:active:not(.active) { transform: scale(0.97); }
+.nav-item.active svg { transform: scale(1.08); }
+
+/* 手機 mobnav */
+.mobnav-ico svg { transition: transform .2s cubic-bezier(.22,1,.36,1); }
+.mobnav-item { transition: color .18s ease; }
+.mobnav-item.active .mobnav-ico svg { transform: scale(1.1); }
+.mobnav-item:active { transform: scale(0.94); }
+```
