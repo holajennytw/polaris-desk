@@ -182,8 +182,12 @@ def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[
     """
     import os
 
-    api_key = os.environ.get("COHERE_API_KEY", "")
-    if not api_key:
+    from polaris.config import _split_keys
+    from polaris.retry import is_quota_error
+
+    # 逗號分隔多把金鑰（單把無逗號 = 1 元素，向後相容）；429 配額耗盡輪下一把。
+    api_keys = _split_keys(os.environ.get("COHERE_API_KEY", ""))
+    if not api_keys:
         logger.debug("COHERE_API_KEY not set; skipping rerank, keeping BM25+vector order")
         return results
     # `rerank-v3.5` 為 Cohere 多語 rerank 文件型號（適合中英財報），可用
@@ -193,15 +197,23 @@ def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[
     try:
         import cohere  # type: ignore[import-untyped]
 
-        # v2 rerank API 走 ClientV2 + client.rerank（舊 v1 `Client` 無 .rerank v2 契約）。
-        client = cohere.ClientV2(api_key=api_key)
         docs = [r.content for r in results]
-        response = client.rerank(
-            model=model,
-            query=query,
-            documents=docs,
-            top_n=top_k,
-        )
+        # v2 rerank API 走 ClientV2 + client.rerank（舊 v1 `Client` 無 .rerank v2 契約）。
+        response = None
+        for idx, api_key in enumerate(api_keys):
+            try:
+                response = cohere.ClientV2(api_key=api_key).rerank(
+                    model=model,
+                    query=query,
+                    documents=docs,
+                    top_n=top_k,
+                )
+                break
+            except Exception as exc:  # noqa: BLE001 — 429 輪下一把，其餘照拋給外層 except
+                if is_quota_error(exc) and idx < len(api_keys) - 1:
+                    logger.debug("Cohere 429 quota on key #%d; rotating to next", idx + 1)
+                    continue
+                raise
         reranked: list[SearchResult] = []
         for hit in response.results:
             original = results[hit.index]

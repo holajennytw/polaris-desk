@@ -50,6 +50,29 @@ class TestIsTransient:
 
 
 # ---------------------------------------------------------------------------
+# is_quota_error — 專指 429 / RESOURCE_EXHAUSTED（金鑰輪替用）
+# ---------------------------------------------------------------------------
+
+class TestIsQuotaError:
+    def test_code_429_is_quota(self):
+        assert retry.is_quota_error(_ApiError(429)) is True
+
+    @pytest.mark.parametrize("code", [408, 500, 503, 400, 403])
+    def test_other_codes_not_quota(self, code):
+        # 只有 429 算配額耗盡——別的暫時性錯誤輪 key 無濟於事
+        assert retry.is_quota_error(_ApiError(code)) is False
+
+    def test_429_in_message_is_quota(self):
+        assert retry.is_quota_error(Exception("got HTTP 429 quota")) is True
+
+    def test_resource_exhausted_in_message_is_quota(self):
+        assert retry.is_quota_error(Exception("RESOURCE_EXHAUSTED")) is True
+
+    def test_plain_error_not_quota(self):
+        assert retry.is_quota_error(ValueError("nope")) is False
+
+
+# ---------------------------------------------------------------------------
 # call_with_retry — 重試迴圈
 # ---------------------------------------------------------------------------
 

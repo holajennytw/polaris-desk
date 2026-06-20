@@ -363,6 +363,48 @@ def test_rerank_skip_logs_debug_when_no_key(caplog):
     assert any("skipping rerank" in r.message for r in caplog.records)
 
 
+def test_rerank_rotates_to_second_key_on_429(monkeypatch):
+    """COHERE_API_KEY 逗號分隔多把金鑰；第一把 429 → 自動輪到第二把。"""
+    import sys
+    import types
+
+    from polaris.retrieval.retriever import _cohere_rerank
+    from polaris.vectorstore.base import SearchResult as SR
+
+    used_keys: list[str] = []
+
+    class _Quota429(Exception):
+        def __init__(self):
+            super().__init__("429 too many requests")
+            self.status_code = 429
+
+    class _Resp:
+        results = [type("H", (), {"index": 0, "relevance_score": 0.9})()]
+
+    class _FakeClientV2:
+        def __init__(self, *a, **kw):
+            self._key = kw.get("api_key")
+
+        def rerank(self, *, model, query, documents, top_n):  # noqa: ARG002
+            used_keys.append(self._key)
+            if self._key == "co_first":
+                raise _Quota429()
+            return _Resp()
+
+    fake = types.ModuleType("cohere")
+    fake.ClientV2 = _FakeClientV2
+    monkeypatch.setitem(sys.modules, "cohere", fake)
+    monkeypatch.setenv("COHERE_API_KEY", "co_first,co_second")
+    monkeypatch.delenv("COHERE_RERANK_MODEL", raising=False)
+
+    out = [SR(id="a", content="ca", score=0.5, metadata={"origin": "bm25"})]
+    reranked = _cohere_rerank("q", out, top_k=1)
+
+    assert used_keys == ["co_first", "co_second"]  # 輪替發生
+    assert [r.id for r in reranked] == ["a"]
+    assert reranked[0].metadata["origin"] == "rerank"
+
+
 # ---------------------------------------------------------------------------
 # Default viewer = public sentinel (review nit #4)
 # ---------------------------------------------------------------------------
