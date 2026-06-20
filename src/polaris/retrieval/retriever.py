@@ -4,7 +4,8 @@
 - Vector search：透過可注入的 embedding_fn + VectorStore.search 介面接入
 - Cohere Rerank（opt-in）：``COHERE_API_KEY`` 存在且傳入 ``rerank_fn`` 時啟用；
   無 key 則 skip，結果仍為 BM25+vector merge，確定性可重現（CI friendly）
-- ColPali 已於 G3 前評估後 cut（TD-01）
+- ColPali 視覺檢索為獨立第 4 路（gated，場景 3），見 colpali_retriever / colpali_store；
+  資料早於 R4 入庫 colpali_pages，TD-01 僅 cut「R3 整合」、非資料（TD-02 復原，待 PM 簽核）
 """
 from __future__ import annotations
 
