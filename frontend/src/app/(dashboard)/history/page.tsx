@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useRouter } from "next/navigation";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/historyStore";
@@ -37,9 +37,18 @@ function groupItems(items: HistoryEntry[]) {
 
 export default function HistoryPage() {
   const { data, isLoading } = useSWR("history", () => api.history());
+  const { mutate } = useSWRConfig();
   const { data: session } = useSession();
   const router = useRouter();
   const [filter, setFilter] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    await api.deleteHistory(deleteTarget);
+    mutate("history");
+    setDeleteTarget(null);
+  };
 
   const handleItemClick = async (item: HistoryEntry) => {
     if (session) {
@@ -57,10 +66,11 @@ export default function HistoryPage() {
   const groups = groupItems(filtered);
 
   return (
+    <>
     <div className="page-scroll">
       <div className="page narrow">
         <div className="page-head">
-          <div className="page-eyebrow">對話紀錄 · /history</div>
+          <div className="page-eyebrow">對話紀錄 · history</div>
           <h1 className="page-title">對話紀錄</h1>
           <p className="page-desc">研究助理與同業比較的歷史紀錄。</p>
         </div>
@@ -96,10 +106,10 @@ export default function HistoryPage() {
                   {group.label}
                 </div>
                 {group.items.map((item, i) => (
-                  <button
+                  <div
                     key={item.id}
                     className="history-item"
-                    style={{ animationDelay: `${i * 45}ms`, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer" }}
+                    style={{ animationDelay: `${i * 45}ms`, cursor: "pointer" }}
                     onClick={() => handleItemClick(item)}
                   >
                     <div className="ni-icon">
@@ -120,8 +130,15 @@ export default function HistoryPage() {
                     <div className="history-tags">
                       {item.tags.map((t, ti) => <span key={ti} className="tag muted" style={{ fontSize: 12 }}>{t}</span>)}
                     </div>
+                    <button
+                      className="history-del"
+                      title="刪除"
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(item.id); }}
+                    >
+                      <Icon name="trash" size={16} />
+                    </button>
                     <Icon name="chevR" size={15} style={{ color: "rgb(var(--muted))", flexShrink: 0 }}/>
-                  </button>
+                  </div>
                 ))}
               </div>
             ))}
@@ -129,5 +146,20 @@ export default function HistoryPage() {
         )}
       </div>
     </div>
+
+    {deleteTarget && (
+
+      <div className="alert-modal-overlay" onClick={() => setDeleteTarget(null)}>
+        <div className="hist-confirm-card" onClick={e => e.stopPropagation()}>
+          <div className="hist-confirm-title">刪除此紀錄？</div>
+          <div className="hist-confirm-desc">刪除後紀錄將無法還原，確認要繼續嗎？</div>
+          <div className="hist-confirm-actions">
+            <button className="btn" onClick={() => setDeleteTarget(null)}>取消</button>
+            <button className="btn danger" onClick={confirmDelete}>確認刪除</button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

@@ -14,10 +14,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Toaster } from "@/components/ui/sonner";
+import { OnboardingModal } from "@/components/polaris/OnboardingModal";
+import { useThemeToggle } from "@/hooks/useThemeToggle";
 
 type NavItem = { href: string; label: string; icon: IconName; badge?: boolean };
 
@@ -35,9 +36,15 @@ const NAV_SECONDARY: NavItem[] = [
 ];
 const MOB_NAV: NavItem[] = [
   { href: "/", label: "首頁", icon: "home" },
-  { href: "/peer", label: "同業", icon: "scale" },
   { href: "/research", label: "研究", icon: "brain" },
+  { href: "/peer", label: "同業", icon: "scale" },
   { href: "/notifications", label: "通知", icon: "bell", badge: true },
+];
+
+const MOB_MORE: NavItem[] = [
+  { href: "/news", label: "新聞", icon: "news" },
+  { href: "/library", label: "資料庫", icon: "database" },
+  { href: "/history", label: "對話紀錄", icon: "clock" },
   { href: "/settings", label: "設定", icon: "settings" },
 ];
 
@@ -82,12 +89,13 @@ export function AppShell({
       return next;
     });
 
-  // ── 主題切換：next-themes（避免 hydration mismatch，mounted 後才顯示對的圖示）──
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const isDark = mounted && resolvedTheme === "dark";
-  const toggleTheme = () => setTheme(isDark ? "light" : "dark");
+  // ── 主題切換（View Transition + 星星粒子，抽至 useThemeToggle）──
+  const { isDark, toggleTheme, btnRef: themeButtonRef } = useThemeToggle();
+
+  // ── 更多 sheet ──
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => { setMoreOpen(false); }, [pathname]);
+  const moreActive = MOB_MORE.some(it => isActive(pathname, it.href));
 
   const renderNavItem = (it: NavItem) => {
     const active = isActive(pathname, it.href);
@@ -138,7 +146,6 @@ export function AppShell({
             }
             <div className="uc-info">
               <div className="user-name">{userName}</div>
-              <div className="user-role">分析師 · R7</div>
             </div>
             <span className="uc-gear">
               <Icon name="settings" size={16} />
@@ -157,12 +164,12 @@ export function AppShell({
           <Icon name="panelLeft" size={18} />
         </button>
         <div className="crumb">
-          <span>Polaris</span>
-          <Icon name="chevR" size={13} />
+          <span className="crumb-brand">Polaris</span>
+          <Icon name="chevR" size={13} className="crumb-brand" />
           <b>{CRUMB[pathname] ?? ""}</b>
         </div>
         <div className="topbar-right">
-          <button className="icon-btn" onClick={toggleTheme} title="切換主題">
+          <button ref={themeButtonRef} className="icon-btn" onClick={toggleTheme} title="切換主題">
             <Icon name={isDark ? "sun" : "moon"} size={18} />
           </button>
         </div>
@@ -172,6 +179,7 @@ export function AppShell({
       <main className="main">{children}</main>
 
       <Toaster position="bottom-right" duration={2500} />
+      <OnboardingModal />
 
       {/* ── 手機底部導覽：<1230px 由 polaris.css 自動顯示（rail 同時隱藏）── */}
       <nav className="mobnav">
@@ -192,7 +200,31 @@ export function AppShell({
             </Link>
           );
         })}
+        <button
+          className={"mobnav-item" + (moreActive || moreOpen ? " active" : "")}
+          onClick={() => setMoreOpen(o => !o)}
+        >
+          <span className="mobnav-ico"><Icon name="layers" size={20} /></span>
+          <span>更多</span>
+        </button>
       </nav>
+      <div className={"mob-more-overlay" + (moreOpen ? " open" : "")} onClick={() => setMoreOpen(false)} />
+      <div className={"mob-more-sheet" + (moreOpen ? " open" : "")}>
+        <div className="mob-more-handle" />
+        <div className="mob-more-grid">
+          {MOB_MORE.map(it => (
+            <Link
+              key={it.href}
+              href={it.href}
+              className={"mob-more-item" + (isActive(pathname, it.href) ? " active" : "")}
+              onClick={() => setMoreOpen(false)}
+            >
+              <Icon name={it.icon} size={22} />
+              <span>{it.label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

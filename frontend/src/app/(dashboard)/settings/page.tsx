@@ -1,7 +1,7 @@
 ﻿"use client";
-import { useTheme } from "next-themes";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { Icon } from "@/components/ui/Icon";
+import { useThemeToggle } from "@/hooks/useThemeToggle";
 import { USE_MOCK } from "@/lib/config";
 
 function GoogleMark() {
@@ -16,9 +16,8 @@ function GoogleMark() {
 }
 
 export default function SettingsPage() {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { isDark, toggleTheme, btnRef: themeButtonRef } = useThemeToggle();
   const { data: session } = useSession();
-  const isDark = resolvedTheme === "dark";
 
   const name = session?.user?.name ?? "訪客";
   const email = session?.user?.email ?? "";
@@ -28,9 +27,9 @@ export default function SettingsPage() {
     <div className="page-scroll">
       <div className="page settings-page">
         <div className="page-head">
-          <div className="page-eyebrow">帳號 · /settings</div>
+          <div className="page-eyebrow">帳號 · settings</div>
           <h1 className="page-title">帳號與設定</h1>
-          <p className="page-desc">管理登入方式、外觀主題與資料來源偏好。</p>
+          <p className="page-desc">登入方式、外觀主題設定。</p>
         </div>
         <div className="set-body">
           <div className="set-account">
@@ -46,7 +45,7 @@ export default function SettingsPage() {
               <span className="tdot"/>{session ? "已登入" : "未登入"}
             </span>
           </div>
-          <div className="set-label">以郵箱第三方登入 / 綁定</div>
+          <div className="set-label">使用郵箱第三方登入</div>
           <div className="set-sso">
             {session
               ? <button className="sso-btn" onClick={() => signOut()}><GoogleMark/><span>登出 Google 帳號</span></button>
@@ -56,8 +55,8 @@ export default function SettingsPage() {
           <div className="set-label" style={{marginTop:22}}>偏好設定</div>
           <div className="set-pref">
             <div className="pref-row">
-              <div><div className="pref-t">外觀主題</div><div className="pref-d">淺色 / 深色終端</div></div>
-              <button className="btn sm" onClick={()=>setTheme(isDark?"light":"dark")}><Icon name={isDark?"sun":"moon"} size={14}/>{isDark?"淺色":"深色"}</button>
+              <div><div className="pref-t">外觀主題</div><div className="pref-d">淺色 / 深色模式</div></div>
+              <button ref={themeButtonRef} className="btn sm" onClick={toggleTheme}><Icon name={isDark?"sun":"moon"} size={14}/>{isDark?"淺色":"深色"}</button>
             </div>
             <div className="pref-row">
               <div><div className="pref-t">資料來源</div><div className="pref-d">mock JSON ↔ 真實 API</div></div>

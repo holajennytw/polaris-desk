@@ -29,7 +29,7 @@ export default function NewsPage() {
     <div className="page-scroll">
       <div className="page narrow">
         <div className="page-head">
-          <div className="page-eyebrow">新聞 · /news</div>
+          <div className="page-eyebrow">新聞 · news</div>
           <h1 className="page-title">市場新聞</h1>
           {data?.updated && (
             <p className="page-desc">更新：{data.updated}</p>

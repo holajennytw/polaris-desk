@@ -151,6 +151,17 @@ export const api = {
     }
   },
 
+  async deleteHistory(id: string): Promise<void> {
+    try {
+      const session = await getSession();
+      if (session) {
+        await realFetch(`/history/${encodeURIComponent(id)}`, { method: "DELETE" });
+        return;
+      }
+    } catch {}
+    historyStore.remove(id);
+  },
+
   postHistory(origin: "research" | "peer", query: string, tickers: string[], result: unknown): void {
     if (USE_MOCK) return;
     authHeaders().then((auth) =>

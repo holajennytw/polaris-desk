@@ -25,6 +25,7 @@ import { historyStore, extractTickers } from "@/lib/historyStore";
 import { api } from "@/lib/api";
 import { API_BASE } from "@/lib/config";
 import { toast } from "sonner";
+import { ResearchTour } from "@/components/polaris/ResearchTour";
 
 const PHASES = ["理解查詢意圖","檢索文件庫","重排序候選","計算 + 交叉驗證","生成摘要","合規檢查"];
 const PRESETS = ["台積電 2026Q1 法說會營運重點","聯發科 AI 邊緣運算佈局","台股半導體庫存週期"];
@@ -254,6 +255,22 @@ function ResearchPageInner() {
     if (intervalRef.current) clearInterval(intervalRef.current);
   }, []);
 
+  const handleTourRunSample = () => {
+    const sample = "台積電 2026Q1 法說會重點";
+    setQuery(sample);
+    run(sample);
+  };
+
+  const handleTourReset = () => {
+    setQuery("");
+    setHasQueried(false);
+    setPhase("idle");
+    setProgress(0);
+    setRestoredData(undefined);
+    setRestoredAt(null);
+    contraAlertStore.clear();
+  };
+
   const running = phase==="running";
   const total = reactSteps.length || 1;
   const curPhase = running ? PHASES[Math.min(Math.floor((stepN / total) * PHASES.length), PHASES.length - 1)] : null;
@@ -291,7 +308,7 @@ function ResearchPageInner() {
         <div className={"page research-layout" + (ctxOpen ? "" : " ctx-collapsed")}>
           <div className="rcol-main">
             <div className="page-head">
-              <div className="page-eyebrow">研究助理 · /research</div>
+              <div className="page-eyebrow">研究助理 · research</div>
               <h1 className="page-title">研究分析</h1>
             </div>
             {restoredData && (
@@ -456,7 +473,6 @@ function ResearchPageInner() {
             <Icon name="spark" size={18} style={{color:"rgb(var(--primary))",flexShrink:0}}/>
             <input className="dock-input" value={query} onChange={e=>setQuery(e.target.value)}
               onKeyDown={e=>{if(e.key==="Enter")run();}} placeholder="輸入研究問題..."/>
-            <button className="dock-tool" title="上傳檔案"><Icon name="paperclip" size={19}/></button>
             <button className={"dock-tool" + (isListening ? " active" : "")} title={isListening ? "聆聽中…" : "語音輸入"} onClick={startVoice} disabled={running}><Icon name="mic" size={19}/></button>
             <button className="btn primary dock-send" onClick={()=>run()} disabled={running}>
               <Icon name={running?"refresh":"send"} size={18}/>
@@ -494,6 +510,11 @@ function ResearchPageInner() {
           onClose={()=>setShowReport(false)}
         />
       )}
+      <ResearchTour
+        onRunSample={handleTourRunSample}
+        onReset={handleTourReset}
+        hasResults={!!displayData}
+      />
       <DocViewer doc={openDoc} onClose={()=>setOpenDoc(null)}/>
     </>
   );

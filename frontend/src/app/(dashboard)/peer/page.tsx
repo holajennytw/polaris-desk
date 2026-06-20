@@ -338,6 +338,7 @@ export default function PeerPage() {
   const [isCheckingContra, setIsCheckingContra] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(true);
+  const [isListening, setIsListening] = useState(false);
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -362,6 +363,24 @@ export default function PeerPage() {
   const A = companies.find(c => c.id === aId);
   const B = companies.find(c => c.id === bId);
   const running = phase === "running";
+
+  const startVoice = () => {
+    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("此瀏覽器不支援語音輸入，請改用 Chrome"); return; }
+    const rec = new SR();
+    rec.lang = "zh-TW";
+    rec.interimResults = false;
+    rec.onstart = () => setIsListening(true);
+    rec.onend   = () => setIsListening(false);
+    rec.onerror = () => setIsListening(false);
+    rec.onresult = (e: any) => {
+      const text = e.results[0][0].transcript;
+      setQuery(text);
+      runQuery(text);
+    };
+    rec.start();
+  };
+
   const total = MOCK_REACT.length || 1;
   const curPhase = running ? PHASES[Math.min(Math.floor((stepN / total) * PHASES.length), PHASES.length - 1)] : null;
 
@@ -476,7 +495,7 @@ export default function PeerPage() {
         <div className={"page peer-page research-layout" + (ctxOpen ? "" : " ctx-collapsed")}>
           <div className="rcol-main">
             <div className="page-head">
-              <div className="page-eyebrow">同業比較 · /peer</div>
+              <div className="page-eyebrow">同業比較 · peer</div>
               <h1 className="page-title">{pageTitle}</h1>
               <p className="page-desc">選擇兩間公司後送出查詢，或直接輸入「比較 A 與 B」由系統自動解析。</p>
             </div>
@@ -614,6 +633,7 @@ export default function PeerPage() {
             <input className="dock-input" value={query} onChange={e => setQuery(e.target.value)}
               onKeyDown={e => { if(e.key==="Enter") runQuery(); }}
               placeholder="輸入欲比較的公司，例如：比較台積電與聯發科財務..."/>
+            <button className={"dock-tool" + (isListening ? " active" : "")} title={isListening ? "聆聽中…" : "語音輸入"} onClick={startVoice} disabled={running}><Icon name="mic" size={19}/></button>
             <button className="btn primary dock-send" onClick={() => runQuery()} disabled={running}>
               <Icon name={running ? "refresh" : "send"} size={18}/>
             </button>

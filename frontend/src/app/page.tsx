@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { SpotlightCard } from "@/components/ui/SpotlightCard";
+import { useThemeToggle } from "@/hooks/useThemeToggle";
 
 function NumberTicker({ target, suffix = "", decimals = 0, delay = 0, formatter }: {
   target: number; suffix?: string; decimals?: number; delay?: number;
@@ -38,10 +38,16 @@ function NumberTicker({ target, suffix = "", decimals = 0, delay = 0, formatter 
 
 const LP_MOB_NAV = [
   { href: "/",              label: "首頁", icon: "home"  as const },
-  { href: "/peer",          label: "同業", icon: "scale" as const },
   { href: "/research",      label: "研究", icon: "brain" as const },
+  { href: "/peer",          label: "同業", icon: "scale" as const },
   { href: "/notifications", label: "通知", icon: "bell"  as const },
-  { href: "/settings",      label: "設定", icon: "settings" as const },
+];
+
+const LP_MORE_NAV = [
+  { href: "/news",     label: "新聞",   icon: "news"     as const },
+  { href: "/library",  label: "資料庫", icon: "database" as const },
+  { href: "/history",  label: "對話紀錄", icon: "clock"  as const },
+  { href: "/settings", label: "設定",   icon: "settings" as const },
 ];
 
 const FEATURES = [
@@ -54,11 +60,11 @@ const FEATURES = [
 ];
 
 export default function LandingPage() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const isDark = mounted && resolvedTheme === "dark";
+  const { isDark, toggleTheme, btnRef: themeButtonRef } = useThemeToggle();
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => { setMoreOpen(false); }, [pathname]);
+  const moreActive = LP_MORE_NAV.some(it => pathname.startsWith(it.href));
 
   return (
     <div className="landing">
@@ -81,7 +87,7 @@ export default function LandingPage() {
           <Link href="/help">說明</Link>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button className="icon-btn" onClick={() => setTheme(isDark ? "light" : "dark")} title="切換主題">
+          <button ref={themeButtonRef} className="icon-btn" onClick={toggleTheme} title="切換主題">
             <Icon name={isDark ? "sun" : "moon"} size={18} />
           </button>
           <Link href="/research" className="btn primary">
@@ -194,7 +200,31 @@ export default function LandingPage() {
             <span>{it.label}</span>
           </Link>
         ))}
+        <button
+          className={"mobnav-item" + (moreActive || moreOpen ? " active" : "")}
+          onClick={() => setMoreOpen(o => !o)}
+        >
+          <span className="mobnav-ico"><Icon name="layers" size={20} /></span>
+          <span>更多</span>
+        </button>
       </nav>
+      <div className={"mob-more-overlay" + (moreOpen ? " open" : "")} onClick={() => setMoreOpen(false)} />
+      <div className={"mob-more-sheet" + (moreOpen ? " open" : "")}>
+        <div className="mob-more-handle" />
+        <div className="mob-more-grid">
+          {LP_MORE_NAV.map(it => (
+            <Link
+              key={it.href}
+              href={it.href}
+              className={"mob-more-item" + (pathname.startsWith(it.href) ? " active" : "")}
+              onClick={() => setMoreOpen(false)}
+            >
+              <Icon name={it.icon} size={22} />
+              <span>{it.label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
 
       <footer className="lp-foot">
         <div className="lp-brand">

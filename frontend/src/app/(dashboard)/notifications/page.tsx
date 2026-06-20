@@ -25,7 +25,7 @@ export default function NotificationsPage() {
     <div className="page-scroll">
       <div className="page narrow">
         <div className="page-head">
-          <div className="page-eyebrow">通知 · /notifications</div>
+          <div className="page-eyebrow">通知 · notifications</div>
           <h1 className="page-title">通知中心</h1>
           <p className="page-desc">風險監控、追蹤動態與訂閱設定。</p>
         </div>
