@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from polaris.eval.dataset import EvalItem
+from polaris.retrieval.colpali_retriever import active_colpali_retriever
 
 
 @dataclass
@@ -34,17 +35,40 @@ def _run_workflow(question: str) -> dict:
 
 
 def _run_visual(question: str) -> dict:
-    """場景 3（圖表 ColPali）的檢索 seam。
+    """場景 3（圖表題）走第 4 路 ColPali 視覺檢索（gated）。
 
-    ColPali 多向量 / late-interaction 圖表檢索排程在 W3（見 dataset.py 場景表）。
-    在後端落地前，這裡**刻意拋錯**而非回退到文字 workflow——場景 3 是看圖題，
-    若靜默走 ``_run_workflow`` 會把「視覺路徑沒接」誤報成「檢索失敗」，違反誠實原則。
-    W3 接 ColPali 後，把本函式換成真檢索即可，runner 分派不用動。
+    依賴 R4 的 query encoder（issue #133）。未接前 ``active_colpali_retriever()`` 回 None，
+    這裡**刻意拋錯**而非靜默退回文字 workflow——看圖題用文字代跑會把「視覺路沒接」
+    誤報成「檢索失敗」，違反誠實原則。encoder 到位後本函式自動走真檢索，分派不用動。
+
+    Phase 1 只做檢索（回頁參照 contexts/citations，origin=colpali）；
+    讀圖表數字回答見 Phase 2（render PDF 頁圖 → vision）。
     """
-    raise NotImplementedError(
-        "場景 3（圖表 ColPali）檢索尚未實作（排程 W3）；"
-        "在 ColPali 後端落地前不得用文字 workflow 代跑看圖題。"
-    )
+    from polaris.graph.state import Citation
+    from polaris.ontology import company_name
+
+    retriever = active_colpali_retriever()
+    if retriever is None:
+        raise NotImplementedError(
+            "場景 3（圖表 ColPali）query encoder 尚未接（見 issue #133）；"
+            "在 ColPali 查詢端編碼落地前不得用文字 workflow 代跑看圖題。"
+        )
+    results = retriever.retrieve(question)
+    citations = [
+        Citation(
+            source_id=r.id,
+            snippet=r.content,
+            origin="colpali",
+            company=company_name(r.company),
+        )
+        for r in results
+    ]
+    return {
+        "answer": "",  # Phase 1 只檢索；讀數字回答見 Phase 2
+        "contexts": [{"text": r.content} for r in results],
+        "citations": citations,
+        "compliance_status": "n/a",
+    }
 
 
 def _run_deep_research(question: str) -> dict:
@@ -62,7 +86,7 @@ def _run_deep_research(question: str) -> dict:
 #: 場景 → 檢索後端分派。未列者落 ``_run_workflow``（5 節點文字 workflow）。
 _DISPATCH = {
     "2": _run_deep_research,  # 同業比較
-    "3": _run_visual,         # 圖表 ColPali（W3）
+    "3": _run_visual,         # 圖表 ColPali（第 4 路，gated，依賴 #133）
 }
 
 

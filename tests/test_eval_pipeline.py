@@ -83,16 +83,37 @@ class TestRunner:
         assert record.citation_count >= 3  # FR-004 ≥3 條引用
 
     def test_scenario_3_visual_not_silent_text_fallback(self):
-        """場景 3（圖表 ColPali）後端未落地前要明確拋錯，
+        """場景 3（圖表 ColPali）query encoder（#133）未接前要明確拋錯，
 
         不得靜默走文字 workflow——否則「視覺路徑沒接」會被誤報成「檢索失敗」。
-        W3 接 ColPali 後本測試改為驗真檢索。
+        encoder 到位後本測試改為驗真檢索。
         """
-        with pytest.raises(NotImplementedError, match="ColPali"):
+        with pytest.raises(NotImplementedError, match="#133"):
             run_item(make_item(
                 item_id="V001", scenario="3", category="圖表",
                 question="從這張營收結構圖看，第三季哪個部門佔比最高？",
             ))
+
+    def test_scenario_3_runs_colpali_when_retriever_injected(self, monkeypatch):
+        """encoder 到位（注入 stub retriever）→ 場景 3 回 colpali contexts/citations。"""
+        from polaris.eval import runner
+        from polaris.vectorstore.base import SearchResult
+
+        class StubRetriever:
+            def retrieve(self, query, *, filters=None):
+                return [SearchResult(
+                    id="pg-1", content="2330 2025Q3 第 9 頁圖表（x.pdf）", score=0.9,
+                    company="2330", period="2025Q3",
+                    metadata={"origin": "colpali", "page_num": 9},
+                )]
+
+        monkeypatch.setattr(runner, "active_colpali_retriever", lambda: StubRetriever())
+        record = run_item(make_item(
+            item_id="V002", scenario="3", category="圖表",
+            question="從這張營收結構圖看，第三季哪個部門佔比最高？",
+        ))
+        assert record.contexts and record.contexts[0].endswith("（x.pdf）")
+        assert record.citation_count == 1
 
     def test_deterministic(self):
         from polaris.llm.gemini import available as gemini_available
