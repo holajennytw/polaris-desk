@@ -27,6 +27,7 @@ export const contraAlertStore = {
   clear: () => write([]),
   subscribe: (fn: Listener) => {
     listeners.add(fn);
-    return () => listeners.delete(fn);
+    // 包成 void：Set.delete 回 boolean，直接當 useEffect cleanup 會被 TS 擋（須回 void）。
+    return () => { listeners.delete(fn); };
   },
 };
