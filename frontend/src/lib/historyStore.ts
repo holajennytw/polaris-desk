@@ -36,6 +36,11 @@ export const historyStore = {
     const existing = historyStore.read();
     localStorage.setItem(LS_KEY, JSON.stringify([item, ...existing].slice(0, MAX_ENTRIES)));
   },
+
+  remove(id: string): void {
+    const updated = historyStore.read().filter(e => e.id !== id);
+    localStorage.setItem(LS_KEY, JSON.stringify(updated));
+  },
 };
 
 export function extractTickers(text: string): string[] {

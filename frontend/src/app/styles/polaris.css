@@ -371,9 +371,12 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
 .rs-text { font-size: 15px; line-height: 1.55; color: rgb(23 25 31 / .82); }
 .rs-code { font-family: var(--mono); font-size: 14px; color: rgb(var(--foreground)); background: rgb(var(--muted-bg)); border: 1px solid rgb(var(--border)); border-radius: var(--radius-xs); padding: 1px 6px; display: inline-block; margin-top: 2px; word-break: break-all; }
 
-.history-item { display: flex; align-items: center; gap: 14px; padding: 16px; border-bottom: 1px solid rgb(var(--border)); text-decoration: none; color: inherit; cursor: pointer; transition: background .12s; animation: alert-enter .42s cubic-bezier(.22,1,.36,1) both; }
+.history-item { display: flex; align-items: center; gap: 14px; padding: 16px; border-bottom: 1px solid rgb(var(--border)); transition: background .12s; animation: alert-enter .42s cubic-bezier(.22,1,.36,1) both; }
 .history-item:last-child { border-bottom: none; }
 .history-item:hover { background: rgb(var(--primary) / .05); }
+.history-del { background: none; border: none; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: var(--radius-xs); color: rgb(var(--muted)); opacity: 0; transition: opacity .15s ease, color .15s ease; flex-shrink: 0; cursor: pointer; }
+.history-del:hover { color: rgb(var(--danger)); }
+.history-item:hover .history-del { opacity: 1; }
 .history-body { flex: 1; min-width: 0; }
 .history-query { font-size: 20px; font-weight: 600; line-height: 1.45; margin-bottom: 4px; }
 .history-meta { font-size: 14px; color: rgb(var(--muted)); }
@@ -416,6 +419,15 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
 .alert-modal-tag { margin-bottom: 16px; }
 .alert-modal-body p { margin: 12px 0; line-height: 1.6; color: rgb(var(--foreground)); font-size: 15px; }
 .alert-modal-meta { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgb(var(--border)); color: rgb(var(--muted)); font-size: 13px; }
+/* history delete confirm card */
+.hist-confirm-card { background: rgb(var(--card)); border: 1px solid rgb(var(--border)); border-radius: var(--radius-lg); box-shadow: 0 20px 60px rgb(0 0 0 / .35); width: min(360px, 90vw); padding: 28px 24px 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; animation: alert-enter .25s cubic-bezier(.22,1,.36,1) both; }
+.hist-confirm-ico { width: 48px; height: 48px; border-radius: 50%; background: rgb(var(--danger) / .1); color: rgb(var(--danger)); display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.hist-confirm-title { font-size: 18px; font-weight: 700; color: rgb(var(--foreground)); }
+.hist-confirm-desc { font-size: 14px; color: rgb(var(--muted)); line-height: 1.6; }
+.hist-confirm-actions { display: flex; gap: 10px; margin-top: 8px; width: 100%; }
+.hist-confirm-actions .btn { flex: 1; justify-content: center; }
+.btn.danger { background: rgb(var(--danger)); color: #fff; border-color: rgb(var(--danger)); }
+.btn.danger:hover { background: rgb(var(--danger) / .85); border-color: rgb(var(--danger) / .85); }
 
 .cite-list { padding: 6px; display: flex; flex-direction: column; }
 .cite-item { display: flex; align-items: center; gap: 11px; padding: 10px; border-radius: var(--radius-sm); background: none; border: none; cursor: pointer; text-align: left; transition: background .12s; width: 100%; }
@@ -768,6 +780,7 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
    Mobile bottom nav
    ============================================================ */
 .mobnav { display: none; }
+.mob-more-overlay, .mob-more-sheet { display: none; }
 
 /* ============================================================
    Responsive
@@ -880,6 +893,16 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
   .compliance { font-size: 14px; }
   .tag { font-size: 13.5px; }
   .panel-meta { font-size: 13px; }
+  /* mob-more slide-up sheet */
+  .mob-more-overlay { display: block; position: fixed; inset: 0; bottom: 60px; z-index: 37; background: rgb(0 0 0 / .5); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+  .mob-more-overlay.open { opacity: 1; pointer-events: auto; }
+  .mob-more-sheet { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 38; background: rgb(var(--rail) / .96); backdrop-filter: blur(14px); border-radius: 18px 18px 0 0; border-top: 1px solid rgb(var(--rail-line)); padding: 8px 0 0; padding-bottom: calc(60px + 2px); transform: translateY(100%); transition: transform .32s cubic-bezier(.22,1,.36,1); }
+  .mob-more-sheet.open { transform: translateY(0); }
+  .mob-more-handle { width: 36px; height: 4px; background: rgb(var(--rail-muted) / .3); border-radius: 2px; margin: 0 auto 18px; }
+  .mob-more-grid { display: flex; flex-direction: row; justify-content: space-around; }
+  .mob-more-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 12px 4px; border-radius: 0; background: none; color: rgb(var(--rail-muted)); font-size: 14px; font-weight: 600; text-decoration: none; transition: color .18s ease, transform .15s ease; min-height: 56px; }
+  .mob-more-item.active { color: rgb(var(--primary-bright)); background: rgb(var(--primary-bright) / .1); }
+  .mob-more-item:active { transform: scale(0.95); }
 }
 @media (max-width: 560px) {
   /* topbar — LOGO 文字在 400px 手機縮小：隱藏 "Polaris >" 只留頁面名稱 */
@@ -1580,3 +1603,46 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
 .actions .btn:disabled { opacity: .4; cursor: not-allowed; }
 
 .report-export-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ============================================================
+   Theme Toggle — View Transition 放射展開 + 星星粒子
+   ============================================================ */
+
+/* 1. View Transition：新主題從按鈕位置輕柔放射呼出 */
+@media (prefers-reduced-motion: no-preference) {
+  /* 舊畫面同步淡出，消除「被蓋掉」的硬切感 */
+  ::view-transition-old(root) {
+    animation: theme-old-fade 0.3s ease-out forwards;
+  }
+  /* 新畫面從按鈕位置輕柔擴散，前鋒稍微透讓邊緣柔和 */
+  ::view-transition-new(root) {
+    animation: theme-radial-reveal 0.68s cubic-bezier(0, 0, 0.2, 1);
+  }
+  @keyframes theme-old-fade {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  @keyframes theme-radial-reveal {
+    from { clip-path: circle(0%   at var(--vt-x, 95vw) var(--vt-y, 26px)); opacity: 0.88; }
+    to   { clip-path: circle(150% at var(--vt-x, 95vw) var(--vt-y, 26px)); opacity: 1;    }
+  }
+}
+
+/* 2. 星星粒子（由 JS 注入至 body，animationend 後自動移除） */
+.theme-sparkle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  width:  calc(7px * var(--sz, 1));
+  height: calc(7px * var(--sz, 1));
+  background: var(--color, rgb(var(--primary-bright)));
+  /* 4 角星形 ✦ */
+  clip-path: polygon(50% 0%, 56% 44%, 100% 50%, 56% 56%, 50% 100%, 44% 56%, 0% 50%, 44% 44%);
+  transform: translate(-50%, -50%);
+  animation: theme-sparkle-fly var(--dur, 0.6s) ease-out var(--delay, 0ms) forwards;
+}
+@keyframes theme-sparkle-fly {
+  0%   { opacity: 1;   transform: translate(-50%, -50%) rotate(0deg)   scale(var(--sz, 1)); }
+  55%  { opacity: 0.5; }
+  100% { opacity: 0;   transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px))) rotate(150deg) scale(0.1); }
+}

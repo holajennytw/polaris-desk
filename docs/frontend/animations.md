@@ -21,6 +21,9 @@
 | `alert-enter` | `polaris.css` | 警示 / 對話紀錄列表滑入（共用） |
 | `news-row-enter` | `polaris.css` | 新聞列表項目滑入 |
 | `win-glow` | `polaris.css` | PeerKpi 勝出值文字發光（需 `.pk-val.win` class） |
+| `theme-old-fade` | `polaris.css` | 主題切換 View Transition — 舊畫面淡出 |
+| `theme-radial-reveal` | `polaris.css` | 主題切換 View Transition — 新畫面從按鈕座標放射展開 |
+| `theme-sparkle-fly` | `polaris.css` | 主題切換星星粒子飛散 |
 
 ---
 
@@ -152,6 +155,8 @@
 | `.nav-item svg` | `transform`（hover → active svg scale） | `0.2s cubic-bezier(.22,1,.36,1)` |
 | `.mobnav-item` | `color` | `0.18s ease` |
 | `.mobnav-ico svg` | `transform`（active icon scale） | `0.2s cubic-bezier(.22,1,.36,1)` |
+| `.mob-more-overlay` | `opacity`（open/close 遮罩淡入淡出） | `0.25s ease` |
+| `.mob-more-sheet` | `transform: translateY(100% → 0)`（slide-up drawer） | `0.32s cubic-bezier(.22,1,.36,1)` |
 
 ### Nav Item 點擊壓下效果（2026-06-20 補回）
 
@@ -166,6 +171,39 @@
 ```
 
 **來源**：原存於 stash `local-changes-before-merge-main-20260620`，merge main 時未自動恢復，於 2026-06-20 手動補入。
+
+---
+
+### 主題切換動畫（View Transition + Sparkle，2026-06-20）
+
+**Hook**：`frontend/src/hooks/useThemeToggle.ts`（三處按鈕共用）
+
+**兩層動畫**：
+
+#### 1. View Transition 放射展開
+
+```css
+/* @media (prefers-reduced-motion: no-preference) */
+::view-transition-old(root) { animation: theme-old-fade 0.3s ease-out forwards; }
+::view-transition-new(root) { animation: theme-radial-reveal 0.68s cubic-bezier(0,0,0.2,1); }
+```
+
+- 舊畫面：0.3s fade-out
+- 新畫面：`clip-path: circle(0% → 150%)` 從 `--vt-x / --vt-y`（按鈕座標）放射展開，0.68s spring easing
+- 座標由 JS `getBoundingClientRect()` 取得，透過 CSS custom property 傳給 keyframe
+
+#### 2. Sparkle 星星粒子
+
+```ts
+// 8 顆，DOM inject <span class="theme-sparkle">
+// CSS custom property 控制每顆：--tx, --ty（方向），--sz（大小），--dur, --delay, --color
+// index 3, 7 為白色（rgba(255,255,255,...)），其餘用 rgb(var(--primary-bright))
+// animationend 後自動 remove()
+```
+
+**保護**：兩層動畫均先檢查 `window.matchMedia("(prefers-reduced-motion: reduce)")`，減動效模式下僅執行 `setTheme(next)`。
+
+**降級**：`"startViewTransition" in document` 為 false（舊瀏覽器）時直接 `setTheme(next)` 無動畫。
 
 ---
 

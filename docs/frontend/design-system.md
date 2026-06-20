@@ -41,6 +41,16 @@
 
 **mobnav**（底部導覽列，≤ 1230px）
 
+結構：4 個主要 tab + 第 5 格「更多」按鈕（icon: `layers`）
+
+| 位置 | 頁面 |
+|------|------|
+| tab 1 | 首頁 `/` |
+| tab 2 | 研究 `/research` |
+| tab 3 | 同業 `/peer` |
+| tab 4 | 通知 `/notifications` |
+| tab 5 | 更多（觸發 drawer） |
+
 | 元素 | font-size |
 |------|-----------|
 | `.mobnav-item` label | 14px |
@@ -128,6 +138,7 @@
 | `.btn` | `min-height: 44px` |
 | `.icon-btn` | `width: 44px; height: 44px` |
 | `.mobnav-item` | `min-height: 44px` |
+| `.mob-more-item` | `min-height: 56px`（drawer 內項目，比 mobnav 略高） |
 | `.chip` | `min-height: 44px; display: inline-flex; align-items: center` |
 | `.news-tab` | `min-height: 44px` |
 | `.cpick-btn` | `min-height: 44px` |
@@ -237,6 +248,49 @@
 - `DocRaw`：新增 BQ 欄位（`ticker`、`company_name`、`doc_type`、`fiscal_period`、`source_file`、`page_count`、`published_at`、`fetched_at`），舊欄位標為 optional 向下相容
 - `DocVM`：清理為純 BQ 欄位，移除 `title`、`kind`、`company`、`period` 等舊欄
 - `normalizeDoc`：雙軌 fallback（`raw.ticker ?? raw.company ?? ""`），R4 接通 BQ API 後可移除 optional 舊欄位
+
+### 手機底部導覽「更多」Drawer（`.mob-more-sheet`）
+
+在 `≤ 1230px` 使用 CSS slide-up drawer 取代 Radix `sheet.tsx`（後者依賴 Tailwind，與 AppShell 技術棧不符）。
+
+**z-index 層次**（關鍵：sheet 必須低於 mobnav，避免蓋住底部按鈕）：
+
+| 層 | z-index | 說明 |
+|---|---|---|
+| `.mobnav` | 40 | 永遠浮在最上層 |
+| `.mob-more-sheet` | 38 | open 時從 `bottom: 0` 向上滑入，mobnav 蓋在其上 |
+| `.mob-more-overlay` | 37 | 半透明遮罩（`bottom: 60px`，不蓋住 mobnav） |
+
+**關閉方式**：點遮罩、點 sheet 內 Link、路由切換（`useEffect` 監聽 `pathname`）。
+
+**Drawer 內 item 排列**：`.mob-more-grid { display: flex; justify-content: space-around }` — 橫排 flex，外觀與 mobnav 一致，形成「第二列」的視覺延伸。
+
+**CSS 只在 `@media (max-width: 1230px)` 生效**；全域宣告 `display: none` 確保桌機不渲染。
+
+### `.btn.danger`
+
+破壞性操作（刪除確認）用紅色按鈕變體：
+
+```css
+.btn.danger { background: rgb(var(--danger)); color: #fff; border-color: rgb(var(--danger)); }
+.btn.danger:hover { background: rgb(var(--danger) / .85); }
+```
+
+使用原則：僅用於不可逆操作的「最終確認」按鈕，必須搭配取消選項。
+
+### 確認對話卡片（`.hist-confirm-card`）
+
+刪除等破壞性操作的二次確認 UI，複用 `.alert-modal-overlay` 全屏遮罩：
+
+```
+alert-modal-overlay（全屏半透明遮罩，點擊關閉）
+  └─ hist-confirm-card（居中小卡，animation: alert-enter 滑入）
+       ├─ hist-confirm-title（18px / 700）
+       ├─ hist-confirm-desc（14px muted，說明不可逆後果）
+       └─ hist-confirm-actions（flex row，取消 + 確認刪除）
+```
+
+寬度：`min(360px, 90vw)`。目前套用於對話紀錄頁刪除流程，可複用於其他破壞性操作。
 
 ### `.chart-empty` 使用規範
 - 空態容器一律套用 `.chart-empty`

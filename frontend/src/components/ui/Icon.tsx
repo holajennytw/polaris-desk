@@ -11,7 +11,7 @@ export type IconName =
   | "check" | "shield" | "file" | "x" | "chevR" | "target" | "layers"
   | "download" | "refresh" | "alert" | "quote" | "gear" | "logout" | "mail"
   | "user" | "panelLeft" | "sun" | "moon" | "arrowRight" | "send" | "chevD"
-  | "paperclip" | "hourglass" | "bellOff" | "mic" | "settings";
+  | "paperclip" | "hourglass" | "bellOff" | "mic" | "settings" | "trash";
 
 const P: Record<IconName, React.ReactNode> = {
   home: <path d="M3 11l9-8 9 8M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5" />,
@@ -53,6 +53,7 @@ const P: Record<IconName, React.ReactNode> = {
   hourglass: <g><path d="M6 3h12M6 21h12M7 3c0 4 4 5.5 5 9 1-3.5 5-5 5-9M7 21c0-4 4-5.5 5-9 1 3.5 5 5 5 9" /></g>,
   bellOff: <g><path d="M9.5 4.2A6 6 0 0 1 18 9c0 2.3.4 4 .9 5.2M6 9c0 6-2.5 7.5-2.5 7.5h12.5M10.5 20a2 2 0 0 0 3 0" /><path d="M3 3l18 18" /></g>,
   mic: <g><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><path d="M12 19v3" /></g>,
+  trash: <g><path d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></g>,
   settings: <g><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g>,
 };
 

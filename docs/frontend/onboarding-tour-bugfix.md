@@ -435,3 +435,98 @@ stash `local-changes-before-merge-main-20260620` 中的 nav 互動效果在 merg
 .mobnav-item.active .mobnav-ico svg { transform: scale(1.1); }
 .mobnav-item:active { transform: scale(0.94); }
 ```
+
+---
+
+## 2026-06-20 追加改動（第二批）
+
+### Feature — 深淺色主題切換動畫（View Transition + Sparkle）
+
+**影響檔案**：
+- `frontend/src/hooks/useThemeToggle.ts`（新建）
+- `frontend/src/app/styles/polaris.css`（動畫 CSS）
+- `frontend/src/components/layout/AppShell.tsx`
+- `frontend/src/app/page.tsx`
+- `frontend/src/app/(dashboard)/settings/page.tsx`
+
+**實作**：抽取 `useThemeToggle` hook，封裝 View Transition 放射展開 + 星星粒子，三處主題切換按鈕（AppShell topbar、Landing nav、設定頁偏好）共用。
+
+動畫分兩層：
+1. **View Transition 放射展開**：`document.startViewTransition()` 搭配 `clip-path: circle(0% → 150%)` 從按鈕座標呼出新主題，`old(root)` 0.3s fade-out、`new(root)` 0.68s `cubic-bezier(0,0,0.2,1)` 展開
+2. **Sparkle 星星粒子**：DOM inject `<span class="theme-sparkle">`，8 顆星以 CSS custom property（`--tx/--ty/--sz/--dur/--delay/--color`）控制方向、大小、時長；部分顆粒（index 3、7）帶白色，混色避免「齊射感」；`animationend` 後自動移除
+
+兩層動畫均受 `prefers-reduced-motion: reduce` guard 保護。
+
+---
+
+### Feature — 對話紀錄刪除按鈕 + 確認卡片
+
+**影響檔案**：
+- `frontend/src/app/(dashboard)/history/page.tsx`
+- `frontend/src/lib/historyStore.ts`
+- `frontend/src/lib/api.ts`
+- `frontend/src/components/ui/Icon.tsx`
+- `frontend/src/app/styles/polaris.css`
+
+**改動摘要**：
+
+#### 結構重構
+每個 history item 從整列 `<button>` 改為外層 `<div onClick=navigate>`，垃圾桶為獨立 `<button class="history-del">`（HTML 不允許 button 巢狀 button）。
+
+排列順序：`[ni-icon] [history-body] [tags] [🗑 history-del] [chevR]`
+
+#### 刪除流程（兩步確認）
+1. 點垃圾桶 → `setDeleteTarget(item.id)`，不立即刪除
+2. 跳出 `.hist-confirm-card`（全屏 `.alert-modal-overlay` + 居中卡片）
+3. 點遮罩或「取消」→ 關閉，不刪
+4. 點紅色「確認刪除」→ `confirmDelete()` 真正執行 + `mutate("history")` 重整列表
+
+#### 資料層
+- `historyStore.remove(id)`：從 localStorage 過濾掉該筆
+- `api.deleteHistory(id)`：已登入呼叫 `DELETE /history/{id}`，否則走 `historyStore.remove`
+
+#### CSS
+- `.history-del`：桌機 hover 才顯（`opacity: 0 → 1`）；hover 時變 `--danger` 紅色
+- `.hist-confirm-card`：居中小卡，`animation: alert-enter` 滑入，含標題、說明、取消 / 確認刪除按鈕
+- `.btn.danger`：紅色按鈕變體（`background: rgb(var(--danger))`）
+
+#### Icon
+`Icon.tsx` 新增 `trash`（IconName union 同步更新）：
+```ts
+trash: <g><path d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></g>
+```
+
+---
+
+### Feature — 手機底部導覽「更多」Drawer
+
+**影響檔案**：
+- `frontend/src/components/layout/AppShell.tsx`
+- `frontend/src/app/page.tsx`
+- `frontend/src/app/styles/polaris.css`
+
+**背景**：Dashboard 有 8 個頁面（首頁、研究、同業、通知、新聞、資料庫、對話紀錄、設定），原 mobnav 5 格塞不下，新增「更多」slide-up drawer。
+
+**設計決定**：選用自訂 CSS drawer（而非 `sheet.tsx` / Radix），保持 AppShell 全程使用 `polaris.css` 純 CSS 系統，不引入 Tailwind 依賴。
+
+**結構**：
+```
+底部 bar:  首頁 | 研究 | 同業 | 通知 | [更多 layers⊞]
+                                              ↓ 點擊
+mob-more-sheet:
+  ─── (drag handle pill)
+  新聞    資料庫   對話紀錄   設定     ← 橫排 flex，同 mobnav 樣式
+```
+
+**z-index 層次**（避免 sheet 蓋住 mobnav）：
+```
+z-40  .mobnav（永遠最上）
+z-38  .mob-more-sheet（open 時從 bottom:0 滑上來）
+z-37  .mob-more-overlay（半透明遮罩，bottom:60px，不蓋 mobnav）
+```
+
+**關閉觸發**：點遮罩、點 sheet 內任一 Link、路由切換（`useEffect → setMoreOpen(false)`）。
+
+**`moreActive` 高亮**：當前路徑屬於「更多」群組（`/news`、`/library`、`/history`、`/settings`）時，「更多」tab 高亮，即使 sheet 收起也能感知當前位置。
+
+**Landing page 同步**：`page.tsx` 的 `LP_MOB_NAV` 同步改為 4 格，加入相同的 overlay / sheet 結構。
