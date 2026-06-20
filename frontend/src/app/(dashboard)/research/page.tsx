@@ -473,7 +473,6 @@ function ResearchPageInner() {
             <Icon name="spark" size={18} style={{color:"rgb(var(--primary))",flexShrink:0}}/>
             <input className="dock-input" value={query} onChange={e=>setQuery(e.target.value)}
               onKeyDown={e=>{if(e.key==="Enter")run();}} placeholder="輸入研究問題..."/>
-            <button className="dock-tool" title="上傳檔案"><Icon name="paperclip" size={19}/></button>
             <button className={"dock-tool" + (isListening ? " active" : "")} title={isListening ? "聆聽中…" : "語音輸入"} onClick={startVoice} disabled={running}><Icon name="mic" size={19}/></button>
             <button className="btn primary dock-send" onClick={()=>run()} disabled={running}>
               <Icon name={running?"refresh":"send"} size={18}/>

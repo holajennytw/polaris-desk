@@ -633,7 +633,6 @@ export default function PeerPage() {
             <input className="dock-input" value={query} onChange={e => setQuery(e.target.value)}
               onKeyDown={e => { if(e.key==="Enter") runQuery(); }}
               placeholder="輸入欲比較的公司，例如：比較台積電與聯發科財務..."/>
-            <button className="dock-tool" title="上傳檔案"><Icon name="paperclip" size={19}/></button>
             <button className={"dock-tool" + (isListening ? " active" : "")} title={isListening ? "聆聽中…" : "語音輸入"} onClick={startVoice} disabled={running}><Icon name="mic" size={19}/></button>
             <button className="btn primary dock-send" onClick={() => runQuery()} disabled={running}>
               <Icon name={running ? "refresh" : "send"} size={18}/>
