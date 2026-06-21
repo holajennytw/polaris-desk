@@ -156,9 +156,8 @@ export const api = {
       const session = await getSession();
       if (session) {
         await realFetch(`/history/${encodeURIComponent(id)}`, { method: "DELETE" });
-        return;
       }
-    } catch {}
+    } catch { /* 後端尚無 DELETE 端點時靜默，localStorage 仍執行 */ }
     historyStore.remove(id);
   },
 
@@ -204,5 +203,29 @@ export const api = {
   async healthz() {
     const raw = await get("healthz", "/healthz") as any;
     return raw;
+  },
+
+  async markNotificationRead(id: string): Promise<void> {
+    if (USE_MOCK) return;
+    try {
+      await realFetch(`/notifications/${encodeURIComponent(id)}/read`, { method: "POST" });
+    } catch { /* best-effort，localStorage 已讀狀態仍保留 */ }
+  },
+
+  async getSubscriptions(): Promise<string[]> {
+    try {
+      const raw = await realFetch("/subscriptions") as { status: string; tickers: string[] };
+      return raw.tickers ?? [];
+    } catch {
+      return [];
+    }
+  },
+
+  async setSubscriptions(tickers: string[]): Promise<void> {
+    await realFetch("/subscriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tickers }),
+    });
   },
 };
