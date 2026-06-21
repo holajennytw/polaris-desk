@@ -1,0 +1,161 @@
+{
+  "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+  "http_status": 200,
+  "started_at": "2026-06-21T14:52:27.230126Z",
+  "ended_at": "2026-06-21T14:52:40.688762Z",
+  "elapsed_sec": 13.459,
+  "query": "請比較 2317 鴻海與 2454 聯發科在 2025Q1 對 AI 相關業務的展望。",
+  "response": {
+    "answer": "根據您提供的引用片段，關於鴻海（2317）與聯發科（2454）在 2025Q1 對 AI 相關業務的展望，整理如下：\n\n### 1. 鴻海（2317）\n根據 2025Q1 法說摘要，鴻海的營收組成涵蓋了消費智能、雲端網路、電腦終端與元件等四大領域 [stub-2317-2025Q1-segment]。雖然「雲端網路」通常與 AI 伺服器業務相關，但提供的資料中並未具體說明 2025Q1 針對 AI 業務的成長預期、出貨展望或具體貢獻比例。\n\n### 2. 聯發科（2454）\n在提供的引用片段中，並無任何關於聯發科（2454）的相關資料。因此，無法針對其 2025Q1 的 AI 相關業務展望進行描述或比較。\n\n### 結論\n目前資料不足以對兩家公司的 AI 業務展望進行完整比較。現有資料僅顯示鴻海的營收結構包含雲端網路 [stub-2317-2025Q1-segment]，而聯發科的部分則完全缺乏相關資訊。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "stub-2317-2025Q1-segment",
+        "snippet": "鴻海 2025Q1 法說摘要：營收組成涵蓋消費智能、雲端網路、電腦終端與元件。",
+        "origin": "bm25",
+        "company": "鴻海"
+      },
+      {
+        "source_id": "stub-2330-2025Q1-gm",
+        "snippet": "台積電 2025Q1 法說摘要：毛利率受到匯率、產品組合與產能利用率影響。",
+        "origin": "bm25",
+        "company": "台積電"
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4941
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 61
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5643
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 2687
+      }
+    ]
+  },
+  "test": {
+    "test_id": "R6-P2B-007",
+    "source_file": "docs/r6/test_logs/R6_G3_Exploratory_Cloud_Run_Smoke_2026-06-17.md",
+    "new_r6_probe": "N",
+    "query": "請比較 2317 鴻海與 2454 聯發科在 2025Q1 對 AI 相關業務的展望。",
+    "test_category": "跨公司比較",
+    "expected_ticker": "2317;2454",
+    "expected_period": "2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_EC_TRANSCRIPT",
+    "expected_metadata": "balanced citations for 2317 and 2454",
+    "reason_to_include": "Phase 1 baseline fixed 8 題；過去較好，作為比較基準。"
+  },
+  "analysis": {
+    "test_id": "R6-P2B-007",
+    "query": "請比較 2317 鴻海與 2454 聯發科在 2025Q1 對 AI 相關業務的展望。",
+    "http_status": 200,
+    "elapsed_sec": 13.459,
+    "answer_exists": true,
+    "citations_count": 2,
+    "citation_origins": [
+      "bm25"
+    ],
+    "source_ids": [
+      "stub-2317-2025Q1-segment",
+      "stub-2330-2025Q1-gm"
+    ],
+    "source_id_stub_flag": true,
+    "has_company": true,
+    "has_ticker": false,
+    "has_event_key": false,
+    "has_source_key": false,
+    "has_published_yyyymm": false,
+    "has_page_num_or_source_file": false,
+    "citation_supports_answer": "Weak - stub citation",
+    "company_mismatch_flag": "Y",
+    "event_type_mismatch_flag": "Unknown - payload_missing_event_key",
+    "off_period_flag": "Unknown - payload_missing_published_yyyymm",
+    "hallucination_flag": "Unknown",
+    "buy_sell_advice_flag": "N",
+    "verdict": "Needs Review",
+    "owner_to_fix": "R3 / R4",
+    "notes": "Returned stub/BM25 fallback citations; no evidence of semantic/ColPali path. Citation payload missing R6 semantic metadata fields. Detected likely company mismatch from citation company/source_id text.",
+    "answer_summary": "根據您提供的引用片段，關於鴻海（2317）與聯發科（2454）在 2025Q1 對 AI 相關業務的展望，整理如下：  ### 1. 鴻海（2317） 根據 2025Q1 法說摘要，鴻海的營收組成涵蓋了消費智能、雲端網路、電腦終端與元件等四大領域 [stub-2317-2025Q1-segment]。雖然「雲端網路」通常與 AI 伺服器業務相關，但提供的資料中並未具體說明 2025Q1 針對 AI 業務的成長預期、出貨展望或具體貢獻比例。  ### 2. 聯發科（2454） 在提供的引用片段中，並無任何關於聯發科（..."
+  }
+}

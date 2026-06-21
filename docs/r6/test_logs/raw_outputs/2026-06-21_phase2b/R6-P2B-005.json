@@ -1,0 +1,168 @@
+{
+  "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+  "http_status": 200,
+  "started_at": "2026-06-21T14:52:02.074274Z",
+  "ended_at": "2026-06-21T14:52:14.439835Z",
+  "elapsed_sec": 12.366,
+  "query": "台達電法說會中如何說明資料中心電源、散熱或自動化需求？",
+  "response": {
+    "answer": "根據您提供的引用片段，資料不足，無法說明台達電（Delta Electronics）法說會中關於資料中心電源、散熱或自動化需求的內容。\n\n現有資料僅涵蓋以下資訊：\n1. **台積電（2330）**：2024年第四季營收成長主要來自高效能運算與 AI 相關需求 [stub-2330-2024Q4-revenue]；2025年第一季毛利率受匯率、產品組合與產能利用率影響 [stub-2330-2025Q1-gm]。\n2. **鴻海（2317）**：2025年第一季營收組成包括消費智能、雲端網路、電腦終端與元件 [stub-2317-2025Q1-segment]。\n\n由於引用片段中並未包含台達電的相關法說摘要，故無法針對該公司之業務需求進行描述。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "stub-2330-2024Q4-revenue",
+        "snippet": "台積電 2024Q4 法說摘要：營收成長主要來自高效能運算與 AI 相關需求。",
+        "origin": "bm25",
+        "company": "台積電"
+      },
+      {
+        "source_id": "stub-2330-2025Q1-gm",
+        "snippet": "台積電 2025Q1 法說摘要：毛利率受到匯率、產品組合與產能利用率影響。",
+        "origin": "bm25",
+        "company": "台積電"
+      },
+      {
+        "source_id": "stub-2317-2025Q1-segment",
+        "snippet": "鴻海 2025Q1 法說摘要：營收組成涵蓋消費智能、雲端網路、電腦終端與元件。",
+        "origin": "bm25",
+        "company": "鴻海"
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3949
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 64
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5228
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 2975
+      }
+    ]
+  },
+  "test": {
+    "test_id": "R6-P2B-005",
+    "source_file": "docs/r6/question_bank/RedTeam_QuestionBank_v0.3.xlsx::Earnings_Call EC004",
+    "new_r6_probe": "N",
+    "query": "台達電法說會中如何說明資料中心電源、散熱或自動化需求？",
+    "test_category": "單公司法說會 grounding",
+    "expected_ticker": "2308",
+    "expected_period": "recent_or_2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_EC_TRANSCRIPT",
+    "expected_metadata": "ticker=2308; event_key=earnings_call",
+    "reason_to_include": "既有 EC004 題；補 2308 入庫公司法說會 grounding。"
+  },
+  "analysis": {
+    "test_id": "R6-P2B-005",
+    "query": "台達電法說會中如何說明資料中心電源、散熱或自動化需求？",
+    "http_status": 200,
+    "elapsed_sec": 12.366,
+    "answer_exists": true,
+    "citations_count": 3,
+    "citation_origins": [
+      "bm25"
+    ],
+    "source_ids": [
+      "stub-2330-2024Q4-revenue",
+      "stub-2330-2025Q1-gm",
+      "stub-2317-2025Q1-segment"
+    ],
+    "source_id_stub_flag": true,
+    "has_company": true,
+    "has_ticker": false,
+    "has_event_key": false,
+    "has_source_key": false,
+    "has_published_yyyymm": false,
+    "has_page_num_or_source_file": false,
+    "citation_supports_answer": "Weak - stub citation",
+    "company_mismatch_flag": "Y",
+    "event_type_mismatch_flag": "Unknown - payload_missing_event_key",
+    "off_period_flag": "Unknown - payload_missing_published_yyyymm",
+    "hallucination_flag": "Unknown",
+    "buy_sell_advice_flag": "N",
+    "verdict": "Needs Review",
+    "owner_to_fix": "R3 / R4",
+    "notes": "Returned stub/BM25 fallback citations; no evidence of semantic/ColPali path. Citation payload missing R6 semantic metadata fields. Detected likely company mismatch from citation company/source_id text.",
+    "answer_summary": "根據您提供的引用片段，資料不足，無法說明台達電（Delta Electronics）法說會中關於資料中心電源、散熱或自動化需求的內容。  現有資料僅涵蓋以下資訊： 1. **台積電（2330）**：2024年第四季營收成長主要來自高效能運算與 AI 相關需求 [stub-2330-2024Q4-revenue]；2025年第一季毛利率受匯率、產品組合與產能利用率影響 [stub-2330-2025Q1-gm]。 2. **鴻海（2317）**：2025年第一季營收組成包括消費智能、雲端網路、電腦終端與元件 [stu..."
+  }
+}

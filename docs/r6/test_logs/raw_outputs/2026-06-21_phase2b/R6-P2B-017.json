@@ -1,0 +1,161 @@
+{
+  "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+  "http_status": 200,
+  "started_at": "2026-06-21T14:54:28.149940Z",
+  "ended_at": "2026-06-21T14:54:40.208900Z",
+  "elapsed_sec": 12.059,
+  "query": "請找出台積電 2025Q1 法說會簡報中提到 AI 需求或 HPC 展望的頁面或圖表來源。",
+  "response": {
+    "answer": "根據您提供的引用片段，關於台積電（2330）2025Q1 法說會中提到 AI 需求或 HPC 展望的具體頁面或圖表來源，說明如下：\n\n**資料不足說明：**\n在提供的引用片段中，並未包含台積電 2025Q1 法說會簡報中關於「AI 需求」或「HPC 展望」的具體頁面編號、圖表來源或相關內容描述。\n\n**現有資料摘要：**\n目前的引用片段僅提及以下資訊：\n*   台積電 2025Q1 的毛利率表現受到匯率、產品組合以及產能利用率的影響 [stub-2330-2025Q1-gm]。\n*   另一片段則屬於鴻海（2317）的營收組成摘要，與台積電的 HPC 展望無關 [stub-2317-2025Q1-segment]。\n\n由於現有資料未涵蓋 AI 或 HPC 的展望細節，無法提供對應的頁面或圖表來源。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "stub-2330-2025Q1-gm",
+        "snippet": "台積電 2025Q1 法說摘要：毛利率受到匯率、產品組合與產能利用率影響。",
+        "origin": "bm25",
+        "company": "台積電"
+      },
+      {
+        "source_id": "stub-2317-2025Q1-segment",
+        "snippet": "鴻海 2025Q1 法說摘要：營收組成涵蓋消費智能、雲端網路、電腦終端與元件。",
+        "origin": "bm25",
+        "company": "鴻海"
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4397
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 66
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4788
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 2692
+      }
+    ]
+  },
+  "test": {
+    "test_id": "R6-P2B-017",
+    "source_file": "new_r6_probe based on PR #132 v_colpali_pages_semantic",
+    "new_r6_probe": "Y",
+    "query": "請找出台積電 2025Q1 法說會簡報中提到 AI 需求或 HPC 展望的頁面或圖表來源。",
+    "test_category": "ColPali / 圖表或頁面溯源",
+    "expected_ticker": "2330",
+    "expected_period": "2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_COMPANY_IR",
+    "expected_metadata": "origin=colpali expected if /ask uses ColPali; page_num/source_file present",
+    "reason_to_include": "既有題庫缺明確 ColPali 頁面溯源題；補測 #132 / #134 是否進 /ask。"
+  },
+  "analysis": {
+    "test_id": "R6-P2B-017",
+    "query": "請找出台積電 2025Q1 法說會簡報中提到 AI 需求或 HPC 展望的頁面或圖表來源。",
+    "http_status": 200,
+    "elapsed_sec": 12.059,
+    "answer_exists": true,
+    "citations_count": 2,
+    "citation_origins": [
+      "bm25"
+    ],
+    "source_ids": [
+      "stub-2330-2025Q1-gm",
+      "stub-2317-2025Q1-segment"
+    ],
+    "source_id_stub_flag": true,
+    "has_company": true,
+    "has_ticker": false,
+    "has_event_key": false,
+    "has_source_key": false,
+    "has_published_yyyymm": false,
+    "has_page_num_or_source_file": false,
+    "citation_supports_answer": "Weak - stub citation",
+    "company_mismatch_flag": "Y",
+    "event_type_mismatch_flag": "Unknown - payload_missing_event_key",
+    "off_period_flag": "Unknown - payload_missing_published_yyyymm",
+    "hallucination_flag": "Unknown",
+    "buy_sell_advice_flag": "N",
+    "verdict": "Needs Review",
+    "owner_to_fix": "R3 / R4",
+    "notes": "Returned stub/BM25 fallback citations; no evidence of semantic/ColPali path. ColPali probe did not return origin=colpali or page metadata. Citation payload missing R6 semantic metadata fields. Detected likely company mismatch from citation company/source_id text.",
+    "answer_summary": "根據您提供的引用片段，關於台積電（2330）2025Q1 法說會中提到 AI 需求或 HPC 展望的具體頁面或圖表來源，說明如下：  **資料不足說明：** 在提供的引用片段中，並未包含台積電 2025Q1 法說會簡報中關於「AI 需求」或「HPC 展望」的具體頁面編號、圖表來源或相關內容描述。  **現有資料摘要：** 目前的引用片段僅提及以下資訊： *   台積電 2025Q1 的毛利率表現受到匯率、產品組合以及產能利用率的影響 [stub-2330-2025Q1-gm]。 *   另一片段則屬於鴻海（2317..."
+  }
+}
