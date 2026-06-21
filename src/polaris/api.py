@@ -414,6 +414,13 @@ def get_history_one(session_id: str, user=Depends(current_user)) -> dict:
     return s
 
 
+@app.delete("/history/{session_id}", tags=["user"])
+def delete_history_one(session_id: str, user=Depends(current_user)) -> dict:
+    """刪除登入使用者的指定活動紀錄；冪等，查無亦回 deleted（no-op）。"""
+    _user_store.delete_session(_require_uid(user), session_id)
+    return {"status": "deleted"}
+
+
 @app.get("/subscriptions", response_model=SubsResponse, tags=["user"])
 def get_subscriptions(user=Depends(current_user)) -> SubsResponse:
     """登入使用者的訂閱清單。"""

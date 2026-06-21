@@ -43,6 +43,9 @@ class _DocRef:
     def get(self):
         return _Snap(self.id, self._n.fields)
 
+    def delete(self):
+        self._n.fields = None
+
     def collection(self, name):
         return self._n.subcols.setdefault(name, _Col())
 
@@ -111,6 +114,9 @@ class TestHistoryAuth:
         assert client.get("/subscriptions").status_code == 401
         assert client.post("/subscriptions", json={"tickers": ["2330"]}).status_code == 401
 
+    def test_delete_history_anonymous_is_401(self, client, store):
+        assert client.delete("/history/whatever").status_code == 401
+
 
 class TestHistoryFlow:
     def test_post_then_list_and_restore(self, client, store, authed):
@@ -125,6 +131,14 @@ class TestHistoryFlow:
 
     def test_get_unknown_history_is_404(self, client, store, authed):
         assert client.get("/history/does-not-exist").status_code == 404
+
+    def test_delete_removes_from_list(self, client, store, authed):
+        rid = client.post("/history", json=HIST).json()["record_id"]
+        assert client.delete(f"/history/{rid}").status_code == 200
+        assert all(s["id"] != rid for s in client.get("/history").json())
+
+    def test_delete_unknown_is_idempotent_200(self, client, store, authed):
+        assert client.delete("/history/does-not-exist").status_code == 200
 
     def test_history_is_scoped_to_logged_in_user(self, client, store, authed):
         client.post("/history", json=HIST)

@@ -72,6 +72,10 @@ class UserStore:
         snap = self._sessions(uid).document(session_id).get()
         return _with_id(snap) if snap.exists else None
 
+    def delete_session(self, uid: str, session_id: str) -> None:
+        """刪除指定 session；冪等，查無亦為 no-op（Firestore delete 不報錯）。"""
+        self._sessions(uid).document(session_id).delete()
+
     # ── 訂閱清單（users/{uid}.tickers）────────────────────────────────────────
 
     def get_subs(self, uid: str) -> list[str]:

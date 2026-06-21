@@ -46,6 +46,9 @@ class FakeDocRef:
     def get(self):
         return FakeSnap(self.id, self._node.fields)
 
+    def delete(self):
+        self._node.fields = None
+
     def collection(self, name):
         return self._node.subcols.setdefault(name, FakeCollection())
 
@@ -118,6 +121,22 @@ class TestSessions:
 
     def test_get_unknown_session_returns_none(self):
         assert make_store().get_session("u1", "nope") is None
+
+    def test_delete_removes_session(self):
+        store = make_store()
+        rid = store.save_session("u1", SAMPLE)
+        store.delete_session("u1", rid)
+        assert store.get_session("u1", rid) is None
+        assert store.list_sessions("u1") == []
+
+    def test_delete_unknown_session_is_noop(self):
+        make_store().delete_session("u1", "nope")  # 冪等：查無不報錯
+
+    def test_delete_is_scoped_per_user(self):
+        store = make_store()
+        rid = store.save_session("alice", SAMPLE)
+        store.delete_session("bob", rid)  # bob 刪不到 alice 的紀錄
+        assert store.get_session("alice", rid) is not None
 
     def test_sessions_isolated_per_user(self):
         store = make_store()
