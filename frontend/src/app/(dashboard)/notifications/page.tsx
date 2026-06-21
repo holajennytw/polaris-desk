@@ -1,11 +1,16 @@
 ﻿"use client";
 import { useState } from "react";
+import { useSWRConfig } from "swr";
+import { useSession } from "next-auth/react";
 import { Icon } from "@/components/ui/Icon";
 import { AlertItem } from "@/components/polaris/AlertItem";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useContraAlerts } from "@/hooks/useContraAlerts";
 import { useReadStore } from "@/hooks/useReadStore";
+import { useCompanies } from "@/hooks/useCompanies";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { api } from "@/lib/api";
 
 const TABS = ["feed","tracking","rules"] as const;
 const TAB_LABELS: Record<string, string> = { feed:"風險動態", tracking:"追蹤通知", rules:"訂閱設定" };
@@ -17,6 +22,31 @@ export default function NotificationsPage() {
   const rs = useReadStore();
   const allAlerts = [...(alerts ?? []), ...contraAlerts];
   const [tab, setTab] = useState<typeof TABS[number]>("feed");
+  const { mutate } = useSWRConfig();
+  const { data: session } = useSession();
+  const companies = useCompanies();
+  const { data: subs, isLoading: isSubsLoading } = useSubscriptions();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleMarkNotifRead = async (id: string, alreadyRead: boolean) => {
+    if (alreadyRead) return;
+    await api.markNotificationRead(id);
+    mutate("notifications");
+  };
+
+  const toggleSub = async (ticker: string) => {
+    const current = subs ?? [];
+    const next = current.includes(ticker)
+      ? current.filter((t) => t !== ticker)
+      : [...current, ticker];
+    setIsSaving(true);
+    try {
+      await api.setSubscriptions(next);
+      mutate("subscriptions");
+    } catch { /* ignore */ } finally {
+      setIsSaving(false);
+    }
+  };
 
   const items = notifs?.items ?? [];
   const trackItems = items.filter(i=>i.type==="tracking");
@@ -67,7 +97,12 @@ export default function NotificationsPage() {
                   <div style={{fontSize:13}}>在「訂閱設定」選擇追蹤公司後，最新動態將推送至此</div>
                 </div>
               ) : trackItems.map(n=>(
-                <div key={n.id} className={"alert"+(n.read?" read":"")}>
+                <div
+                  key={n.id}
+                  className={"alert"+(n.read?" read":"")}
+                  style={{cursor: n.read ? "default" : "pointer"}}
+                  onClick={() => handleMarkNotifRead(n.id, n.read)}
+                >
                   <div className="alert-body">
                     <div className="alert-title">{n.title}</div>
                     <div className="alert-sum">{n.body}</div>
@@ -82,13 +117,44 @@ export default function NotificationsPage() {
           <div className="panel" style={{marginTop:16}}>
             <div className="panel-head">
               <span className="panel-title"><Icon name="target" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>訂閱設定</span>
+              {isSaving && <span className="panel-meta">儲存中…</span>}
             </div>
-            <div style={{padding:"48px 16px",textAlign:"center",color:"rgb(var(--muted))"}}>
-              <Icon name="target" size={32} style={{marginBottom:10,opacity:0.3}}/>
-              <div style={{fontWeight:500,marginBottom:4}}>訂閱設定</div>
-              <div style={{fontSize:13}}>選擇欲追蹤的公司，系統將自動推送法說會與財報更新通知</div>
-              <div style={{fontSize:12,marginTop:8,opacity:0.6}}>功能開發中，敬請期待</div>
-            </div>
+            {!session ? (
+              <div style={{padding:"48px 16px",textAlign:"center",color:"rgb(var(--muted))"}}>
+                <Icon name="user" size={32} style={{marginBottom:10,opacity:0.3}}/>
+                <div style={{fontWeight:500,marginBottom:4}}>請先登入</div>
+                <div style={{fontSize:13}}>登入後即可設定公司訂閱，接收法說會與財報更新通知</div>
+              </div>
+            ) : isSubsLoading ? (
+              <div style={{padding:"24px 16px",color:"rgb(var(--muted))"}}>載入中…</div>
+            ) : (
+              <div style={{padding:"16px"}}>
+                <p style={{fontSize:13,color:"rgb(var(--muted))",marginBottom:16}}>
+                  點選公司即可切換訂閱狀態，系統將自動推送法說會與財報更新通知。
+                </p>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {companies.map(c => {
+                    const isSubbed = (subs ?? []).includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        className={"btn" + (isSubbed ? " primary" : " ghost")}
+                        style={{fontSize:13,padding:"4px 12px",height:"auto"}}
+                        onClick={() => toggleSub(c.id)}
+                        disabled={isSaving}
+                      >
+                        <span className="font-mono">{c.id}</span>
+                        <span style={{marginLeft:6}}>{c.name}</span>
+                        {isSubbed && <Icon name="check" size={13} style={{marginLeft:4}}/>}
+                      </button>
+                    );
+                  })}
+                  {companies.length === 0 && (
+                    <div style={{color:"rgb(var(--muted))",fontSize:13}}>公司清單載入中…</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

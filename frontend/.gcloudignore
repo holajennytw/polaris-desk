@@ -3,3 +3,9 @@ node_modules/
 .git
 *.log
 .DS_Store
+# 本地 env（機密由 Cloud Run Secret Manager 注入，不上傳 Cloud Build）
+.env*
+# TypeScript build cache（自動產生）
+tsconfig.tsbuildinfo
+# mock 資料（production USE_MOCK=false，不需打包）
+public/mocks/
