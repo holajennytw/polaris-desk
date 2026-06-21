@@ -44,7 +44,11 @@ build/
 * [0-9].py
 * [0-9].md
 
+# TypeScript build cache（自動產生）
+*.tsbuildinfo
+
 # Coding agent 本地設定（可能含憑證）— 不 commit
 # 註：.claude/skills/ 的 spec-kit 指令「要」保留共用，故不整個忽略 .claude/
 .claude/settings.local.json
 .claude/*.local.json
+.claude/worktrees/
