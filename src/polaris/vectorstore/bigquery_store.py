@@ -48,6 +48,14 @@ class BigQueryStore(VectorStore):
     def _table(self) -> str:
         return f"{self.settings.gcp_project}.{self.settings.bq_dataset}.chunks"
 
+    @property
+    def _semantic_view(self) -> str:
+        """P1：語意 metadata view（含 event_key / source_key / published_yyyymm，
+        刻意不含 embedding）。VECTOR_SEARCH 仍走 ``chunks`` 取向量，再以 chunk_id
+        LEFT JOIN 本 view 補語意欄 —— 不可直接對本 view 做 VECTOR_SEARCH（無 embedding
+        會失敗）。view 與 chunks 同 dataset。"""
+        return f"{self.settings.gcp_project}.{self.settings.bq_dataset}.v_chunk_semantic"
+
     # ── 寫入（含 polaris_core 防呆）─────────────────────────────────────
 
     def add_documents(self, docs: list[Document]) -> None:
@@ -106,17 +114,27 @@ class BigQueryStore(VectorStore):
         if clauses:
             where = "WHERE " + " AND ".join(clauses)
 
+        # P1：VECTOR_SEARCH 仍對 chunks（唯一含 embedding），向量命中後再用 chunk_id
+        # LEFT JOIN v_chunk_semantic 補 event_key / source_key / published_yyyymm。
+        # 不直接對 v_chunk_semantic 做 VECTOR_SEARCH（view 無 embedding 會失敗）；
+        # LEFT JOIN → 無對應語意列時三欄為 NULL（允許 null，不編造）。
         sql = f"""
-        SELECT base.chunk_id, base.chunk_text, base.ticker, base.fiscal_period,
-               base.doc_type, base.published_at, distance
-        FROM VECTOR_SEARCH(
-            (SELECT * FROM `{self._table}` {where}),
-            'embedding',
-            (SELECT @qe AS embedding),
-            top_k => @k,
-            distance_type => 'COSINE'
-        )
-        ORDER BY distance
+        SELECT vs.chunk_id, vs.chunk_text, vs.ticker, vs.fiscal_period,
+               vs.doc_type, vs.published_at, vs.distance,
+               sem.event_key, sem.source_key, sem.published_yyyymm
+        FROM (
+            SELECT base.chunk_id, base.chunk_text, base.ticker, base.fiscal_period,
+                   base.doc_type, base.published_at, distance
+            FROM VECTOR_SEARCH(
+                (SELECT * FROM `{self._table}` {where}),
+                'embedding',
+                (SELECT @qe AS embedding),
+                top_k => @k,
+                distance_type => 'COSINE'
+            )
+        ) vs
+        LEFT JOIN `{self._semantic_view}` sem ON sem.chunk_id = vs.chunk_id
+        ORDER BY vs.distance
         """
         rows = self._run_query(sql, params)
         return [
@@ -137,6 +155,11 @@ class BigQueryStore(VectorStore):
                             if hasattr(row.get("published_at"), "isoformat")
                             else row.get("published_at")
                         ),
+                        # P1：v_chunk_semantic 三欄（LEFT JOIN 取得）。缺值 → None 在此被濾掉，
+                        # 由下游 _ensure_citation_metadata 補回 None；有值才進 metadata。
+                        "event_key": row.get("event_key"),
+                        "source_key": row.get("source_key"),
+                        "published_yyyymm": row.get("published_yyyymm"),
                     }.items()
                     if v is not None
                 },

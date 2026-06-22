@@ -70,3 +70,39 @@ def test_matches_filters_doc_type_excludes_non_transcript():
     assert _matches_filters(transcript, {"doc_type": "transcript"}) is True
     assert _matches_filters(news, {"doc_type": "transcript"}) is False
     assert _matches_filters(no_dt, {"doc_type": "transcript"}) is False   # 無 doc_type → 排除
+
+
+# --- P1：v_chunk_semantic 三欄 event_key/source_key/published_yyyymm 透傳到 citation -----
+
+def test_semantic_fields_thread_through_real_contexts_to_citation():
+    """retriever 帶回三欄 → _real_contexts 透傳到 context → build_citations 落到
+    /ask Citation（三欄填值，非 None）。鎖住整條 thread-through。"""
+    from polaris.graph.nodes.writer_agent import build_citations
+
+    class _Retr:
+        def retrieve(self, query, *, filters=None):
+            return [SR(id="2330-2026Q1-ec", content="台積電法說片段", score=0.9,
+                       company="2330", period="2026Q1",
+                       metadata={"origin": "vector", "event_key": "earnings_call",
+                                 "source_key": "PRIMARY_EC_TRANSCRIPT",
+                                 "published_yyyymm": 202604})]
+
+    contexts = _real_contexts(_Retr(), "台積電 法說", quarters=["2026Q1"], viewer=PUBLIC_VIEWER)
+    assert contexts[0]["event_key"] == "earnings_call"
+    assert contexts[0]["source_key"] == "PRIMARY_EC_TRANSCRIPT"
+    assert contexts[0]["published_yyyymm"] == 202604
+
+    cites = build_citations(contexts)
+    assert cites[0].event_key == "earnings_call"
+    assert cites[0].source_key == "PRIMARY_EC_TRANSCRIPT"
+    assert cites[0].published_yyyymm == 202604
+
+
+def test_semantic_fields_default_none_when_absent():
+    """來源無三欄（如 stub/BM25 context）→ Citation 三欄為 None（nullable，不編造）。"""
+    from polaris.graph.nodes.writer_agent import build_citations
+
+    cites = build_citations([{"source_id": "stub-1", "text": "片段", "period": "2025Q1"}])
+    assert cites[0].event_key is None
+    assert cites[0].source_key is None
+    assert cites[0].published_yyyymm is None
