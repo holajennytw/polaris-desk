@@ -2,8 +2,12 @@
 
 > 對象：全隊（R2/R3/R4/R6/R7）。目的：把「`/ask` 到底走哪條路、碰不碰得到真資料」一次講清楚，
 > 對齊 R6 在 #132 後的三個觀察。
-> 維護者：R2（施惠棋）。最後校對：2026-06-21，對齊 `main` 上 `src/polaris/retrieval/retriever.py`。
+> 維護者：R2（施惠棋）。最後校對：**2026-06-22**，對齊 `main` 上 `src/polaris/retrieval/retriever.py` + 線上 `polaris_core` 實測。
 > **這份是診斷現況快照，不是規格**；規格以 `.specify/memory/constitution.md` 與 spec-kit 為準。
+
+> 🔬 **2026-06-22 線上 `polaris-desk-team.polaris_core` 實測**：兩個 semantic view **都已套用、都有資料**
+> （`v_chunk_semantic` 6885 行、`v_colpali_pages_semantic` 5701 行）。先前「view 沒套用到線上」的推測**已作廢**。
+> 真因收斂成兩條、**都跟 view 無關**：① 向量路打的 base table `chunks` **本身就沒有** `event_key/source_key/published_yyyymm` 三欄（`v_chunk_semantic` 才有）；② 向量路出錯被 `retriever.py:325` 靜默吞掉。詳見 §3。
 
 ---
 
@@ -12,8 +16,9 @@
 - **`/ask` 是 HTTP 端點，不是「一條路」**。它把整個問題丟給一個 5-node LangGraph workflow。
 - 真正做檢索的是 **`HybridRetriever`**，它有 **3 條「文字」通道**（BM25 / 向量 / Cohere Rerank）。
 - **ColPali 是 gated 的第 4 條「視覺」通道**，目前**只接到 eval 場景 3，沒接 `/ask`**，且因為 query 編碼器（#133）還沒做，呼叫等於 no-op。
-- ⚠️ **現況**：3 條文字通道裡，只有「向量」通道會碰到 `polaris_core` 真資料；BM25 只查記憶體假語料；
-  而向量通道一旦出錯會**靜默吞掉**（`retriever.py:325`），於是退回 BM25 → 產出 `bm25` stub 引用、沒有 `event_key/source_key/published_yyyymm`。**這就是 R6 測試題的根因。**
+- ⚠️ **現況（兩個獨立缺陷）**：3 條文字通道裡，只有「向量」通道會碰到 `polaris_core` 真資料；BM25 只查記憶體假語料。
+  1. 向量路打的 base table 是 `chunks`，而 `chunks` **本身就沒有** `event_key/source_key/published_yyyymm`——所以就算向量路成功，citation 也帶不出那三欄（要改打 `v_chunk_semantic`）。
+  2. 向量路一旦出錯會**靜默吞掉**（`retriever.py:325`），於是退回 BM25 → 產出 `bm25` stub 引用。**R6 測試題拿到 `bm25` stub 正是這條觸發的。**
 
 ---
 
@@ -58,8 +63,11 @@ flowchart TD
     HYB --> HYB_BOX
 
     BM25 -.讀.-> FB[("記憶體 _FALLBACK_CORPUS<br/>⚠️ 假語料，非 BigQuery")]
-    VEC -.讀.-> BQ[("polaris_core.chunks<br/>✅ 真資料，768 維 cosine")]
+    VEC -.現在打這個.-> BQ[("polaris_core.chunks<br/>✅ 真資料 768 維，但❌缺 event/source/published 三欄")]
+    VEC -.應改打這個.-> VW[("polaris_core.v_chunk_semantic<br/>✅ 6885 行，含三欄（2026-06-22 線上已驗）")]
     RR -.呼叫.-> COH[(Cohere API<br/>gated: COHERE_API_KEY)]
+
+    style VW fill:#d5f5d5,stroke:#22aa22
 
     COL["④ ColPali 視覺路（gated）<br/>active_colpali_retriever()"]
     COL -.待 #133 encoder.-> NULL[回 None / 空陣列]
@@ -73,7 +81,7 @@ flowchart TD
 | # | 通道 | 程式碼 | 資料來源 | 狀態 |
 |---|------|--------|----------|------|
 | ① | BM25 關鍵字 | [`retriever.py:290`](../src/polaris/retrieval/retriever.py#L290) | **記憶體 `_FALLBACK_CORPUS`（假語料）** | ⚠️ **不碰真 BigQuery**；只當保底，命中就回 `origin="bm25"` |
-| ② | 向量 | [`retriever.py:317`](../src/polaris/retrieval/retriever.py#L317) | `polaris_core.chunks`（透過 `BigQueryStore`） | ✅ **唯一碰真資料的路**；但出錯會靜默吞（見 §3） |
+| ② | 向量 | [`retriever.py:317`](../src/polaris/retrieval/retriever.py#L317) | `polaris_core.chunks`（透過 `BigQueryStore`，硬編碼） | ✅ **唯一碰真資料的路**；但兩個問題：base table `chunks` 缺三欄（要改打 `v_chunk_semantic`）、且出錯會靜默吞（見 §3） |
 | ③ | Cohere Rerank | [`retriever.py:347`](../src/polaris/retrieval/retriever.py#L347) | Cohere API | gated：有 `COHERE_API_KEY` 才開；失敗**會** `logger.warning` |
 
 ### 第 4 路（ColPali 視覺）的真相
@@ -94,21 +102,25 @@ flowchart TD
 flowchart TD
     Q["R6 測試題：<br/>2330 台積電 2025Q1 法說會重點？"] --> RN[retriever 節點]
     RN --> VEC[② 向量路]
-    VEC --> TRY{store.search<br/>polaris_core.chunks}
-    TRY -->|成功| GOOD[回真 chunk + event/source/published]
-    TRY -->|view 沒套用 / 認證 / schema / quota 任一錯| EXC["except: 靜默 return []<br/>retriever.py:325 ⚠️ 無 log"]
+    VEC --> TRY{store.search<br/>打 polaris_core.chunks}
+    TRY -->|認證 / schema / quota 任一錯| EXC["except: 靜默 return []<br/>retriever.py:325 ⚠️ 無 log"]
+    TRY -->|就算成功| GOOD["回真 chunk<br/>❌ 但 chunks 沒那三欄，citation 仍缺"]
     EXC --> ONLY[只剩 ① BM25 假語料]
     ONLY --> STUBOUT["輸出 origin=bm25 stub<br/>❌ 缺 event_key/source_key/published_yyyymm"]
 
+    NOTE["✅ 排除：v_chunk_semantic / v_colpali_pages_semantic<br/>2026-06-22 實測都已套用且有資料，不是 view 問題"]
+
     style EXC fill:#ffd5d5,stroke:#cc0000
+    style GOOD fill:#ffe9c7,stroke:#cc8800
     style STUBOUT fill:#ffd5d5,stroke:#cc0000
+    style NOTE fill:#d5f5d5,stroke:#22aa22
 ```
 
-三個觀察其實是同一條因果鏈：
+R6 三個觀察重新校準後（2026-06-22 線上實測）：
 
-1. **#132 已 merge，但 `v_colpali_pages_semantic` 查不到** → migration **程式碼進 main ≠ 套用到線上 `polaris_core`**。view 沒在線上建起來。
-2. **`/ask` 仍走 `chunks`/`BigQueryStore`** → 事實如此：`BigQueryStore._table` **硬編碼 `.chunks`**（[`bigquery_store.py:48`](../src/polaris/vectorstore/bigquery_store.py#L48)），**沒有 env 開關**能切到 semantic view，要切必須改 R3 的程式碼。
-3. **測試題回 `bm25` stub、缺三個欄位** → 因為向量路（唯一帶得出那些欄位的路）出錯被 §3 那個 `except` 靜默吞掉，只剩 BM25 假語料保底。
+1. ~~**#132 已 merge 但 `v_colpali_pages_semantic` 查不到 → view 沒套用到線上**~~ → **已作廢**。線上實測兩個 view 都在、都有資料（`v_chunk_semantic` 6885、`v_colpali_pages_semantic` 5701）。R6 當初查不到，應是在 `v_colpali_pages_semantic` 建立（2026-06-21 12:15）之前看的。
+2. **`/ask` 仍走 `chunks`/`BigQueryStore`** → 事實如此：`BigQueryStore._table` **硬編碼 `.chunks`**（[`bigquery_store.py:49`](../src/polaris/vectorstore/bigquery_store.py#L49)），**沒有 env 開關**能切到 semantic view，要切必須改 R3 的程式碼。**而 `chunks` 本身就沒有那三個 citation 欄位**（線上 `INFORMATION_SCHEMA` 確認：`chunks` 三欄全無、`v_chunk_semantic` 三欄齊全）——這才是「就算向量路成功、citation 也帶不出三欄」的主因。
+3. **測試題回 `bm25` stub、缺三個欄位** → 向量路（唯一可能帶出那些欄位的路）出錯被 §3 那個 `except` 靜默吞掉，只剩 BM25 假語料保底，於是 origin 變 `bm25`。**沒有 log 就無法判斷向量路是「打 chunks 失敗」還是「embedding 沒生出來」**——這正是 P0 補 log 的價值。
 
 > 🔑 **`retriever.py:325` 的靜默吞錯**是 R3 在 #49（D3 階段，2026-06-07）寫的。
 > 當時向量後端確實「可有可無」，靜默退回 BM25 是合理保底；
@@ -119,11 +131,11 @@ flowchart TD
 
 ## 4. 修復順序（建議，待團隊確認）
 
-| 優先 | 動作 | Owner | 說明 |
+| 優先 | 動作 | Owner | 狀態 / 說明 |
 |------|------|-------|------|
-| P0 | `_vector_search` 的 `except` 加 `logger.warning(..., exc_info=True)` | R3（或 R2 代改） | 一行純診斷，立刻看得到向量路為何回空 |
-| P0 | 確認 #132 / #120 的 view migration **真的套用到線上 `polaris_core`** | R2 / R4 | 程式碼 merge 不等於線上建好 view |
-| P1 | `BigQueryStore` 從 `.chunks` 切到 `v_chunk_semantic`，並把 `event_key/source_key/published_yyyymm` 帶進 citation | R3 | 真正解 R6 三觀察的主修；需改碼（無 env 開關） |
+| ✅ done | 確認 #132 / #120 的 view migration **真的套用到線上 `polaris_core`** | R2 | **2026-06-22 已驗**：`v_chunk_semantic`(6885)、`v_colpali_pages_semantic`(5701) 都在、都有資料、且含三欄 |
+| P0 | `_vector_search` 的 `except` 加 `logger.warning(..., exc_info=True)` | R3 | 一行純診斷，立刻看得到向量路為何回空（打 chunks 失敗？embedding 沒生出來？） |
+| P1 | `BigQueryStore` 從 `.chunks` 切到 `v_chunk_semantic`，並把 `event_key/source_key/published_yyyymm` 帶進 citation | R3 | **真正解 R6 的主修**；`chunks` 本身無三欄，view 才有。需改碼（無 env 開關），view 端已 ready |
 | P1 | 切完後重新部署 Cloud Run + 跑 R6 測試題 smoke | R2 | 驗證端到端 |
 | P2 | ColPali 第 4 路啟用：先補 #133 encoder + PM sign-off（TD-02）+ ≥70% round-trip 閘 | R4 + R2(PM) | 視覺路與文字路分開，不混排序 |
 
@@ -139,7 +151,8 @@ flowchart TD
 | HybridRetriever 三路 | [retrieval/retriever.py:329](../src/polaris/retrieval/retriever.py#L329) |
 | ① BM25（假語料） | [retrieval/retriever.py:290](../src/polaris/retrieval/retriever.py#L290) |
 | ② 向量 + 靜默吞錯 | [retrieval/retriever.py:317](../src/polaris/retrieval/retriever.py#L317) |
-| BigQueryStore（硬編碼 `.chunks`） | [vectorstore/bigquery_store.py:48](../src/polaris/vectorstore/bigquery_store.py#L48) |
+| BigQueryStore（硬編碼 `.chunks`） | [vectorstore/bigquery_store.py:49](../src/polaris/vectorstore/bigquery_store.py#L49) |
+| `v_chunk_semantic`（含三欄，建議改打） | `polaris_core.v_chunk_semantic`（#120，線上已套用） |
 | ④ ColPali retriever（gated） | [retrieval/colpali_retriever.py](../src/polaris/retrieval/colpali_retriever.py) |
 | ColPali store（colpali_pages） | [vectorstore/colpali_store.py](../src/polaris/vectorstore/colpali_store.py) |
 | ColPali 唯一消費者（eval） | [eval/runner.py](../src/polaris/eval/runner.py) |
