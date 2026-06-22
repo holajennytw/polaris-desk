@@ -22,6 +22,7 @@ import re
 _PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("GOOGLE_API_KEY", re.compile(r"AIza[0-9A-Za-z_\-]{35}")),
     ("OPENAI_API_KEY", re.compile(r"sk-[A-Za-z0-9]{20,}")),
+    ("TAVILY_API_KEY", re.compile(r"tvly-[A-Za-z0-9]{32,}")),
     ("EMAIL", re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")),
     ("TW_ID", re.compile(r"\b[A-Z][12]\d{8}\b")),       # 台灣身分證字號
     ("TW_MOBILE", re.compile(r"\b09\d{8}\b")),          # 台灣手機號

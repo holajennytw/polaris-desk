@@ -27,6 +27,7 @@ node_modules/
 .next/
 dist/
 build/
+frontend/.next/dev/logs/
 
 # 資料 / 暫存（法說會 PDF、向量等不進 git）
 /data/

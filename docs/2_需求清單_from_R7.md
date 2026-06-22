@@ -76,6 +76,8 @@ R7 的 app 已很完整（Next.js，`/history` 分頁已存在、grouped 今日/
 - [x] 儲存後端拍板 → **Firestore**
 - [x] Magic Link → **砍**
 - [x] 紀錄深度 → **B（完整還原）**
-- [ ] R7：設定頁移除 / 隱藏 Magic Link UI
-- [ ] R2 立 Firestore + schema（per-user session 文件存整包 result）→ R3 接 `/history`、`/subscriptions`（或 workflow 結尾自動寫）→ R7 接 OAuth + 切 Firestore（測試期就接起來、登入版可實操）
-- [ ] merge 後把本結論回填 `feature/my-frontend-work_2026_0617` 的開會決策表（議題 A/E + Auth）
+- [x] R7：設定頁移除 / 隱藏 Magic Link UI ✅ 2026-06-19（#114/#137）
+- [x] R2 立 Firestore + schema → R7 已完成 OAuth + Firestore 串接（NextAuth + GET/POST/DELETE /history + GET/POST /subscriptions）✅ 2026-06-20（PR #137 merged）
+- [x] merge 後回填決策表 ✅（frontend_2026_0620 branch 已含所有決策落地）
+
+> 📌 **本文件狀態：R7-1 全部完成，已歸檔。** 後續追蹤見 [`docs/進度紀錄_20260621.md`](../docs/進度紀錄_20260621.md)。
