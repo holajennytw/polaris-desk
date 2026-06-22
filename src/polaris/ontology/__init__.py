@@ -5,6 +5,6 @@
 不到 CSV），這裡以 Python literal 內嵌 20 列 canonical 對照；
 ``tests/test_company_names.py`` 對 seed CSV 做同步守門，任何一邊漂移即測試失敗。
 """
-from .companies import company_label, company_name
+from .companies import company_label, company_name, detect_tickers
 
-__all__ = ["company_label", "company_name"]
+__all__ = ["company_label", "company_name", "detect_tickers"]
