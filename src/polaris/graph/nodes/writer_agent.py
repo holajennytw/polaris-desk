@@ -41,6 +41,9 @@ def build_citations(contexts: list[dict[str, Any]]) -> list[Citation]:
                 snippet=snippet,
                 origin=ctx.get("origin", "stub"),
                 company=ctx.get("company_name") or company_name(ctx.get("company")),
+                event_key=ctx.get("event_key"),
+                source_key=ctx.get("source_key"),
+                published_yyyymm=ctx.get("published_yyyymm"),
             )
         )
     return cites

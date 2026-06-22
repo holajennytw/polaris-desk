@@ -158,7 +158,10 @@ def _normalize_vector_result(result: SearchResult) -> SearchResult:
 # vector (BigQuery) path already populates them; BM25/stub results don't — so
 # the final output is normalised to always carry the keys, letting consumers do
 # metadata["published_at"] safely on any channel (issue: R7 /research KeyError).
-_CITATION_METADATA_KEYS = ("doc_type", "published_at", "fiscal_period")
+_CITATION_METADATA_KEYS = (
+    "doc_type", "published_at", "fiscal_period",
+    "event_key", "source_key", "published_yyyymm",
+)
 
 
 def _ensure_citation_metadata(result: SearchResult) -> SearchResult:
@@ -326,7 +329,8 @@ class HybridRetriever:
             if not query_embedding:
                 return []
             results = self.store.search(query_embedding, self.top_k, filters=filters)
-        except Exception:  # noqa: BLE001 - vector backend is optional in D3; BM25 stays available
+        except Exception:  # noqa: BLE001 - vector backend is optional; BM25 fallback stays
+            logger.warning("Vector search failed; falling back to BM25", exc_info=True)
             return []
         return [_normalize_vector_result(result) for result in results]
 

@@ -139,7 +139,8 @@ class TestBigQueryStore:
         assert results[0].period == "2025Q1"
         assert results[0].score == pytest.approx(0.8)  # 1 - distance
         assert results[0].metadata == {
-            "doc_type": "presentation", "published_at": "2025-04-17"
+            "doc_type": "presentation", "published_at": "2025-04-17",
+            "event_key": None, "source_key": None, "published_yyyymm": None,
         }
 
     def test_search_filters_map_to_canonical_columns(self):

@@ -35,6 +35,9 @@ class Citation(BaseModel):
         default=None,
         description="來源公司中文 canonical 名（由 ticker 經 ontology 解析；未知/無則 None）",
     )
+    event_key: str | None = Field(default=None, description="事件分類鍵（v_chunk_semantic）")
+    source_key: str | None = Field(default=None, description="來源分類鍵（v_chunk_semantic）")
+    published_yyyymm: int | None = Field(default=None, description="發布年月 YYYYMM（v_chunk_semantic）")
 
 
 # ---------------------------------------------------------------------------

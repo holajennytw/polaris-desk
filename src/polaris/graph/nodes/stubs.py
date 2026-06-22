@@ -121,6 +121,7 @@ def _real_contexts(
                 if r.id in seen:
                     continue
                 seen.add(r.id)
+                meta = r.metadata or {}
                 contexts.append(
                     {
                         "source_id": r.id,
@@ -128,7 +129,10 @@ def _real_contexts(
                         "period": r.period,
                         "company": r.company,  # ticker
                         "company_name": company_name(r.company),  # canonical 中文名 / None
-                        "origin": _citation_origin((r.metadata or {}).get("origin")),
+                        "origin": _citation_origin(meta.get("origin")),
+                        "event_key": meta.get("event_key"),
+                        "source_key": meta.get("source_key"),
+                        "published_yyyymm": meta.get("published_yyyymm"),
                     }
                 )
     return contexts

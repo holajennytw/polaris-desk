@@ -48,6 +48,10 @@ class BigQueryStore(VectorStore):
     def _table(self) -> str:
         return f"{self.settings.gcp_project}.{self.settings.bq_dataset}.chunks"
 
+    @property
+    def _semantic_view(self) -> str:
+        return f"{self.settings.gcp_project}.{self.settings.bq_dataset}.v_chunk_semantic"
+
     # ── 寫入（含 polaris_core 防呆）─────────────────────────────────────
 
     def add_documents(self, docs: list[Document]) -> None:
@@ -108,7 +112,8 @@ class BigQueryStore(VectorStore):
 
         sql = f"""
         SELECT base.chunk_id, base.chunk_text, base.ticker, base.fiscal_period,
-               base.doc_type, base.published_at, distance
+               base.doc_type, base.published_at, distance,
+               vs.event_key, vs.source_key, vs.published_yyyymm
         FROM VECTOR_SEARCH(
             (SELECT * FROM `{self._table}` {where}),
             'embedding',
@@ -116,6 +121,7 @@ class BigQueryStore(VectorStore):
             top_k => @k,
             distance_type => 'COSINE'
         )
+        LEFT JOIN `{self._semantic_view}` vs USING (chunk_id)
         ORDER BY distance
         """
         rows = self._run_query(sql, params)
@@ -128,17 +134,23 @@ class BigQueryStore(VectorStore):
                 company=row.get("ticker"),
                 period=row.get("fiscal_period"),
                 # canonical 無 metadata JSON 欄 → 由欄位重組（引用接地要 doc_type / 日期）
+                # event_key / source_key / published_yyyymm 取自 v_chunk_semantic JOIN。
                 metadata={
-                    k: v
-                    for k, v in {
-                        "doc_type": row.get("doc_type"),
-                        "published_at": (
-                            row["published_at"].isoformat()
-                            if hasattr(row.get("published_at"), "isoformat")
-                            else row.get("published_at")
-                        ),
-                    }.items()
-                    if v is not None
+                    **{
+                        k: v
+                        for k, v in {
+                            "doc_type": row.get("doc_type"),
+                            "published_at": (
+                                row["published_at"].isoformat()
+                                if hasattr(row.get("published_at"), "isoformat")
+                                else row.get("published_at")
+                            ),
+                        }.items()
+                        if v is not None
+                    },
+                    "event_key": row.get("event_key"),
+                    "source_key": row.get("source_key"),
+                    "published_yyyymm": row.get("published_yyyymm"),
                 },
             )
             for row in rows
