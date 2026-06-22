@@ -139,9 +139,10 @@ export interface ResearchTourProps {
   onRunSample: () => void;
   onReset: () => void;
   hasResults: boolean;
+  sampleFailed?: boolean;
 }
 
-export function ResearchTour({ onRunSample, onReset, hasResults }: ResearchTourProps) {
+export function ResearchTour({ onRunSample, onReset, hasResults, sampleFailed }: ResearchTourProps) {
   const [open, setOpen]               = useState(false);
   const [step, setStep]               = useState(0);
   const [waiting, setWaiting]         = useState(false);
@@ -192,6 +193,12 @@ export function ResearchTour({ onRunSample, onReset, hasResults }: ResearchTourP
     setWaiting(false);
     setStep(3);
   }, [hasResults]);
+
+  // ── API 失敗時立即顯示逾時提示，不等 30s ────────────────────
+  useEffect(() => {
+    if (!sampleFailed || !waitingRef.current) return;
+    setTimedOut(true);
+  }, [sampleFailed]);
 
   // ── 卸載清理 ─────────────────────────────────────────────────
   useEffect(() => () => {
