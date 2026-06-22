@@ -106,7 +106,10 @@ def test_retriever_node_uses_real_retriever_when_available(monkeypatch):
     assert contexts[0]["text"] == "台積電 2026Q1 毛利率討論。"
     # vector → embedding (Citation literal); period + viewer forwarded as filters
     assert contexts[0]["origin"] == "embedding"
-    assert fake.calls == [("台積電毛利率", {"period": "2026Q1", "viewer": "__public__"})]
+    # company（偵測自「台積電」）+ period + viewer 一起當 filters（修 R6 cross-company）
+    assert fake.calls == [
+        ("台積電毛利率", {"viewer": "__public__", "company": "2330", "period": "2026Q1"})
+    ]
 
 
 def test_retriever_node_dedups_across_quarters(monkeypatch):
