@@ -1,0 +1,161 @@
+{
+  "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+  "http_status": 200,
+  "started_at": "2026-06-21T14:53:06.502480Z",
+  "ended_at": "2026-06-21T14:53:17.798921Z",
+  "elapsed_sec": 11.296,
+  "query": "2330 台積電 2025 年 3 月單月營收年增率是多少？請只使用月營收公告回答。",
+  "response": {
+    "answer": "根據提供的引用片段，資料不足以回答台積電（2330）2025 年 3 月單月營收年增率。\n\n現有資料僅提及台積電 2025Q1 毛利率受到匯率、產品組合與產能利用率影響 [stub-2330-2025Q1-gm]，並未包含 2025 年 3 月的具體營收數字或年增率數據。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "stub-2330-2025Q1-gm",
+        "snippet": "台積電 2025Q1 法說摘要：毛利率受到匯率、產品組合與產能利用率影響。",
+        "origin": "bm25",
+        "company": "台積電"
+      },
+      {
+        "source_id": "stub-2317-2025Q1-segment",
+        "snippet": "鴻海 2025Q1 法說摘要：營收組成涵蓋消費智能、雲端網路、電腦終端與元件。",
+        "origin": "bm25",
+        "company": "鴻海"
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3923
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 126
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4063
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3057
+      }
+    ]
+  },
+  "test": {
+    "test_id": "R6-P2B-010",
+    "source_file": "new_r6_probe based on R6 Phase 2 monthly_revenue gap",
+    "new_r6_probe": "Y",
+    "query": "2330 台積電 2025 年 3 月單月營收年增率是多少？請只使用月營收公告回答。",
+    "test_category": "月營收 / financial_metrics",
+    "expected_ticker": "2330",
+    "expected_period": "202503",
+    "expected_event_key": "monthly_revenue",
+    "expected_source_key": "PRIMARY_MOPS",
+    "expected_metadata": "published_yyyymm=202503; event_key=monthly_revenue",
+    "reason_to_include": "既有題庫缺明確 monthly_revenue 年增題；補測 published_yyyymm / monthly_revenue。"
+  },
+  "analysis": {
+    "test_id": "R6-P2B-010",
+    "query": "2330 台積電 2025 年 3 月單月營收年增率是多少？請只使用月營收公告回答。",
+    "http_status": 200,
+    "elapsed_sec": 11.296,
+    "answer_exists": true,
+    "citations_count": 2,
+    "citation_origins": [
+      "bm25"
+    ],
+    "source_ids": [
+      "stub-2330-2025Q1-gm",
+      "stub-2317-2025Q1-segment"
+    ],
+    "source_id_stub_flag": true,
+    "has_company": true,
+    "has_ticker": false,
+    "has_event_key": false,
+    "has_source_key": false,
+    "has_published_yyyymm": false,
+    "has_page_num_or_source_file": false,
+    "citation_supports_answer": "Weak - stub citation",
+    "company_mismatch_flag": "Y",
+    "event_type_mismatch_flag": "Unknown - payload_missing_event_key",
+    "off_period_flag": "Unknown - payload_missing_published_yyyymm",
+    "hallucination_flag": "Unknown",
+    "buy_sell_advice_flag": "N",
+    "verdict": "Needs Review",
+    "owner_to_fix": "R3 / R4",
+    "notes": "Returned stub/BM25 fallback citations; no evidence of semantic/ColPali path. Citation payload missing R6 semantic metadata fields. Detected likely company mismatch from citation company/source_id text.",
+    "answer_summary": "根據提供的引用片段，資料不足以回答台積電（2330）2025 年 3 月單月營收年增率。  現有資料僅提及台積電 2025Q1 毛利率受到匯率、產品組合與產能利用率影響 [stub-2330-2025Q1-gm]，並未包含 2025 年 3 月的具體營收數字或年增率數據。"
+  }
+}

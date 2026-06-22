@@ -1,0 +1,161 @@
+{
+  "endpoint": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+  "http_status": 200,
+  "started_at": "2026-06-21T14:51:37.894947Z",
+  "ended_at": "2026-06-21T14:51:49.713682Z",
+  "elapsed_sec": 11.819,
+  "query": "2317 鴻海 2025Q1 法說會提到哪些營運重點？",
+  "response": {
+    "answer": "根據提供的引用片段，鴻海（2317）於 2025Q1 法說會提到的營運重點摘要如下：\n\n*   **營收組成結構**：法說會中說明其營收組成涵蓋四大領域，分別為消費智能、雲端網路、電腦終端以及元件 [stub-2317-2025Q1-segment]。\n\n**資料不足說明：**\n提供的引用片段中，未包含 2025Q1 的具體財務數據（如營收金額、毛利率、獲利表現）、各產品線的成長展望、AI 伺服器或電動車等特定業務的進度，亦未提及對未來季度的營運指引。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "stub-2317-2025Q1-segment",
+        "snippet": "鴻海 2025Q1 法說摘要：營收組成涵蓋消費智能、雲端網路、電腦終端與元件。",
+        "origin": "bm25",
+        "company": "鴻海"
+      },
+      {
+        "source_id": "stub-2330-2025Q1-gm",
+        "snippet": "台積電 2025Q1 法說摘要：毛利率受到匯率、產品組合與產能利用率影響。",
+        "origin": "bm25",
+        "company": "台積電"
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4670
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 93
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4450
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 2464
+      }
+    ]
+  },
+  "test": {
+    "test_id": "R6-P2B-003",
+    "source_file": "docs/r6/test_logs/R6_G3_Exploratory_Cloud_Run_Smoke_2026-06-17.md",
+    "new_r6_probe": "N",
+    "query": "2317 鴻海 2025Q1 法說會提到哪些營運重點？",
+    "test_category": "單公司法說會 grounding",
+    "expected_ticker": "2317",
+    "expected_period": "2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_EC_TRANSCRIPT",
+    "expected_metadata": "ticker=2317; fiscal_period=2025Q1; event_key=earnings_call",
+    "reason_to_include": "Phase 1 baseline fixed 8 題；過去表現較好，可觀察是否退步。"
+  },
+  "analysis": {
+    "test_id": "R6-P2B-003",
+    "query": "2317 鴻海 2025Q1 法說會提到哪些營運重點？",
+    "http_status": 200,
+    "elapsed_sec": 11.819,
+    "answer_exists": true,
+    "citations_count": 2,
+    "citation_origins": [
+      "bm25"
+    ],
+    "source_ids": [
+      "stub-2317-2025Q1-segment",
+      "stub-2330-2025Q1-gm"
+    ],
+    "source_id_stub_flag": true,
+    "has_company": true,
+    "has_ticker": false,
+    "has_event_key": false,
+    "has_source_key": false,
+    "has_published_yyyymm": false,
+    "has_page_num_or_source_file": false,
+    "citation_supports_answer": "Weak - stub citation",
+    "company_mismatch_flag": "Y",
+    "event_type_mismatch_flag": "Unknown - payload_missing_event_key",
+    "off_period_flag": "Unknown - payload_missing_published_yyyymm",
+    "hallucination_flag": "Unknown",
+    "buy_sell_advice_flag": "N",
+    "verdict": "Needs Review",
+    "owner_to_fix": "R3 / R4",
+    "notes": "Returned stub/BM25 fallback citations; no evidence of semantic/ColPali path. Citation payload missing R6 semantic metadata fields. Detected likely company mismatch from citation company/source_id text.",
+    "answer_summary": "根據提供的引用片段，鴻海（2317）於 2025Q1 法說會提到的營運重點摘要如下：  *   **營收組成結構**：法說會中說明其營收組成涵蓋四大領域，分別為消費智能、雲端網路、電腦終端以及元件 [stub-2317-2025Q1-segment]。  **資料不足說明：** 提供的引用片段中，未包含 2025Q1 的具體財務數據（如營收金額、毛利率、獲利表現）、各產品線的成長展望、AI 伺服器或電動車等特定業務的進度，亦未提及對未來季度的營運指引。"
+  }
+}
