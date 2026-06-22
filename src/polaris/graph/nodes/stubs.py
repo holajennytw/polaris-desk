@@ -16,7 +16,7 @@ from polaris.graph.nodes.trace import traced
 from polaris.graph.redaction import redact
 from polaris.graph.state import Citation
 from polaris.llm.gemini import active_llm
-from polaris.ontology import company_name
+from polaris.ontology import company_name, detect_tickers
 from polaris.retrieval.retriever import PUBLIC_VIEWER, active_retriever
 
 
@@ -84,34 +84,53 @@ def _citation_origin(raw: str | None) -> str:
     return raw if raw in _CITATION_ORIGINS else "bm25"
 
 
+#: 查法說會意圖 → 只取 transcript（doc_type 過濾），避免抓到新聞 / 重大訊息（修 R6 #2）。
+_EARNINGS_CALL_HINTS = ("法說", "法人說明會", "earnings call", "逐字稿", "conference call")
+
+
+def _wants_earnings_call(query: str) -> bool:
+    q = (query or "").lower()
+    return any(hint.lower() in q for hint in _EARNINGS_CALL_HINTS)
+
+
 def _real_contexts(
     retriever_obj: Any, query: str, quarters: list[str] | None, viewer: str
 ) -> list[dict[str, Any]]:
     """HybridRetriever SearchResults → writer 形狀的 context dict（依 id 去重）。
 
-    每個 anchored 季別查一次（BigQuery filter 單一 fiscal_period）；無季別 → 一次
-    無過濾語意查詢。viewer 透傳做 owner-scoped 過濾（issue #32）。
+    依查詢偵測到的公司 ticker × anchored 季別逐一查詢：
+    - **公司過濾（修 R6 #1）**：問單一公司只取該公司；比較題涵蓋多家、citation 落在
+      正確公司；未偵測到公司 → 不加公司過濾（維持原行為）。
+    - **doc_type 過濾（修 R6 #2）**：問法說會時加 ``doc_type=transcript``，不抓新聞 / 重大訊息。
+    - viewer 透傳做 owner-scoped 過濾（issue #32）。
     """
     contexts: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for q in quarters or [None]:
-        filters: dict[str, Any] = {"viewer": viewer}
-        if q:
-            filters["period"] = q
-        for r in retriever_obj.retrieve(query, filters=filters):
-            if r.id in seen:
-                continue
-            seen.add(r.id)
-            contexts.append(
-                {
-                    "source_id": r.id,
-                    "text": r.content,
-                    "period": r.period,
-                    "company": r.company,  # ticker
-                    "company_name": company_name(r.company),  # canonical 中文名 / None
-                    "origin": _citation_origin((r.metadata or {}).get("origin")),
-                }
-            )
+    tickers = detect_tickers(query) or [None]
+    want_call = _wants_earnings_call(query)
+    for ticker in tickers:
+        for q in quarters or [None]:
+            filters: dict[str, Any] = {"viewer": viewer}
+            if ticker:
+                filters["company"] = ticker
+            if q:
+                filters["period"] = q
+            if want_call:
+                filters["doc_type"] = "transcript"
+            for r in retriever_obj.retrieve(query, filters=filters):
+                if r.id in seen:
+                    continue
+                seen.add(r.id)
+                contexts.append(
+                    {
+                        "source_id": r.id,
+                        "text": r.content,
+                        "period": r.period,
+                        "company": r.company,  # ticker
+                        "company_name": company_name(r.company),  # canonical 中文名 / None
+                        "origin": _citation_origin((r.metadata or {}).get("origin")),
+                    }
+                )
     return contexts
 
 

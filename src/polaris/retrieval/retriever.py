@@ -108,6 +108,10 @@ def _matches_filters(result: SearchResult, filters: dict | None) -> bool:
             return False
         if key == "period" and result.period != value:
             return False
+        if key == "doc_type" and result.metadata.get("doc_type") != value:
+            # 法說題只取 transcript（修 R6：問法說會卻抓到新聞/重大訊息）。與 store
+            # 的 doc_type SQL 過濾一致；stub 語料無 doc_type → 設此過濾時自然被排除。
+            return False
         if key == "viewer":
             # Owner-based access control (issue #32): public docs (owner=None) are always
             # visible; owner-scoped docs only visible to the matching principal.  This must

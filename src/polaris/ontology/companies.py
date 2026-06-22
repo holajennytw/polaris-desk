@@ -43,3 +43,20 @@ def company_label(ticker: str | None) -> str:
     t = "" if ticker is None else str(ticker).strip()
     name = company_name(t)
     return f"{name}（{t}）" if name else t
+
+
+def detect_tickers(text: str) -> list[str]:
+    """從查詢文字偵測提及的公司 ticker（依 canonical 中文名或 4 碼代號）。
+
+    供檢索做公司過濾用（修 cross-company citation 混淆）：
+    - 問單一公司 → 回該 ticker；比較題（多家）→ 依出現順序回多個。
+    - 沒偵測到任何已知公司 → 回 ``[]``（呼叫端據此不加公司過濾，維持原行為）。
+    """
+    if not text:
+        return []
+    found: list[str] = []
+    for ticker, name in _COMPANY_NAMES.items():
+        if (name and name in text) or (ticker in text):
+            if ticker not in found:
+                found.append(ticker)
+    return found
