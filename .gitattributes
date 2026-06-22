@@ -1,0 +1,2 @@
+# Ensure shell scripts always use LF so hooks work cross-platform
+*.sh text eol=lf

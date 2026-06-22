@@ -18,15 +18,17 @@ const TAB_LABELS: Record<string, string> = { feed:"風險動態", tracking:"追�
 export default function NotificationsPage() {
   const { data: notifs } = useNotifications();
   const { data: alerts } = useAlerts();
-  const contraAlerts = useContraAlerts();
+  const contraAlertsR = useContraAlerts("research");
+  const contraAlertsP = useContraAlerts("peer");
   const rs = useReadStore();
-  const allAlerts = [...(alerts ?? []), ...contraAlerts];
+  const allAlerts = [...(alerts ?? []), ...contraAlertsR, ...contraAlertsP];
   const [tab, setTab] = useState<typeof TABS[number]>("feed");
   const { mutate } = useSWRConfig();
   const { data: session } = useSession();
   const companies = useCompanies();
   const { data: subs, isLoading: isSubsLoading } = useSubscriptions();
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const handleMarkNotifRead = async (id: string, alreadyRead: boolean) => {
     if (alreadyRead) return;
@@ -39,11 +41,14 @@ export default function NotificationsPage() {
     const next = current.includes(ticker)
       ? current.filter((t) => t !== ticker)
       : [...current, ticker];
+    setSaveError(false);
     setIsSaving(true);
     try {
       await api.setSubscriptions(next);
       mutate("subscriptions");
-    } catch { /* ignore */ } finally {
+    } catch {
+      setSaveError(true);
+    } finally {
       setIsSaving(false);
     }
   };
@@ -118,6 +123,7 @@ export default function NotificationsPage() {
             <div className="panel-head">
               <span className="panel-title"><Icon name="target" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>訂閱設定</span>
               {isSaving && <span className="panel-meta">儲存中…</span>}
+              {saveError && <span className="panel-meta" style={{color:"rgb(var(--danger))"}}>儲存失敗，請稍後再試</span>}
             </div>
             {!session ? (
               <div style={{padding:"48px 16px",textAlign:"center",color:"rgb(var(--muted))"}}>
