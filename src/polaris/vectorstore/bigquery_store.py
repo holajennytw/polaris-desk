@@ -51,9 +51,12 @@ class BigQueryStore(VectorStore):
     @property
     def _semantic_view(self) -> str:
         """P1：語意 metadata view（含 event_key / source_key / published_yyyymm，
-        刻意不含 embedding）。VECTOR_SEARCH 仍走 ``chunks`` 取向量，再以 chunk_id
-        LEFT JOIN 本 view 補語意欄 —— 不可直接對本 view 做 VECTOR_SEARCH（無 embedding
-        會失敗）。view 與 chunks 同 dataset。"""
+        刻意不含 embedding）。VECTOR_SEARCH 仍走 ``chunks``，讓 viewer 查詢能先套用
+        owner / confidential ACL，再以 chunk_id LEFT JOIN 本 view 補語意欄。
+
+        ``v_chunks_embedding_semantic`` 雖含 embedding，但目前未包含 ACL 欄位，不能直接
+        取代 ``chunks`` 作為所有查詢的 base。view 與 chunks 同 dataset。
+        """
         return f"{self.settings.gcp_project}.{self.settings.bq_dataset}.v_chunk_semantic"
 
     # ── 寫入（含 polaris_core 防呆）─────────────────────────────────────
@@ -114,10 +117,10 @@ class BigQueryStore(VectorStore):
         if clauses:
             where = "WHERE " + " AND ".join(clauses)
 
-        # P1：VECTOR_SEARCH 仍對 chunks（唯一含 embedding），向量命中後再用 chunk_id
-        # LEFT JOIN v_chunk_semantic 補 event_key / source_key / published_yyyymm。
-        # 不直接對 v_chunk_semantic 做 VECTOR_SEARCH（view 無 embedding 會失敗）；
-        # LEFT JOIN → 無對應語意列時三欄為 NULL（允許 null，不編造）。
+        # P1：VECTOR_SEARCH 仍對 chunks，先保留 owner / confidential ACL；向量命中後
+        # 再用 chunk_id LEFT JOIN v_chunk_semantic 補語意欄。新建的
+        # v_chunks_embedding_semantic 目前未含 ACL 欄位，不能安全取代這個兩段式查詢。
+        # LEFT JOIN 無對應語意列時三欄為 NULL（允許 null，不編造）。
         sql = f"""
         SELECT vs.chunk_id, vs.chunk_text, vs.ticker, vs.fiscal_period,
                vs.doc_type, vs.published_at, vs.distance,

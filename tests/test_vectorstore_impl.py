@@ -162,10 +162,10 @@ class TestBigQueryStore:
         # NULL-safe: pre-backfill rows (confidential = NULL) stay visible
         assert "NOT COALESCE(confidential, FALSE) OR owner = @viewer" in sql
 
-    def test_search_joins_semantic_view_for_event_source_published(self):
-        """P1：VECTOR_SEARCH 仍對 chunks（唯一含 embedding），向量命中後再用 chunk_id
+    def test_search_keeps_acl_base_and_joins_semantic_view(self):
+        """P1：VECTOR_SEARCH 仍對含 ACL 欄位的 chunks，命中後再用 chunk_id
         LEFT JOIN v_chunk_semantic 補 event_key / source_key / published_yyyymm，落到
-        SearchResult.metadata。"""
+        SearchResult.metadata。v_chunks_embedding_semantic 尚未包含 ACL 欄，不能直接替代。"""
         client = FakeBQClient(rows=[
             {"chunk_id": "c1", "chunk_text": "台積電法說片段", "ticker": "2330",
              "fiscal_period": "2026Q1", "doc_type": "transcript",
@@ -174,13 +174,15 @@ class TestBigQueryStore:
              "published_yyyymm": 202604},
         ])
         store = BigQueryStore(make_settings(), client=client)
-        results = store.search(EMB, top_k=5)
+        results = store.search(EMB, top_k=5, filters={"viewer": "analyst_A"})
         sql = client.queries[0]
 
-        # VECTOR_SEARCH 的 base 子查詢必須是 chunks，不能換成無 embedding 的 view
+        # VECTOR_SEARCH 的 base 子查詢保留 chunks 的 ACL 欄位與過濾。
         vs_block = sql[sql.index("VECTOR_SEARCH("):sql.index("LEFT JOIN")]
         assert "chunks`" in vs_block
-        assert "v_chunk_semantic" not in vs_block  # ⚠️ view 無 embedding，不可進 VECTOR_SEARCH
+        assert "v_chunks_embedding_semantic" not in vs_block
+        assert "owner IS NULL OR owner = @viewer" in vs_block
+        assert "NOT COALESCE(confidential, FALSE) OR owner = @viewer" in vs_block
         # 命中後才 LEFT JOIN 語意 view 取三欄
         join_block = sql[sql.index("LEFT JOIN"):]
         assert "v_chunk_semantic" in join_block
