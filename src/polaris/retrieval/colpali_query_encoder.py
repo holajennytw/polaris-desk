@@ -50,10 +50,16 @@ class ColpaliV12QueryEncoder:
         *,
         device: str | None = None,
         pool: Callable[[Sequence[Sequence[float]]], list[float]] = mean_pool,
+        content_only: bool = True,
     ) -> None:
         self.model_name = model_name
         self.device = device
         self.pool = pool
+        # content_only=True：池化前丟掉 padding（attention_mask=0）+ special/BOS/EOS +
+        # ColPali query augmentation 的 <pad> buffer token。這些 scaffold 每題都一樣，
+        # 全 mean 進去會讓所有 query 的單一向量 collapse 成同方向（→ 每題回同一批頁，
+        # hit@5=0%，2026-06-23 實測）。只平均「真正的 query 內容 token」才有鑑別度。
+        self.content_only = content_only
         self._model = None
         self._processor = None
 
@@ -82,14 +88,31 @@ class ColpaliV12QueryEncoder:
         self._processor = ColPaliProcessor.from_pretrained(self.model_name)
 
     def _embed_tokens(self, query: str) -> list[list[float]]:
-        """query → 每個 query token 的 128 維 embedding（late-interaction 多向量）。"""
+        """query → query token 的 128 維 embedding（late-interaction 多向量）。
+
+        content_only 時只回「內容 token」：丟掉 padding（attention_mask=0）、special
+        token（BOS/EOS/PAD，含 ColPali augmentation 的 <pad> buffer，皆在 all_special_ids）。
+        """
         import torch
 
         self._load()
         batch = self._processor.process_queries([query]).to(self._model.device)
         with torch.no_grad():
-            out = self._model(**batch)  # [1, n_tokens, 128]
-        return out[0].float().cpu().tolist()
+            out = self._model(**batch)  # [1, seq, 128]
+        emb = out[0]  # [seq, 128]
+
+        if self.content_only:
+            ids = batch["input_ids"][0]
+            keep = batch["attention_mask"][0].bool()  # 丟 padding
+            special = set(getattr(self._processor.tokenizer, "all_special_ids", []) or [])
+            if special:
+                not_special = torch.tensor(
+                    [int(t) not in special for t in ids.tolist()], device=emb.device
+                )
+                keep = keep & not_special  # 丟 BOS/EOS/PAD（含 augmentation buffer）
+            if keep.any():
+                emb = emb[keep]
+        return emb.float().cpu().tolist()
 
     def encode(self, query: str) -> list[float]:
         """query → 單一 128 維向量（與 colpali_pages 同空間）。"""
