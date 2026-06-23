@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     top_k: int = 8
 
+    # --- ColPali 第 4 路 query 端編碼器（#133）---
+    # 預設關閉：active_colpali_query_fn() 回 None → 第 4 路關閉、CI 0 import / 0 下載。
+    # 設 COLPALI_QUERY_ENCODER=1 才載入 colpali-engine + torch + 權重（~5GB，需 GPU）。
+    # model / pool 必須與 R4 page 端（colpali_pages，patch mean-pool 成 128 維）同空間。
+    colpali_query_encoder: bool = False
+    colpali_model: str = "vidore/colpali-v1.2"
+    colpali_device: str = ""                  # ""=自動（cuda 優先，否則 cpu）；可設 cuda / cpu
+
     # R7 前端跨域（CORS）允許來源；逗號分隔。預設本地 dev（Next.js 3000 / Chainlit 8501）；
     # 雲端設成 R7 的 Vercel 網域。env 同時收 `POLARIS_CORS_ORIGINS`（runbook / .env.example /
     # Cloud Run 部署指令用）與 `CORS_ORIGINS`（API 使用指南用）——兩個歷史名稱都吃，避免

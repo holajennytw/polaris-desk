@@ -31,12 +31,27 @@ class ColpaliRetriever:
 
 
 def active_colpali_query_fn() -> "EmbeddingFn | None":
-    """回傳 ColPali query 編碼器（128 維，與 page 端同模型同池化），尚未接 → None。
+    """回傳 ColPali query 編碼器（128 維，與 page 端同模型同池化），gate 關 → None。
 
-    待 issue #133：R4 提供 checkpoint + 池化 + query 編碼途徑後，在此接上
-    （in-process 模型或推論端點）。在那之前回 None，使第 4 路關閉、CI 確定性。
+    #133：page 端為 colpali-v1.2、patch mean-pool 成 128 維。query 端同模型同池化
+    （見 :mod:`polaris.retrieval.colpali_query_encoder`）。重相依（torch + colpali-engine
+    + ~5GB 權重、需 GPU）只在 ``COLPALI_QUERY_ENCODER=1`` 時載入：
+
+    - **gate 關（預設 / CI）**：回 None → 第 4 路關閉、0 import、0 下載、確定性。
+    - **gate 開**：建 :class:`~polaris.retrieval.colpali_query_encoder.ColpaliV12QueryEncoder`，
+      回其 ``encode``。同空間（命中率 ≥70%）須由 ``scripts/colpali_roundtrip_check.py``
+      在 GPU 環境配 R4 gold 樣本實跑確認後才正式採用（TD-01 門檻）。
     """
-    return None
+    from ..config import settings
+
+    if not getattr(settings, "colpali_query_encoder", False):
+        return None
+    from .colpali_query_encoder import ColpaliV12QueryEncoder
+
+    encoder = ColpaliV12QueryEncoder(
+        settings.colpali_model, device=settings.colpali_device or None
+    )
+    return encoder.encode
 
 
 def active_colpali_retriever() -> "ColpaliRetriever | None":
