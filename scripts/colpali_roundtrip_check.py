@@ -45,11 +45,49 @@ HIT_GATE = 0.70  # gate ③（TD-01）
 
 
 def _load_gold(path: str | None) -> list[dict]:
-    if path:
-        raw = json.loads(Path(path).read_text(encoding="utf-8"))
-        items = raw.get("items", raw) if isinstance(raw, dict) else raw
-        return [dict(it) for it in items]
-    return list(GOLD)
+    """讀 gold，容忍多種結構並在不符時報清楚的錯（不要再吐 dict() 的天書）。
+
+    接受：① list[dict]；② {"items"|"queries"|"gold"|"data": [...]}；
+    ③ 依 ticker 分組 {"2330": [...], "2317": [...]}（值全為 list → 攤平）；
+    每筆可為 dict（含 query/page_id）或 [query, page_id, ticker?]。
+    """
+    if not path:
+        return list(GOLD)
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+
+    if isinstance(raw, list):
+        items = raw
+    elif isinstance(raw, dict):
+        items = next((raw[k] for k in ("items", "queries", "gold", "data")
+                      if isinstance(raw.get(k), list)), None)
+        if items is None:
+            vals = list(raw.values())
+            if vals and all(isinstance(v, list) for v in vals):
+                items = [it for v in vals for it in v]  # 依 ticker 分組 → 攤平
+            else:
+                raise ValueError(
+                    "gold JSON 結構不符：頂層 dict 需有 'items' 清單，或是 list[dict]，"
+                    f"或依 ticker 分組的 {{ticker: [...]}}。實際頂層鍵 = {list(raw)[:8]}"
+                )
+    else:
+        raise ValueError(f"gold JSON 頂層型別需為 dict/list，實際 = {type(raw).__name__}")
+
+    norm: list[dict] = []
+    for i, it in enumerate(items):
+        if isinstance(it, dict):
+            d = dict(it)
+        elif isinstance(it, (list, tuple)) and len(it) >= 2:
+            d = {"query": it[0], "page_id": it[1]}
+            if len(it) > 2:
+                d["ticker"] = it[2]
+        else:
+            raise ValueError(
+                f"gold 第 {i} 筆格式不符：需 dict（含 query/page_id）或 [query, page_id]，實際 = {it!r}"
+            )
+        if not d.get("query") or not d.get("page_id"):
+            raise ValueError(f"gold 第 {i} 筆缺 query 或 page_id（key 名請用這兩個）：{d!r}")
+        norm.append(d)
+    return norm
 
 
 def _rank_of(expected: str, got: list[str]) -> int | None:
