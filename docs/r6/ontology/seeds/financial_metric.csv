@@ -21,3 +21,7 @@ revenue_mom_delta,本月增減金額,"月增減金額,MoM delta amount",成長,T
 ytd_revenue_prior_year,去年累計營收,"去年同期累計營收,prior-year YTD revenue",成長,TWD_thousand,Prior year cumulative revenue from January through the same reporting month.,MOPS Monthly Revenue Announcement,月,Y,currency=TWD; unit=TWD_thousand; stored fact,mops_monthly_revenue
 ytd_yoy,累計增減百分比,"累計年增率,YTD YoY",成長,%,((ytd_revenue - ytd_revenue_prior_year) / ytd_revenue_prior_year) * 100,計算指標 / MOPS Monthly Revenue Announcement,月,Y,percentage derived from TWD_thousand stored facts,mops_monthly_revenue
 ytd_delta,累計增減金額,"累計增減,YTD delta amount",成長,TWD_thousand,ytd_revenue - ytd_revenue_prior_year,計算指標 / MOPS Monthly Revenue Announcement,月,Y,currency=TWD; unit=TWD_thousand; derived field,mops_monthly_revenue
+pretax_income,稅前淨利,"稅前利益,所得稅前損益,pretax profit",獲利,新台幣千元,所得稅前損益，用於觀察公司稅前獲利能力。,財報/IFRS,季/年,Y,不等同於 net_income，需注意是否為稅前數。,TBD
+operating_expense,營業費用,"營業費用合計,OPEX,operating expenses",獲利,新台幣千元,營業活動相關費用，通常包含推銷費用、管理費用、研發費用等。,財報/IFRS,季/年,Y,若資料來源拆分 SG&A / R&D，需確認是否加總為營業費用。,TBD
+revenue_delta,營收增減金額,"營收增減,營收差額,revenue change",成長,TWD_thousand,本期營收與比較基期營收的差額，可用於月營收、季度營收或年度營收比較。,計算指標,月/季/年,Y,需搭配 comparison_base，例如 MoM、YoY、QoQ 或指定比較期間。,TBD
+revenue_yoy,營收年增率,"單期營收年增率,revenue YoY",成長,%,(本期營收 - 去年同期營收) / 去年同期營收,計算指標,月/季/年,Y,revenue_yoy 是單期營收年增率；不要和 ytd_yoy 混用。,TBD
