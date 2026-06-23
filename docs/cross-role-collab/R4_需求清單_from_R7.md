@@ -1,13 +1,19 @@
 # R4 需求清單（R7 前端提出）
 
 > 整理日期：2026-06-17｜撰寫：R7
+> 最後更新：2026-06-24
 > 本文件列出前端需要 R4 實作的 API 端點，含完整 request / response 規格。
 
 ---
 
-## 1. `GET /library` — 研究資料庫文件列表
+## 1. ~~`GET /library`~~ — ✅ R7 已自行實作（2026-06-24）
 
-### 背景
+> **已完成**：R7 直接在 `structured_store.py` + `api.py` 實作。transcript + major_news ✅；earnings_call 等 R4 vision-OCR ingestion 完成後 R7 改 SQL 即生效。**R4 不需要處理此端點。**
+
+<details>
+<summary>原始需求規格（存檔）</summary>
+
+### 背景（原始）
 
 前端有一頁「研究資料庫 `/library`」，讓使用者看到目前 BQ 裡有哪些文件已建索引，幫助他們了解可以查詢哪些公司、哪些期別的法說稿與財報。
 
@@ -134,9 +140,16 @@ ORDER BY published_at DESC
 
 ---
 
-## 2. ColPali ↔ R7 前端整合問題（2026-06-23 新增）
+## 2. ~~ColPali ↔ R7 前端整合問題~~ — ❌ 已廢止（2026-06-24）
 
-> **背景**：R4 正在完成 ColPali query encoder（Issue #133）。`v_colpali_pages_semantic` 已可在 BQ 看到，代表整頁視覺向量已部署。R7 需要在 R4 完成 HTTP 端點前確認以下兩個設計問題，避免前端大改。
+> **ColPali gate ③ FAIL**（hit@5=0%，embedding collapse，2026-06-23 實測）。單向量 ColPali 第 4 路已收掉（issue #17 關閉）。
+> 法說簡報改走 **vision-OCR-to-text ingestion**，產物進 `chunks` 表，前端不需要額外接線。
+> 詳見：`docs/superpowers/specs/2026-06-23-vision-ocr-to-text-ingestion-design.md`
+
+<details>
+<summary>原始問題（存檔）</summary>
+
+> **原始背景**：R4 正在完成 ColPali query encoder（Issue #133）。`v_colpali_pages_semantic` 已可在 BQ 看到，代表整頁視覺向量已部署。R7 需要在 R4 完成 HTTP 端點前確認以下兩個設計問題，避免前端大改。
 
 ### 問題 1：`POST /research` 的 ColPali 結果從哪個欄位回來？
 
@@ -195,7 +208,8 @@ ORDER BY published_at DESC
 
 | # | 項目 | 優先 | 狀態 |
 |---|------|------|------|
-| 1 | `GET /library` | 🟡 中 | 端點不存在，UI 已就緒 |
-| 2 | ColPali 整合情境確認（問題 1 + 2） | 🟡 中 | 等 #133 完成前需確認 |
-| 3 | `v_chunks_embedding_semantic` 說明 | 🟡 中 | 欄位表待更新 |
+| 1 | `GET /library` | — | ✅ R7 自行實作（2026-06-24） |
+| 2 | ColPali 整合情境確認 | — | ❌ 廢止（gate ③ FAIL，#17 關閉） |
+| 3 | `v_chunks_embedding_semantic` 說明 | 🟡 中 | 欄位表待 R4 確認後 R7 更新 |
 | 4 | KPI 卡排序 | ⚪ 低 | 等 R3 交付 kpis[] 後前端調整 |
+| 5 | vision-OCR ingestion（法說簡報頁）| 🟡 中 | R4 實作中；完成後 R7 改一行 SQL |
