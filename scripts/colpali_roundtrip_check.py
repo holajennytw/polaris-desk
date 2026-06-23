@@ -1,9 +1,16 @@
 """Phase 1 驗收：ColPali 第 4 路 round-trip 命中率自檢。
 
 對 N 個已知頁下對應 query，期望該 page_id 進 top-k。命中率 ≥70%（TD-01 門檻）= 對齊成功。
-需要：#133 的 query encoder 已接（active_colpali_query_fn 回非 None）+ live BigQuery 憑證。
 
-用法：uv run python scripts/colpali_roundtrip_check.py
+需要（缺任一 → 印提示後 return，不炸）：
+  1. query encoder 已開：``COLPALI_QUERY_ENCODER=1`` 且裝了 ``.[colpali]``
+     （colpali-engine + torch + colpali-v1.2 權重 ~5GB，需 GPU）。
+  2. R4 gold 樣本：把 GOLD 填成 (query, 期望 page_id)。
+  3. live BigQuery 憑證（讀 polaris_core.colpali_pages）。
+
+用法：
+  uv pip install -e '.[colpali]'
+  COLPALI_QUERY_ENCODER=1 uv run python scripts/colpali_roundtrip_check.py
 """
 from __future__ import annotations
 
