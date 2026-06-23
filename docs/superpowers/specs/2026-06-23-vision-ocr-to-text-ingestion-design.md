@@ -1,0 +1,96 @@
+# Vision-OCR-to-text Ingestion 設計（圖表/掃描頁 → 結構化抽取 → 文字 chunk）
+
+- **日期**：2026-06-23
+- **狀態**：Proposed（待 Gate1 抽取準確率驗證）
+- **取代**：ColPali 單向量第 4 路（實測 FAIL，見下「背景與決策」）
+- **Owner**：R4（ingestion）；驗證 R1 + R5
+
+---
+
+## 背景與決策（為何放棄 ColPali、改走本案）
+
+ColPali 第 4 路（視覺檢索）已實測 **gate ③ FAIL**：
+
+- round-trip 命中率 **hit@5 = 0%**（15 題重建 gold，2026-06-23 在 Colab T4 跑兩次重現）。
+- 失敗模式為 **embedding collapse**：任何 query（含「今天台北天氣」等亂問）都回同一批 hub 頁，gold vs 亂問的相似度 separation 僅 ~0.05。
+- 根因在**資料層**：`colpali_pages` 把每頁多向量 **mean-pool 成單一 128 維** 再進 BigQuery cosine。實測頁向量本身已退化——跨公司頁 cosine 0.92~0.98、甚至有兩頁完全相同（1.000）。ColPali 是 late-interaction（多向量 MaxSim）模型，被壓成單向量 cosine 即失去鑑別度；query 端兩種 pooling（全 token / 內容 token）都無法挽救。
+
+**決策**：依 TD-01 收掉「單向量 ColPali 第 4 路」，但**不放棄原始目標**（讓系統能回答圖表/掃描頁的問題）。改採本案：在**入庫時**用 vision 把圖表/掃描頁抽成文字，併入既有文字檢索 stack。`polaris_core.colpali_pages` 資料保留（不刪、不用）。
+
+ColPali 原始引入理由（規格）：法說簡報「圖表多文字少」、部分財報頁是 400dpi 掃描圖（0 文字層，如台積電 p3–9 損益表/資產負債表）——一般 `pdftotext`/`pypdf` 抽到 ~0 字，文字 RAG 碰不到。本案正面解這個缺口。
+
+---
+
+## 目標 / 非目標
+
+**目標**
+- 讓圖表/掃描頁的內容（含數字）變成可檢索、可引用的文字，進入既有 `chunks` → 文字 3 路 → `/ask`。
+- 對「圖表題」（場景 3）能回答並接地到正確頁與數字。
+
+**非目標（YAGNI）**
+- 不自建第 4 路 / 視覺索引 / MaxSim。
+- 不改 `chunks` schema（結構化 JSON 欄列為未來選項，走 SOP §7 PR，本案不做）。
+- 不在 `/ask` workflow 加圖表題路由（vision chunk 進 `chunks` 後既有路徑自動涵蓋）。
+- 不刪 `colpali_pages`。
+
+---
+
+## 架構總覽
+
+核心：**把「沒文字層/圖表頁」的問題在入庫時解決**，產物進**現有 `chunks` 表**（768 文字向量），自動沿用已驗證能動的：文字 3 路（BM25+向量+Cohere rerank）、citation、`v_chunk_semantic`、`/ask`。**不新增索引、不用 MaxSim、不接 /ask 路由、不做 Phase 2**（數字在入庫時已成文字）。
+
+```
+PDF 頁
+ └─ page_router：有文字層? ──是──→ 既有文字切塊（不動）
+                     └──否/簡報圖表頁──→ render_page(PNG)
+                            └─ vision_extract（Flash 預設 / 財報表升 Pro，structured JSON）
+                                   └─ vision_to_chunks（JSON 攤平成 chunk_text）
+                                          └─ 既有 chunk_pages → embed → BigQueryStore.add_documents
+                                                 └─ chunks 表 → 文字 3 路 / /ask（既有，零改動）
+```
+
+## 元件（皆掛在 `src/polaris/ingestion/`）
+
+1. **`page_router`**：逐頁分流。有文字層 → 既有文字路；`doc_type=presentation` **或** 文字密度低於門檻（如該頁 `pypdf` 抽出 < 20 個非空白字元，視為掃描/圖表頁）→ vision 路。文字頁與 vision 頁可並存於同一份 PDF。
+2. **`render_page`**：PDF 頁 → PNG（pymupdf 或 pdftoppm，~200dpi）。
+3. **`vision_extract.py`（新）**：階梯模型——Flash 預設；`doc_type=financial_statement` 或 Flash 回低信心/空 → 升 Pro。用 Gemini **structured output（response_schema）** 回經 pydantic 驗證的 JSON：
+   `page_summary / chart_type / series[] / table_markdown / key_values[{label,value,unit}] / confidence`。
+   嚴格 prompt：**只轉錄頁面看得到的文字/數字；看不清填 null；不推論、不計算。**
+4. **`vision_to_chunks`**：把 JSON **攤平成可讀 `chunk_text`**（page_summary + key_values 條列 + table_markdown），交既有 `chunk_pages` → embed。chunk id 沿用確定性命名 `{ticker}-{period}-p{page:03d}-c{seq:03d}`。
+
+## 資料流與儲存
+
+- 寫入走既有 **`BigQueryStore.add_documents`**（R4 有 polaris_core WRITE）。
+- **儲存決策：攤平進 `chunk_text`，不改 schema**（零 SOP §7 PR、立即可用）。
+- metadata：`doc_type` 沿用（`presentation` / `financial_statement`），加 `extraction="vision"` 標記 + 頁面影像參照（`source_file` + `page_num`）作為 citation 來源。
+
+## 防幻覺 / 接地（對齊憲法「每個數字要有來源」）
+
+- structured output + 嚴格轉錄 prompt（轉錄 only、null、不推論）。
+- `confidence` 低 → 升 Pro 重試；仍低 → **標記不入庫**（不寫疑似錯誤數字）。
+- 每個 vision chunk **必帶頁面影像參照**當引用來源（可回看原圖）。
+- 輕量 sanity check（可選）：pie 類 `key_values` 百分比加總 ~100%，異常標記。
+
+## 驗證（三階閘，過了才信任進 prod）
+
+- **Gate1 抽取準確率**（Owner R1）：抽樣（建議 20–30 頁、≥4 公司、涵蓋 pie/trend/財報表）人工比對 JSON vs 真實圖表，**數字準確率 ≥ 95%** 才放行。
+- **Gate2 端到端**（Owner R5）：對圖表題集跑既有 Ragas eval，看 `/ask` 是否引用正確數字。
+- 兩關皆過 → 正式信任 vision chunk。
+
+## 上線範圍 / Owner / 冪等
+
+- **Owner R4**；純 Gemini API，**不需 GPU**。
+- **Rollout：先 pilot 台積電(2330)+中信金(2891)** 跑通 → 過 Gate1 → 再放大到 20 檔 canonical 的 presentation + 掃描財報頁。
+- chunk id 確定性 → **可重跑 upsert**。
+
+## 測試 / CI
+
+- vision client 走**注入式 seam**（同既有 BigQuery / LLM 套路）：CI 注入 fake → **0 外呼、0 金鑰**；真抽取為離線一次性，不進 CI 熱路徑。
+- 純函式單元測試：`page_router` 分流判斷、`vision_to_chunks` 攤平、sanity check、pydantic schema 驗證。
+
+## 風險 / 待解
+
+- **抽取幻覺**：靠 Gate1（≥95%）+ confidence 升級 + 不入庫 + 影像參照接地控制。
+- **成本**：階梯模型（Flash 為主）+ pilot 先行控制；放大前估算全量 token。
+- **渲染相依**：pymupdf/pdftoppm 擇一，加進 ingestion optional 相依。
+- **doc_type=financial_statement 來源**：需確認 ingestion 是否已能標出財報表頁以觸發升 Pro；若無，先用「Flash 低信心」作為升級訊號。
