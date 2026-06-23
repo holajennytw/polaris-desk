@@ -1,70 +1,161 @@
-"""Phase 1 驗收：ColPali 第 4 路 round-trip 命中率自檢。
+"""ColPali 第 4 路 round-trip 驗收（gate ③，TD-01 ≥70% 門檻）—— 標準 runner。
 
-對 N 個已知頁下對應 query，期望該 page_id 進 top-k。命中率 ≥70%（TD-01 門檻）= 對齊成功。
+跑一組 gold (query, 期望 page_id)，對 polaris_core.colpali_pages 做視覺檢索，
+回 hit@k / MRR + 三項 sanity 控制，並寫出**機器可驗的** result JSON（給 PM 驗 gate）。
 
 需要（缺任一 → 印提示後 return，不炸）：
-  1. **GPU 環境**（colpali-v1.2 是 PaliGemma-3B base，CPU 慢到不實用）。本機 Mac 無 GPU
-     → 由 R4/R2 在 Colab 免費 GPU 或 R4 GCE 跑（見開發時程 6/12 拍板）。
-  2. query encoder 已開：``COLPALI_QUERY_ENCODER=1`` 且裝了 ``.[colpali]``
-     （colpali-engine + torch + colpali-v1.2 權重 ~5GB）。
-  3. **HuggingFace token**：colpali-v1.2 依賴 *gated* ``google/paligemma-3b-mix-448``，
-     需先在 HF 接受授權並 ``export HF_TOKEN=...``（或 ``huggingface-cli login``），否則 401。
-  4. R4 gold 樣本：把 GOLD 填成 (query, 期望 page_id)——見下方 _CANDIDATE_PAGES 模板，
-     page_id 是 polaris_core.colpali_pages 真值，R4 只需照該頁圖表內容補 query 文字。
-  5. **池化對齊確認**：本 encoder 對 query token 做 **mean-pool**（見 colpali_query_encoder）；
-     R4 須確認 page 端 colpali_pages 入庫時也是 mean-pool over patches，否則不同空間、命中率失真。
-  6. live BigQuery 憑證（讀 polaris_core.colpali_pages）。
+  1. GPU 環境（colpali-v1.2 = PaliGemma-3B；CPU 慢到不實用）。
+  2. COLPALI_QUERY_ENCODER=1 + 裝 `.[colpali]`（colpali-engine + torch + 權重 ~5GB）。
+  3. HF token：colpali-v1.2 依賴 *gated* google/paligemma-3b-mix-448 → `export HF_TOKEN=...`。
+  4. gold：data/gold/colpali_gold.json（見 docs/colpali_roundtrip_test_cases.md 的 schema），
+     或本檔 inline GOLD。
+  5. live BigQuery 憑證（讀 polaris_core.colpali_pages）。
 
 用法（GPU box）：
-  export HF_TOKEN=...                       # gated paligemma 授權
+  export HF_TOKEN=...
   uv pip install -e '.[colpali]'
-  COLPALI_QUERY_ENCODER=1 uv run python scripts/colpali_roundtrip_check.py
+  COLPALI_QUERY_ENCODER=1 uv run python scripts/colpali_roundtrip_check.py \
+      --gold data/gold/colpali_gold.json --out logs/roundtrip_result.json
+
+通過：hit@5 ≥ 0.70（gate ③）。把 --out 的 JSON 連同 gold commit、並貼 metrics 到 issue #17。
 """
 from __future__ import annotations
 
-# (query 文字, 期望命中的 page_id) — 實跑前由 R4 填真 gold。空清單時 main() 誠實 return。
-GOLD: list[tuple[str, str]] = [
-    # 範例格式（取消註解並換成真 query/page_id）：
-    # ("台積電 2025Q3 各平台營收占比圖", "66aef70e-7102-431b-b2fe-28160f83e0dc"),
+import argparse
+import json
+import statistics
+from pathlib import Path
+
+#: 後援 inline gold（當無 --gold 檔時用）。實跑請改用 data/gold/colpali_gold.json。
+#: 真實 page_id 取自 live colpali_pages 2026-06-23；query 待 R1/R4 照圖表內容補。
+GOLD: list[dict] = [
+    # {"query": "台積電 2025Q2 各製程節點營收占比", "page_id": "66aef70e-7102-431b-b2fe-28160f83e0dc", "ticker": "2330"},
 ]
 
-# R4 待辦模板：以下為 polaris_core.colpali_pages 的**真實** page_id（每檔抽一頁，page_num=5
-# 中段，較可能是圖表頁）。R4 請：①開該頁看圖表內容 ②把它寫成自然語 query ③搬進上面 GOLD。
-# 也歡迎挑更具辨識度的圖表頁（毛利率趨勢、營收分區、產能利用率…），命中率才有意義。
-_CANDIDATE_PAGES = [
-    # (ticker, fiscal_period, page_num, page_id) ← 由 live BQ 2026-06-23 取樣
-    ("1216", "2025Q2", 5, "0408a631-15d8-4544-b07f-7004f719be85"),  # 統一
-    ("2317", "2025Q4", 5, "daf58ecf-522e-46a9-bc4d-3b88cdb26b8d"),  # 鴻海
-    ("2330", "2025Q2", 5, "66aef70e-7102-431b-b2fe-28160f83e0dc"),  # 台積電
-    ("2454", "2025Q3", 5, "f0eeb07b-d009-4b29-81c5-558358eb1783"),  # 聯發科
-    ("2891", "2025Q1", 5, "ac2a82cf-134e-4fb2-b4fd-6d8300fce98e"),  # 中信金
+#: 負控制：與任何法說簡報無關的 query。期望 top1 相似度明顯低於 gold（防退化編碼器把
+#: 任何 query 都對到高分頁）。非硬性 gate，作診斷。
+NEGATIVE_CONTROLS = [
+    "今天台北的天氣如何",
+    "推薦一份蔬食午餐食譜",
+    "如何申辦護照",
 ]
+
+DIM_EXPECTED = 128
+HIT_GATE = 0.70  # gate ③（TD-01）
+
+
+def _load_gold(path: str | None) -> list[dict]:
+    if path:
+        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+        items = raw.get("items", raw) if isinstance(raw, dict) else raw
+        return [dict(it) for it in items]
+    return list(GOLD)
+
+
+def _rank_of(expected: str, got: list[str]) -> int | None:
+    return got.index(expected) + 1 if expected in got else None
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--gold", default="data/gold/colpali_gold.json",
+                    help="gold JSON（{items:[{query,page_id,ticker?}]} 或 list）")
+    ap.add_argument("--out", default="logs/roundtrip_result.json")
+    ap.add_argument("--top-k", type=int, default=10, help="檢索深度（hit@1/5/10 都從這裡算）")
+    ap.add_argument("--verbose", action="store_true")
+    args = ap.parse_args()
+
     from polaris.config import settings
     from polaris.retrieval.colpali_retriever import active_colpali_query_fn
     from polaris.vectorstore.colpali_store import BigQueryColpaliStore
 
     fn = active_colpali_query_fn()
     if fn is None:
-        print("⏳ ColPali query encoder 未接（見 #133）；無法 round-trip。先補 active_colpali_query_fn。")
+        print("⏳ ColPali query encoder 未開（設 COLPALI_QUERY_ENCODER=1 + 裝 .[colpali]）。")
         return
-    if not GOLD:
-        print("⏳ 尚無 gold 樣本；請填入 GOLD（query, 期望 page_id），或向 R4 索取（#133）。")
+    gold_path = args.gold if Path(args.gold).exists() else None
+    gold = _load_gold(gold_path)
+    if not gold:
+        print(f"⏳ 尚無 gold（{args.gold} 不存在且 inline GOLD 空）。見 "
+              "docs/colpali_roundtrip_test_cases.md 補 gold。")
         return
 
     store = BigQueryColpaliStore(settings)
-    hit, total = 0, len(GOLD)
-    for query, expected_page_id in GOLD:
-        vector = fn(query)
-        results = store.search(vector, top_k=5)
+
+    # ── TC-1 維度/合法性 ────────────────────────────────────────────────
+    probe = fn(gold[0]["query"])
+    tc1_ok = len(probe) == DIM_EXPECTED and all(isinstance(x, float) for x in probe) \
+        and all(x == x for x in probe)  # NaN 檢查
+
+    # ── TC-5 決定性（同 query 兩次） ────────────────────────────────────
+    probe2 = fn(gold[0]["query"])
+    det_delta = max((abs(a - b) for a, b in zip(probe, probe2)), default=0.0)
+
+    # ── TC-3 全 gold round-trip ─────────────────────────────────────────
+    per_query, gold_top1_sims = [], []
+    for it in gold:
+        q, expected = it["query"], it["page_id"]
+        results = store.search(fn(q), top_k=args.top_k)
         got = [r.id for r in results]
-        ok = expected_page_id in got
-        hit += int(ok)
-        print(f"{'✅' if ok else '❌'} {query!r} → top5={got}（期望 {expected_page_id}）")
-    rate = hit / total if total else 0.0
-    print(f"\n命中率 {hit}/{total} = {rate:.0%}（門檻 ≥70%）：{'PASS' if rate >= 0.70 else 'FAIL'}")
+        rank = _rank_of(expected, got)
+        top1 = float(results[0].score) if results else 0.0
+        gold_top1_sims.append(top1)
+        rec = {"query": q, "expected": expected, "ticker": it.get("ticker"),
+               "got": got[:5], "rank": rank, "hit_at_5": bool(rank and rank <= 5),
+               "top1_sim": round(top1, 4)}
+        per_query.append(rec)
+        if args.verbose:
+            mark = "✅" if rec["hit_at_5"] else "❌"
+            print(f"{mark} rank={rank} {q!r} → {got[:5]}")
+
+    n = len(per_query)
+    hit1 = sum(r["rank"] == 1 for r in per_query) / n
+    hit5 = sum(r["hit_at_5"] for r in per_query) / n
+    hit10 = sum(bool(r["rank"]) for r in per_query) / n
+    mrr = sum(1.0 / r["rank"] for r in per_query if r["rank"]) / n
+
+    # ── TC-4 負控制 ─────────────────────────────────────────────────────
+    neg = []
+    for q in NEGATIVE_CONTROLS:
+        results = store.search(fn(q), top_k=1)
+        neg.append({"query": q, "top1_sim": round(float(results[0].score), 4) if results else 0.0})
+    sep = (statistics.median(gold_top1_sims) - statistics.median([d["top1_sim"] for d in neg])) \
+        if gold_top1_sims and neg else 0.0
+
+    # ── TC-6 公司過濾完整性 ─────────────────────────────────────────────
+    filt = next((it for it in gold if it.get("ticker")), None)
+    tc6_ok = None
+    if filt:
+        fr = store.search(fn(filt["query"]), top_k=args.top_k, filters={"company": filt["ticker"]})
+        tc6_ok = all(r.company == filt["ticker"] for r in fr) if fr else None
+
+    verdict = "PASS" if hit5 >= HIT_GATE else "FAIL"
+    result = {
+        "model": settings.colpali_model, "pooling": "mean", "dim": DIM_EXPECTED,
+        "distance": "cosine", "top_k": args.top_k,
+        "gold_file": gold_path or "inline", "gold_count": n,
+        "metrics": {"hit_at_1": round(hit1, 3), "hit_at_5": round(hit5, 3),
+                    "hit_at_10": round(hit10, 3), "mrr": round(mrr, 3)},
+        "controls": {
+            "tc1_dim_ok": tc1_ok, "tc5_determinism_max_delta": det_delta,
+            "tc4_gold_vs_neg_median_separation": round(sep, 4),
+            "tc6_company_filter_ok": tc6_ok,
+        },
+        "negative_control": neg,
+        "per_query": per_query,
+        "gate": HIT_GATE, "verdict": verdict,
+    }
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.out).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    print("\n| metric | value |\n|---|---|")
+    for k, v in result["metrics"].items():
+        print(f"| {k} | {v:.1%} |" if k != "mrr" else f"| {k} | {v:.3f} |")
+    print(f"| TC-1 dim 128 | {'✅' if tc1_ok else '❌'} |")
+    print(f"| TC-5 determinism Δ | {det_delta:.2e} |")
+    print(f"| TC-4 gold−neg sep | {sep:+.3f} |")
+    print(f"| TC-6 company filter | {tc6_ok} |")
+    print(f"\n命中率 hit@5 = {hit5:.0%}（門檻 ≥70%）：**{verdict}** → {args.out}")
 
 
 if __name__ == "__main__":
