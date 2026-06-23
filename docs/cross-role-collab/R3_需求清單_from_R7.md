@@ -1,7 +1,12 @@
 # R3 需求清單（R7 前端提出）
 
-> 整理日期：2026-06-17｜撰寫：R7
-> 本文件列出前端所有需要 R3 實作或修正的 API 端點，含完整 request / response 規格。
+> 整理日期：2026-06-17｜最後更新：2026-06-24｜撰寫：R7
+
+> ⚠️ **2026-06-24 更新**：GitHub Issue #3 已關閉，改追蹤 **[Issue #23](https://github.com/holajennytw/polaris-desk/issues/23)**。
+> Issue #23 整合了 R3 + R4 的全資料來源 RAG 需求，含完整 `POST /research`、`GET /chunk/{source_id}`、`POST /peer-compare` response schema。
+> 優先順序：`POST /research` 跨 doc_type → `GET /chunk/{source_id}` → `POST /peer-compare` → 其餘端點。
+>
+> 本文件保留為詳細 API 規格參考，以下各節規格仍有效。
 
 ---
 

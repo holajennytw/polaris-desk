@@ -13,7 +13,6 @@ import { DocViewer, type DocContent } from "@/components/polaris/DocViewer";
 import { ReportModal } from "@/components/polaris/ReportModal";
 import { KpiSkeleton, PanelSkeleton } from "@/components/polaris/Skeleton";
 import { useResearch } from "@/hooks/useResearch";
-import { useAlerts } from "@/hooks/useAlerts";
 import { useReadStore } from "@/hooks/useReadStore";
 import { useSuggestions } from "@/hooks/useSuggestions";
 import { useContraAlerts } from "@/hooks/useContraAlerts";
@@ -125,7 +124,6 @@ const TOUR_MOCK_RESULT = {
 
 function ResearchPageInner() {
   const { trigger, data, isMutating } = useResearch();
-  const { data: alerts } = useAlerts();
   const rs = useReadStore();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -199,10 +197,7 @@ function ResearchPageInner() {
   const { rows: financialRows, isLoading: isLoadingFinancials } = useFinancials(inferredTicker);
   const financialKpis = financialsToKpis(financialRows);
 
-  const researchAlerts = [
-    ...(alerts ?? []),  // watchdog alerts 不區分 origin，兩頁共用；等 R3 補 origin 欄位後再加 filter
-    ...contraAlerts,
-  ];
+  const researchAlerts = contraAlerts.filter(a => a.level !== "info");
 
   const runContradictionCheck = async (
     k: KpiVM[] = kpis,
@@ -394,7 +389,7 @@ function ResearchPageInner() {
                       {kpis.length > 0
                         ? kpis.map((k,i)=><KpiCard key={i} k={k} onCite={handleOpenDoc}/>)
                         : financialKpis.map((k,i)=>(
-                            <KpiCard key={i} k={{...k, cite:""}} onCite={()=>{}}/>
+                            <KpiCard key={i} k={k} onCite={handleOpenDoc}/>
                           ))
                       }
                     </div>
@@ -413,7 +408,7 @@ function ResearchPageInner() {
                             {summary.map((s,i)=>{
                               const hasContra = contraAlerts.some(a => a.level !== "info" && (a as any).cite_key === s.cite);
                               return (
-                                <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} />{hasContra && <span className="tag mid" style={{marginLeft:5,padding:"1px 7px",fontSize:12,verticalAlign:"middle"}} title="矛盾偵測警告，建議核對引用原文"><span className="tdot"/>矛盾</span>}<span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
+                                <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} />{hasContra && <span className="tag mid" style={{marginLeft:5,padding:"1px 7px",fontSize:12,verticalAlign:"middle"}} title="矛盾偵測警告，建議核對引用原文"><span className="tdot"/>矛盾</span>}{s.cite && <span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.doc_type_label ?? "文件"} {s.page}</span>}</span></li>
                               );
                             })}
                           </ul>
@@ -427,27 +422,7 @@ function ResearchPageInner() {
                       )}
                     </div>
                   </div>
-                  <div className="panel">
-                    <div className="panel-head">
-                      <span className="panel-title">量化分析</span>
-                      <span className="panel-meta">財務指標</span>
-                    </div>
-                    <div className="panel-body">
-                      {(displayData?.chart?.length ?? 0) > 0
-                        ? <>
-                            <Chart data={displayData!.chart}/>
-                            <div className="chart-foot">
-                              <span>單季毛利率（來源：財務資料庫）</span>
-                            </div>
-                          </>
-                        : <div className="chart-empty">
-                            <Icon name="layers" size={20} style={{color:"rgb(var(--muted))",marginBottom:8}}/>
-                            <span>財務指標資料建置中</span>
-                            <span className="font-mono" style={{fontSize:"0.72rem",color:"rgb(var(--muted))"}}>financial_metrics 表尚未入庫</span>
-                          </div>
-                      }
-                    </div>
-                  </div>
+                  {/* 量化分析：等 /research kpis+chart 欄位就緒後啟用 */}
                 </div>
               </>
             )}
@@ -497,7 +472,7 @@ function ResearchPageInner() {
                 {running
                   ? <div className="thinking-pulse" style={{padding:"14px 16px"}}>
                       <div className="thinking-dots"><span/><span/><span/></div>
-                      <span>正在裝取資料中</span>
+                      <span>正在抓取資料中</span>
                     </div>
                   : researchAlerts.length > 0
                     ? researchAlerts.map((a,i)=>(
@@ -520,7 +495,7 @@ function ResearchPageInner() {
               {running
                 ? <div className="thinking-pulse" style={{padding:"14px 16px"}}>
                     <div className="thinking-dots"><span/><span/><span/></div>
-                    <span>正在裝取資料中</span>
+                    <span>正在抓取資料中</span>
                   </div>
                 : citations.length > 0
                   ? <CitationList citations={citations} onOpen={handleOpenDoc}/>
@@ -540,7 +515,7 @@ function ResearchPageInner() {
           <div className="dock-row">
             <Icon name="spark" size={18} style={{color:"rgb(var(--primary))",flexShrink:0}}/>
             <input className="dock-input" value={query} onChange={e=>setQuery(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter")run();}} placeholder="輸入研究問題..."/>
+              onKeyDown={e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey||!e.shiftKey))run();}} placeholder="輸入研究問題... (Enter 送出)"/>
             <button className={"dock-tool" + (isListening ? " active" : "")} title={isListening ? "聆聽中…" : "語音輸入"} onClick={startVoice} disabled={running}><Icon name="mic" size={19}/></button>
             <button className={"btn primary dock-send" + (running ? " sending" : "")} onClick={()=>run()} disabled={running}>
               <Icon name={running?"refresh":"send"} size={18}/>

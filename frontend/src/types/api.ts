@@ -264,6 +264,11 @@ export interface ResearchCitationRaw {
   source_id: string;
   snippet: string;
   origin: ResearchCitationOrigin;
+  company?: string;
+  event_key?: string;
+  source_key?: string;
+  published_yyyymm?: number;
+  // legacy（stub / BM25 仍可能出現）
   doc_type?: string;
   published_at?: string;
   fiscal_period?: string;

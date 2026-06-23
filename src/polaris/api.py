@@ -304,17 +304,90 @@ class FinancialMetricResponse(BaseModel):
     unit: str | None = None
     source_id: str | None = None
     published_at: date | None = None
+    year: int | None = None
+    month: int | None = None
 
 
 class EventResponse(BaseModel):
-    """events 一列（時間軸 / 收件匣；body/raw_json 不在列表回應，需細節再查）。"""
+    """events 一列（時間軸 / 收件匣；body/raw_json 不在列表回應，需細節再查）。
+    欄位已於 2026-06 更名：event_type → event_key，source_name → source_key。
+    """
 
     event_id: str | None = None
     ticker: str | None = None
-    event_type: str | None = None
+    event_key: str | None = None
     published_at: date | None = None
     title: str | None = None
     source_url: str | None = None
+    source_key: str | None = None
+
+
+class LibraryDocResponse(BaseModel):
+    """文件庫一筆文件（docs/R7_前端_資料表欄位表.md 契約）。"""
+
+    id: str
+    ticker: str
+    company_name: str = ""
+    doc_type: str
+    fiscal_period: str = ""
+    source_file: str = ""
+    page_count: int = 0
+    published_at: str = ""
+    fetched_at: str = ""
+    ingested: bool = True
+
+
+class LibraryResponse(BaseModel):
+    stats: list[dict]
+    types: list[dict]
+    docs: list[LibraryDocResponse]
+
+
+_LIB_TYPE_LABELS: dict[str, str] = {
+    "major_news":   "重大訊息",
+    "transcript":   "法說會逐字稿",
+    "earnings_call": "法說會",
+    "news":         "新聞",
+}
+
+
+@app.get("/library", response_model=LibraryResponse, tags=["structured"])
+def library(
+    ticker: str | None = Query(default=None, description="股票代號，如 2330"),
+    doc_type: str | None = Query(
+        default=None,
+        description="文件類型：transcript / major_news / earnings_call",
+    ),
+    limit: int | None = Query(default=None, ge=1, le=500, description="回傳上限（預設 200）"),
+) -> LibraryResponse:
+    """文件庫清單：chunks 逐字稿 / 重大訊息 + colpali 法說簡報，文件級 metadata。
+
+    - ``transcript`` / ``major_news`` 來自 ``polaris_core.chunks``（metadata only）。
+    - ``earnings_call`` 來自 ``polaris_core.v_colpali_pages_semantic``（source_file 去重）。
+    """
+    rows = _structured_store.list_library(ticker=ticker, doc_type=doc_type, limit=limit)
+
+    type_counts: dict[str, int] = {}
+    for r in rows:
+        dt: str = str(r.get("doc_type") or "")
+        type_counts[dt] = type_counts.get(dt, 0) + 1
+
+    stats = [{"label": "文件總數", "value": str(len(rows))}]
+    types = [
+        {"id": k, "label": _LIB_TYPE_LABELS.get(k, k), "count": v}
+        for k, v in sorted(type_counts.items())
+    ]
+
+    docs = []
+    for r in rows:
+        d = dict(r)
+        for f in ("published_at", "fetched_at"):
+            v = d.get(f)
+            if v is not None and not isinstance(v, str):
+                d[f] = str(v)
+        docs.append(LibraryDocResponse(**d))
+
+    return LibraryResponse(stats=stats, types=types, docs=docs)
 
 
 @app.get("/companies", response_model=list[CompanyResponse], tags=["structured"])
@@ -340,8 +413,8 @@ def financials(
 @app.get("/events", response_model=list[EventResponse], tags=["structured"])
 def events(
     ticker: str | None = Query(default=None, description="股票代號，如 2330"),
-    type: str | None = Query(  # noqa: A002 — 對齊欄位名 event_type 的對外簡寫
-        default=None, description="事件型別，如 monthly_revenue / earnings_call"
+    type: str | None = Query(  # noqa: A002 — 對齊欄位名 event_key 的對外簡寫
+        default=None, description="事件型別（event_key），如 monthly_revenue / earnings_call / major_news / news"
     ),
     limit: int | None = Query(default=None, ge=1, le=1000, description="回傳上限（預設 200）"),
 ) -> list[EventResponse]:

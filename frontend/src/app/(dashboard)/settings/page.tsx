@@ -49,7 +49,7 @@ export default function SettingsPage() {
           <div className="set-sso">
             {session
               ? <button className="sso-btn" onClick={() => signOut()}><GoogleMark/><span>登出 Google 帳號</span></button>
-              : <button className="sso-btn" onClick={() => signIn("google")}><GoogleMark/><span>使用 Google 帳號繼續</span></button>
+              : <button className="sso-btn" onClick={() => signIn("google", { callbackUrl: "/settings" })}><GoogleMark/><span>使用 Google 帳號繼續</span></button>
             }
           </div>
           <div className="set-label" style={{marginTop:22}}>偏好設定</div>
