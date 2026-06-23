@@ -29,8 +29,13 @@ dist/
 build/
 frontend/.next/dev/logs/
 
-# 資料 / 暫存（法說會 PDF、向量等不進 git）
-/data/
+# 資料 / 暫存（法說會 PDF、向量等不進 git）。用 /data/* + 例外，讓 eval gold 小 JSON 能進 git
+# （/data/ 整夾排除會擋住子路徑 re-include；故排除「內容」再 negate）。
+/data/*
+!/data/gold/
+/data/gold/*
+# 例外：eval gold（round-trip 驗收可重現，見 docs/colpali_roundtrip_test_cases.md）
+!/data/gold/*.json
 *.pdf
 *.parquet
 *.duckdb

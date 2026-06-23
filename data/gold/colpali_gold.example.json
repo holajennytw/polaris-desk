@@ -1,0 +1,12 @@
+{
+  "_README": "ColPali round-trip gold 範本。R1/R4：複製成 colpali_gold.json，每筆 query 照該 page 圖表內容寫（自然語、具辨識度），page_id 為 polaris_core.colpali_pages 真值。一題只對一張可辨識圖表頁，避免一題多頁歧義。建議 ≥20 筆、≥5 公司。",
+  "model": "vidore/colpali-v1.2",
+  "pooling": "mean",
+  "items": [
+    {"query": "<TC-2 obvious：把該頁標題/大字原文抄成 query>", "page_id": "0408a631-15d8-4544-b07f-7004f719be85", "ticker": "1216", "note": "統一 2025Q2 p5；先做 obvious-query 自檢"},
+    {"query": "<鴻海 該頁圖表主題>", "page_id": "daf58ecf-522e-46a9-bc4d-3b88cdb26b8d", "ticker": "2317", "note": "鴻海 2025Q4 p5"},
+    {"query": "<台積電 該頁圖表主題，如 各製程節點營收占比>", "page_id": "66aef70e-7102-431b-b2fe-28160f83e0dc", "ticker": "2330", "note": "台積電 2025Q2 p5"},
+    {"query": "<聯發科 該頁圖表主題>", "page_id": "f0eeb07b-d009-4b29-81c5-558358eb1783", "ticker": "2454", "note": "聯發科 2025Q3 p5"},
+    {"query": "<中信金 該頁圖表主題，如 NIM 趨勢>", "page_id": "ac2a82cf-134e-4fb2-b4fd-6d8300fce98e", "ticker": "2891", "note": "中信金 2025Q1 p5"}
+  ]
+}

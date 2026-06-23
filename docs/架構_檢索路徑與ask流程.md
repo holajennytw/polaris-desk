@@ -15,7 +15,7 @@
 
 - **`/ask` 是 HTTP 端點，不是「一條路」**。它把整個問題丟給一個 5-node LangGraph workflow。
 - 真正做檢索的是 **`HybridRetriever`**，它有 **3 條「文字」通道**（BM25 / 向量 / Cohere Rerank）。
-- **ColPali 是 gated 的第 4 條「視覺」通道**，目前**只接到 eval 場景 3，沒接 `/ask`**，且因為 query 編碼器（#133）還沒做，呼叫等於 no-op。
+- **ColPali 是 gated 的第 4 條「視覺」通道**，目前**只接到 eval 場景 3，沒接 `/ask`**。query 編碼器（#133）已併入但預設 **gated-off**（`COLPALI_QUERY_ENCODER`），故呼叫仍等於 no-op；驗證（≥70% round-trip）尚未實測、延後處理。
 - ⚠️ **現況（兩個獨立缺陷）**：3 條文字通道裡，只有「向量」通道會碰到 `polaris_core` 真資料；BM25 只查記憶體假語料。
   1. 向量路打的 base table 是 `chunks`，而 `chunks` **本身就沒有** `event_key/source_key/published_yyyymm`——所以就算向量路成功，citation 也帶不出那三欄（要改打 `v_chunk_semantic`）。
   2. 向量路一旦出錯會**靜默吞掉**（`retriever.py:325`），於是退回 BM25 → 產出 `bm25` stub 引用。**R6 測試題拿到 `bm25` stub 正是這條觸發的。**
@@ -88,10 +88,10 @@ flowchart TD
 
 | 項目 | 現況 |
 |------|------|
-| 接到 `/ask`？ | ❌ **沒有**。`active_retriever()` 永遠只回 `HybridRetriever`，不含 ColPali |
-| 接到哪？ | 只接 **eval 場景 3**（[`runner._run_visual`](../src/polaris/eval/runner.py)）。沒 encoder 時直接 `raise NotImplementedError` 指向 #133 |
-| 能跑嗎？ | ❌ no-op。`active_colpali_query_fn()` 永遠回 `None`（[`colpali_retriever.py:39`](../src/polaris/retrieval/colpali_retriever.py#L39)），retriever 立即回 `[]` |
-| 卡在哪？ | **issue #133**：R4 尚未提供 query 端編碼器（同模型、同 patch 池化、128 維）。**注意 #133 目前只是 commit 訊息裡的佔位號，不是真的 PR** |
+| 接到 `/ask`？ | ❌ **沒有**。`active_retriever()` 永遠只回 `HybridRetriever`，不含 ColPali。**且 workflow 裡也還沒有「圖表題 → 分派第 4 路」的路由**——即使日後啟用，`/ask` 仍不會自動走視覺路，需另外接 |
+| 接到哪？ | 只接 **eval 場景 3**（[`runner._run_visual`](../src/polaris/eval/runner.py)）。encoder 未開時直接 `raise NotImplementedError` |
+| 能跑嗎？ | ⚠️ 預設 gated-off。query encoder 已併入（`ColpaliV12QueryEncoder`，colpali-v1.2 mean-pool 128 維，2026-06-23 merge `226c814`），但 `active_colpali_query_fn()` 只有在 **`COLPALI_QUERY_ENCODER=1`** 時才回真 fn；預設回 `None` → retriever 回 `[]`（CI 0-import） |
+| 卡在哪？ | 三閘:① encoder ✅ 已併入;② TD-02 PM 簽核 ✅;③ **≥70% round-trip 驗證 ⏳ deferred**(從未實測,需 GPU + R4 gold,見 issue #17 / `docs/colpali_roundtrip_test_cases.md`)。**另外**:prod 啟用還需 **GPU 推論端點**(CPU slim 的 Cloud Run 跑不動 in-process 模型)+ 上述 `/ask` 路由。三項缺一不可 |
 | 資料在嗎？ | ✅ 在。`polaris_core.colpali_pages` 已有 5701 頁（20 檔，128 維）。**資料層沒被砍，是 R3 整合層沒接** |
 
 ---
@@ -137,7 +137,23 @@ R6 三個觀察重新校準後（2026-06-22 線上實測）：
 | P0 | `_vector_search` 的 `except` 加 `logger.warning(..., exc_info=True)` | R3 | 一行純診斷，立刻看得到向量路為何回空（打 chunks 失敗？embedding 沒生出來？） |
 | P1 | `BigQueryStore` 從 `.chunks` 切到 `v_chunk_semantic`，並把 `event_key/source_key/published_yyyymm` 帶進 citation | R3 | **真正解 R6 的主修**；`chunks` 本身無三欄，view 才有。需改碼（無 env 開關），view 端已 ready |
 | P1 | 切完後重新部署 Cloud Run + 跑 R6 測試題 smoke | R2 | 驗證端到端 |
-| P2 | ColPali 第 4 路啟用：先補 #133 encoder + PM sign-off（TD-02）+ ≥70% round-trip 閘 | R4 + R2(PM) | 視覺路與文字路分開，不混排序 |
+| P2 | ColPali 第 4 路啟用：① #133 encoder（✅ 併入 226c814）② PM sign-off TD-02（✅ 2026-06-23）③ ≥70% round-trip 閘（⏳ 待 GPU + R4 gold）。三閘是「**讓 encoder 可被呼叫 + 證明值得做**」，**不等於使用者用得到**——使用者面的完整缺口見 §4.1 | R4 + R2(PM) | 視覺路與文字路分開，不混排序 |
+
+### 4.1 ColPali 對「使用者」有作用的完整缺口（roadmap）
+
+> ⚠️ 常見誤解：「三閘過了 + 設 `COLPALI_QUERY_ENCODER=1` 就上線了」。**錯。** 那只讓 encoder 在 eval/腳本裡可被呼叫。
+> `/ask` 目前**只走文字 3 路、沒有任何邏輯導向第 4 路**，所以使用者問圖表題完全觸發不到 ColPali。
+> 要讓**使用者**真的受益，下面 4 件缺一不可，目前**一件都未完成**：
+
+| # | 缺口 | 是什麼 | 不做的話，使用者端會怎樣 | Owner | 狀態 |
+|---|------|--------|--------------------------|-------|------|
+| ① | **命中率驗證（gate ③）** | ≥70% round-trip（`scripts/colpali_roundtrip_check.py`，見 [test cases](colpali_roundtrip_test_cases.md) / issue #17） | 不知道視覺檢索有沒有效、值不值得投後面三件 | R4/R1 | ⏳ 跑中（未達標就依 TD-01 砍，不做後面） |
+| ② | **GPU 推論端點** | colpali-v1.2 需 GPU；prod 的 Cloud Run API 是 CPU `slim`、無 torch | 直接在 API 設 `COLPALI_QUERY_ENCODER=1` → 載模型崩潰、`/ask` 掛掉 | R4/R2 | ❌ 未建 |
+| ③ | **`/ask` 路由分派** | workflow 要能「偵測圖表題 → 導去第 4 路 → 把結果併進 answer/citations」 | 沒這段，`/ask` 永遠只回文字 3 路；ColPali 形同不存在 | R3 | ❌ 程式未寫 |
+| ④ | **Phase 2 視覺讀數** | 把命中頁 render 成圖 → 丟 vision 模型讀圖中數字 | `colpali_pages` 無文字層，檢索只回「第 X 頁圖表」頁碼參照；**讀不出數字、答不了「占比多少」** | R4/R3 | ❌ 未做 |
+
+**依賴順序**：① 先（最便宜的 go/no-go）→ 過了才值得做 ②③（把檢索接上 `/ask`，此時使用者可被導到「正確的那一頁」）→ ④ 才能真正「回答圖裡的數字」。
+**只做 ①②③**：使用者問圖表題會拿到「答案在 ⃝⃝ 法說第 9 頁」這種頁碼指引（可點開看圖），但系統**不會幫你把數字讀出來**——那是 ④ 的事。
 
 ---
 
