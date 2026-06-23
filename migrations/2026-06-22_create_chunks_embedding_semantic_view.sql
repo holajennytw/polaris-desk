@@ -32,6 +32,8 @@ AS
 SELECT
   ch.chunk_id,
   ch.embedding,
+  ch.owner,
+  ch.confidential,
   s.ticker,
   s.company_name,
   s.industry_name,
