@@ -94,9 +94,21 @@ PDF 頁
 - **Gate2 端到端**（Owner R5）：對圖表題集跑既有 Ragas eval，看 `/ask` 是否引用正確數字。
 - 兩關皆過 → 正式信任 vision chunk。
 
+## 角色分工（誰做什麼）
+
+> 原則：**code 可由 R2 agent 代工，但「寫進 canonical 庫」與「品質放行」兩個權力點不在 agent 手上**——分別交付給 R4（憲法 III：唯一可寫 `polaris_core`）與 R1（Gate1 放行）。
+
+| 角色 | 這個 A 案要做的事 | 交付物 / 關卡 |
+|------|------------------|---------------|
+| **R2 agent**（本案代工者） | 代寫全部 ingestion code（8 個 TDD task，`src/polaris/ingestion/`）；跑 pilot（2330+2891）**到 dev dataset**。**不可寫 `polaris_core`**（waynehuichi 帳號）。 | code merged；`data/vision_chunks/*.jsonl` + `*_gate1.csv` |
+| **R4**（程式 owner / ingestion） | 收 code 驗收；**用 R4 帳號**（或 R4 GCE SA + `BQ_ALLOW_CORE_WRITE=1`）把 JSONL 載入 `polaris_core`；確認 `doc_type=financial_statement` 來源（無則用「Flash 低信心」當升 Pro 訊號）。 | core ingestion 完成 |
+| **R1**（驗證） | **Gate1 主驗**：抽 20–30 頁、≥4 公司、涵蓋 pie/trend/財報表，人工比對 JSON vs 真圖，**數字準確率 ≥ 95%** 才放行。 | Gate1 sign-off |
+| **R5**（eval） | **Gate2 端到端**：對圖表題集跑既有 Ragas，看 `/ask` 是否引用正確數字。 | Gate2 sign-off |
+| **R3**（檢索） | **待命，無 code**——A 案刻意不動檢索端（不新增第 4 路 / 不改 `/ask` 路由）。 | — |
+
 ## 上線範圍 / Owner / 冪等
 
-- **Owner R4**；純 Gemini API，**不需 GPU**。
+- **程式 owner R4；本案由 R2 agent 代寫**；純 Gemini API，**不需 GPU**。
 - **Rollout：先 pilot 台積電(2330)+中信金(2891)** 跑通 → 過 Gate1 → 再放大到 20 檔 canonical 的 presentation + 掃描財報頁。
 - chunk id 確定性 → **可重跑 upsert**。
 
