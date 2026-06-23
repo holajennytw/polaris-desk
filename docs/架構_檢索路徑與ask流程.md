@@ -137,7 +137,7 @@ R6 三個觀察重新校準後（2026-06-22 線上實測）：
 | P0 | `_vector_search` 的 `except` 加 `logger.warning(..., exc_info=True)` | R3 | 一行純診斷，立刻看得到向量路為何回空（打 chunks 失敗？embedding 沒生出來？） |
 | P1 | `BigQueryStore` 從 `.chunks` 切到 `v_chunk_semantic`，並把 `event_key/source_key/published_yyyymm` 帶進 citation | R3 | **真正解 R6 的主修**；`chunks` 本身無三欄，view 才有。需改碼（無 env 開關），view 端已 ready |
 | P1 | 切完後重新部署 Cloud Run + 跑 R6 測試題 smoke | R2 | 驗證端到端 |
-| P2 | ColPali 第 4 路啟用：先補 #133 encoder + PM sign-off（TD-02）+ ≥70% round-trip 閘 | R4 + R2(PM) | 視覺路與文字路分開，不混排序 |
+| P2 | ColPali 第 4 路啟用：① #133 encoder（✅ 併入 226c814）② PM sign-off TD-02（✅ 2026-06-23）③ ≥70% round-trip 閘（⏳ 待 GPU + R4 gold）。三閘到齊才 `COLPALI_QUERY_ENCODER=1` 上 prod | R4 + R2(PM) | 視覺路與文字路分開，不混排序 |
 
 ---
 

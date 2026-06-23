@@ -5,7 +5,9 @@
 - Cohere Rerank（opt-in）：``COHERE_API_KEY`` 存在且傳入 ``rerank_fn`` 時啟用；
   無 key 則 skip，結果仍為 BM25+vector merge，確定性可重現（CI friendly）
 - ColPali 視覺檢索為獨立第 4 路（gated，場景 3），見 colpali_retriever / colpali_store；
-  資料早於 R4 入庫 colpali_pages，TD-01 僅 cut「R3 整合」、非資料（TD-02 復原，待 PM 簽核）
+  資料早於 R4 入庫 colpali_pages，TD-01 僅 cut「R3 整合」、非資料（TD-02 復原經 PM 簽核
+  2026-06-23；#133 encoder 已併入。prod 啟用仍 gated，待 ≥70% round-trip 閘——
+  見 scripts/colpali_roundtrip_check.py）
 """
 from __future__ import annotations
 
