@@ -1,0 +1,26 @@
+{
+  "_README": "ColPali round-trip gold（重建版 v0，由 PM 端 2026-06-23 從 issue #17 R1 v1.1 表格的頁面內容描述 + 反查 polaris_core.colpali_pages 真實 page_id 組成）。query 用 R1 描述的圖表內容；page_id 取自 R1 引用的『該檔該頁範圍』真值。⚠️ 重要：每筆『範圍內哪一頁對哪個圖表』是依 R1 列點順序對應到連續頁碼的『推測』（PM 看不到頁面圖）——若 hit@5 偏低，先懷疑此頁面對應有誤，再懷疑 encoder；權威版仍以 R1 親挑的 colpali_gold.json 為準。共 15 筆（R1 原稱 20 筆，但表格僅公開每家約 3 個內容點，故重建 15 筆可接地者）。",
+  "model": "vidore/colpali-v1.2",
+  "pooling": "mean",
+  "items": [
+    {"query": "統一企業 2024Q4 部門別營業利益占比，食品與便利商店事業比重", "page_id": "191f4b07-4400-4003-98b2-766a40609356", "ticker": "1216", "note": "1216_2024Q4 p5（推測）"},
+    {"query": "統一企業 2024Q4 資產負債表與股東權益報酬率 ROE", "page_id": "f0b62303-3932-4ad7-836f-60b1e4dddd31", "ticker": "1216", "note": "1216_2024Q4 p6（推測）"},
+    {"query": "統一企業 2024Q4 現金流量表與資本支出 CapEx", "page_id": "34e6f8f0-ecd4-451c-aa62-9e9f1e150b23", "ticker": "1216", "note": "1216_2024Q4 p7（推測）"},
+
+    {"query": "鴻海 2024Q4 合併損益表毛利率與每股盈餘 EPS", "page_id": "42482d9e-e47e-4742-bf13-c08bd2301c23", "ticker": "2317", "note": "2317_2024Q4 p5（推測）"},
+    {"query": "鴻海 2024Q4 財務概況季增 QoQ 表現", "page_id": "bbba04ef-d0c4-45d6-8e65-5b44d0f3fdb7", "ticker": "2317", "note": "2317_2024Q4 p6（推測）"},
+    {"query": "鴻海 2024Q4 資產負債表與淨現金部位", "page_id": "ad9e75b1-98bc-42f4-8df4-46f698a212ac", "ticker": "2317", "note": "2317_2024Q4 p7（推測）"},
+
+    {"query": "台積電 2025Q1 各製程節點營收占比，3 奈米與 5 奈米", "page_id": "6bab4a06-2c1c-466c-a6a4-a69a32c974ab", "ticker": "2330", "note": "2330_2025Q1 p4（推測）"},
+    {"query": "台積電 2025Q1 各技術平台營收占比，高效能運算 HPC", "page_id": "7ccf3501-dcce-4880-bcd7-9e3c35960e55", "ticker": "2330", "note": "2330_2025Q1 p5（推測）"},
+    {"query": "台積電 2025Q1 資產負債表與總資產", "page_id": "3d69cabe-4351-41e8-8e76-7d207387b062", "ticker": "2330", "note": "2330_2025Q1 p6（推測）"},
+
+    {"query": "聯發科 2025Q4 研發費用與季增", "page_id": "66863600-a788-4b8d-ad54-8ecd078684e2", "ticker": "2454", "note": "2454_2025Q4 p5（推測）"},
+    {"query": "聯發科 2025Q4 營業利益率", "page_id": "7f58ee6a-7a9f-4c22-893d-d228dedfcffd", "ticker": "2454", "note": "2454_2025Q4 p6（推測）"},
+    {"query": "聯發科 2025Q4 全年研發投入金額", "page_id": "39721123-fd08-43ad-a4eb-b8c6d92619c9", "ticker": "2454", "note": "2454_2025Q4 p7（推測）"},
+
+    {"query": "中信金 2025Q3 稅後淨利與年增率 YoY", "page_id": "3120674e-d999-4f9f-83e9-f8b081b6e199", "ticker": "2891", "note": "2891_2025Q3 p5（推測）"},
+    {"query": "中信金 2025Q3 股東權益報酬率 ROE 趨勢", "page_id": "ef239a9c-a317-470e-8104-cb3aaf11e645", "ticker": "2891", "note": "2891_2025Q3 p6（推測）"},
+    {"query": "中信金 2025Q3 資本適足率", "page_id": "71b2637f-39bc-4290-bc34-286fd8115667", "ticker": "2891", "note": "2891_2025Q3 p7（推測）"}
+  ]
+}
