@@ -162,6 +162,66 @@ class TestBigQueryStore:
         # NULL-safe: pre-backfill rows (confidential = NULL) stay visible
         assert "NOT COALESCE(confidential, FALSE) OR owner = @viewer" in sql
 
+    def test_search_keeps_acl_base_and_joins_semantic_view(self):
+        """P1：VECTOR_SEARCH 仍對含 ACL 欄位的 chunks，命中後再用 chunk_id
+        LEFT JOIN v_chunk_semantic 補 event_key / source_key / published_yyyymm，落到
+        SearchResult.metadata。v_chunks_embedding_semantic 尚未包含 ACL 欄，不能直接替代。"""
+        client = FakeBQClient(rows=[
+            {"chunk_id": "c1", "chunk_text": "台積電法說片段", "ticker": "2330",
+             "fiscal_period": "2026Q1", "doc_type": "transcript",
+             "published_at": None, "distance": 0.1,
+             "event_key": "earnings_call", "source_key": "PRIMARY_EC_TRANSCRIPT",
+             "published_yyyymm": 202604},
+        ])
+        store = BigQueryStore(make_settings(), client=client)
+        results = store.search(EMB, top_k=5, filters={"viewer": "analyst_A"})
+        sql = client.queries[0]
+
+        # VECTOR_SEARCH 的 base 子查詢保留 chunks 的 ACL 欄位與過濾。
+        vs_block = sql[sql.index("VECTOR_SEARCH("):sql.index("LEFT JOIN")]
+        assert "chunks`" in vs_block
+        assert "v_chunks_embedding_semantic" not in vs_block
+        assert "owner IS NULL OR owner = @viewer" in vs_block
+        assert "NOT COALESCE(confidential, FALSE) OR owner = @viewer" in vs_block
+        # 命中後才 LEFT JOIN 語意 view 取三欄
+        join_block = sql[sql.index("LEFT JOIN"):]
+        assert "v_chunk_semantic" in join_block
+        assert "sem.chunk_id = vs.chunk_id" in join_block
+        for col in ("sem.event_key", "sem.source_key", "sem.published_yyyymm"):
+            assert col in sql
+        # 三欄落到 metadata（有值才帶；published_yyyymm 維持 INT64 不轉字串）
+        md = results[0].metadata
+        assert md["event_key"] == "earnings_call"
+        assert md["source_key"] == "PRIMARY_EC_TRANSCRIPT"
+        assert md["published_yyyymm"] == 202604
+
+    def test_search_semantic_fields_null_when_view_has_no_match(self):
+        """P1：LEFT JOIN 無對應語意列 → 三欄 NULL（允許 null、不編造）；此時 metadata
+        不放這三鍵（None 被濾掉），由下游 _ensure_citation_metadata 補回 None。"""
+        client = FakeBQClient(rows=[
+            {"chunk_id": "c9", "chunk_text": "片段", "ticker": "2330",
+             "fiscal_period": "2026Q1", "doc_type": "transcript",
+             "published_at": None, "distance": 0.3,
+             "event_key": None, "source_key": None, "published_yyyymm": None},
+        ])
+        store = BigQueryStore(make_settings(), client=client)
+        md = store.search(EMB)[0].metadata
+        assert "event_key" not in md and "source_key" not in md
+        assert "published_yyyymm" not in md  # None → 不編造、不放鍵
+
+    def test_search_filters_still_apply_inside_vector_search_with_join(self):
+        """P1 不可退步：加了語意 JOIN 後，ticker / fiscal_period / doc_type 過濾仍在
+        VECTOR_SEARCH 的 base 子查詢內（先濾向量候選，而非 JOIN 後才濾）。"""
+        client = FakeBQClient()
+        store = BigQueryStore(make_settings(), client=client)
+        store.search(EMB, filters={"company": "2330", "period": "2026Q1",
+                                   "doc_type": "transcript"})
+        sql = client.queries[0]
+        vs_block = sql[sql.index("VECTOR_SEARCH("):sql.index("LEFT JOIN")]
+        assert "ticker = @ticker" in vs_block
+        assert "fiscal_period = @fiscal_period" in vs_block
+        assert "doc_type = @doc_type" in vs_block
+
     def test_add_documents_writes_owner_and_confidential(self):
         client = FakeBQClient()
         store = BigQueryStore(make_settings(bq_dataset="polaris_dev_test"), client=client)

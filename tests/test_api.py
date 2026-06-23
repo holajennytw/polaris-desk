@@ -52,6 +52,16 @@ class TestAsk:
         for c in r.json()["citations"]:
             assert set(("source_id", "snippet", "origin")) <= c.keys()
 
+    def test_ask_citations_include_semantic_fields(self, client):
+        """P1：/ask citation 一律帶 event_key / source_key / published_yyyymm 三鍵。
+        stub / 無金鑰路徑值為 null，但鍵必須存在（nullable）→ 前端契約穩定，不會
+        因為某筆無語意 metadata 就少欄。"""
+        r = client.post("/ask", json={"query": "台積電 2025Q1 營收"})
+        cites = r.json()["citations"]
+        assert cites  # 至少一筆引用
+        for c in cites:
+            assert set(("event_key", "source_key", "published_yyyymm")) <= c.keys()
+
     def test_ask_trace_reflects_five_nodes(self, client):
         # 5 節點 workflow trace 不變量：每筆 trace 有 node_name/status
         trace = client.post("/ask", json={"query": "台積電 2025Q1 營收"}).json()["trace"]

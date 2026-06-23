@@ -35,6 +35,20 @@ class Citation(BaseModel):
         default=None,
         description="來源公司中文 canonical 名（由 ticker 經 ontology 解析；未知/無則 None）",
     )
+    # P1：v_chunk_semantic 語意 metadata（store 端以 chunk_id JOIN 取得）。三欄皆 nullable
+    # —— 來源無對應語意列 / 非 BigQuery 通道（BM25/stub）時為 None，不編造。
+    event_key: str | None = Field(
+        default=None,
+        description="事件鍵（如 earnings_call / major_news.others / news；無則 None）",
+    )
+    source_key: str | None = Field(
+        default=None,
+        description="來源鍵（如 PRIMARY_EC_TRANSCRIPT / PRIMARY_MOPS；無則 None）",
+    )
+    published_yyyymm: int | None = Field(
+        default=None,
+        description="發佈年月（INT64，如 202606；無則 None）",
+    )
 
 
 # ---------------------------------------------------------------------------

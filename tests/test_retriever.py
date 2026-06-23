@@ -487,3 +487,47 @@ def test_retrieve_results_always_carry_citation_metadata_keys():
         assert "published_at" in r.metadata
         assert "fiscal_period" in r.metadata
         assert r.metadata["fiscal_period"] == r.period  # mirrors typed period field
+
+
+def test_retrieve_results_carry_semantic_metadata_keys():
+    """P1：retrieve() 每筆結果都帶 event_key / source_key / published_yyyymm（store 端
+    由 v_chunk_semantic JOIN 取得；BM25/stub 通道無值 → None，不編造），讓 /ask citation
+    在任何通道都能安全讀到這三鍵。"""
+    retriever = HybridRetriever(top_k=5)  # BM25-only (CI)
+    results = retriever.retrieve("台積電 2025Q1 毛利率")
+
+    assert results
+    for r in results:
+        for key in ("event_key", "source_key", "published_yyyymm"):
+            assert key in r.metadata
+            assert r.metadata[key] is None  # 無值 → None（不編造）
+
+
+def test_vector_search_failure_logs_warning_and_falls_back_to_bm25(caplog):
+    """P0：向量後端丟例外時，記 warning（含 traceback / exc_info），但仍回 BM25 結果
+    —— 檢索不中斷、fallback 行為不退步（修「靜默吞錯」）。"""
+    import logging
+
+    class ExplodingStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):
+            raise RuntimeError("BQ exploded")
+
+        def health_check(self):
+            return True
+
+    retriever = HybridRetriever(
+        top_k=3, store=ExplodingStore(), embedding_fn=lambda _q: [0.1, 0.2, 0.3]
+    )
+    with caplog.at_level(logging.WARNING, logger="polaris.retrieval.retriever"):
+        results = retriever.retrieve("台積電 2025Q1 毛利率")
+
+    # 仍有 BM25 fallback 結果（向量失敗不讓整條查詢掛掉）
+    assert results
+    assert any("台積電" in r.content for r in results)
+    # warning 有記、訊息可辨識、且帶 traceback（exc_info=True）
+    warns = [
+        rec for rec in caplog.records
+        if rec.levelno == logging.WARNING and "vector search failed" in rec.message
+    ]
+    assert warns, "expected a vector-search-failure warning"
+    assert warns[0].exc_info is not None  # exc_info → traceback 一併記下

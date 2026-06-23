@@ -158,7 +158,16 @@ def _normalize_vector_result(result: SearchResult) -> SearchResult:
 # vector (BigQuery) path already populates them; BM25/stub results don't — so
 # the final output is normalised to always carry the keys, letting consumers do
 # metadata["published_at"] safely on any channel (issue: R7 /research KeyError).
-_CITATION_METADATA_KEYS = ("doc_type", "published_at", "fiscal_period")
+_CITATION_METADATA_KEYS = (
+    "doc_type",
+    "published_at",
+    "fiscal_period",
+    # P1：v_chunk_semantic 三欄（store 端以 chunk_id JOIN 取得）；BM25/stub 通道無值
+    # → 補 None（不編造），讓下游 /ask citation 在任何通道都能安全讀到這三鍵。
+    "event_key",
+    "source_key",
+    "published_yyyymm",
+)
 
 
 def _ensure_citation_metadata(result: SearchResult) -> SearchResult:
@@ -326,7 +335,13 @@ class HybridRetriever:
             if not query_embedding:
                 return []
             results = self.store.search(query_embedding, self.top_k, filters=filters)
-        except Exception:  # noqa: BLE001 - vector backend is optional in D3; BM25 stays available
+        except Exception:  # noqa: BLE001 - vector backend is optional; BM25 stays available
+            # P0：別吞錯 —— 記 warning（含 traceback）讓向量後端失敗看得見，但仍回 []
+            # 讓 BM25 fallback 撐住這次查詢（檢索不中斷、行為不退步）。
+            logger.warning(
+                "vector search failed; falling back to BM25-only for this query",
+                exc_info=True,
+            )
             return []
         return [_normalize_vector_result(result) for result in results]
 
@@ -400,6 +415,10 @@ def make_retriever_search_fn(
                 snippet=sr.content,
                 origin=_citation_origin(sr.metadata.get("origin")),
                 company=company_name(sr.company),
+                # P1：三欄與 /ask 一致（同一 SearchResult.metadata 來源；缺值 → None）。
+                event_key=sr.metadata.get("event_key"),
+                source_key=sr.metadata.get("source_key"),
+                published_yyyymm=sr.metadata.get("published_yyyymm"),
             )
             for sr in r.retrieve(query, filters=combined_filters)
         ]
