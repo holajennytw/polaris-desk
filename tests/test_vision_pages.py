@@ -31,3 +31,21 @@ def test_presentation_all_pages_vision():
     )
     assert all("VISION:" in t for t in out)
     assert ex.calls == ["presentation", "presentation"]
+
+
+class FlakyExtractor:
+    """第 2 頁抽取拋例外（模擬抽取失敗 / 用盡重試的 429）。"""
+    def extract(self, image_bytes, *, doc_type):
+        raise RuntimeError("boom")
+
+
+def test_one_page_failure_does_not_abort_batch():
+    errors = []
+    out = extract_pages_with_vision(
+        "x.pdf", doc_type="presentation", extractor=FlakyExtractor(),
+        page_texts=["第一頁", "第二頁"],
+        render=lambda p, n, dpi=150: b"PNG",
+        on_error=lambda i, exc: errors.append((i, str(exc))),
+    )
+    assert out == ["", ""]                 # 失敗頁 → 誠實空白（不弄垮整批、不瞎掰）
+    assert errors == [(1, "boom"), (2, "boom")]   # 每頁失敗都回報，供 Gate1 標記

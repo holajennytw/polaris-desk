@@ -53,7 +53,7 @@ def _gemini_extract_fn(model: str) -> ExtractFn:
             )
         return cache["c"]
 
-    def _fn(image_bytes: bytes) -> PageExtraction:
+    def _once(image_bytes: bytes) -> PageExtraction:
         from google.genai import types
         resp = _client().models.generate_content(
             model=model,
@@ -66,6 +66,16 @@ def _gemini_extract_fn(model: str) -> ExtractFn:
             ),
         )
         return PageExtraction.model_validate_json(resp.text)
+
+    def _fn(image_bytes: bytes) -> PageExtraction:
+        # 視覺批次（數百頁）會撞 Vertex preview 模型的每分鐘配額（429 RESOURCE_EXHAUSTED）。
+        # call_with_retry 已把 429 視為暫時性 → 退避重試；視覺路用較長視窗（配額多以分鐘為
+        # 單位重置），讓整批自我節流通過，而非一撞 429 就整批崩潰。
+        from polaris.retry import call_with_retry
+        return call_with_retry(
+            lambda: _once(image_bytes),
+            attempts=6, base_delay=2.0, max_delay=60.0,
+        )
 
     return _fn
 

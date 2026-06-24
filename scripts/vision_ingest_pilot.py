@@ -68,29 +68,39 @@ def main() -> None:
         pdfs = sorted(glob.glob(f"data/{ticker}_*/{ticker}_*M*_concall_*.pdf"))
         all_chunks: list[dict] = []
         gate1_rows: list[dict] = []
+        failed_pages = 0
+        jsonl = Path(args.out) / f"{ticker}.jsonl"
+        gate1 = Path(args.out) / f"{ticker}_gate1.csv"
         for pdf in pdfs:
             meta = _meta_from_filename(Path(pdf).name)
             if not meta:
                 continue
-            pages = extract_pages_with_vision(pdf, doc_type=meta["doc_type"], extractor=extractor)
+            errs: list[int] = []
+            pages = extract_pages_with_vision(
+                pdf, doc_type=meta["doc_type"], extractor=extractor,
+                on_error=lambda i, exc: errs.append(i),
+            )
+            failed_pages += len(errs)
             for i, txt in enumerate(pages, start=1):
                 gate1_rows.append({"pdf": Path(pdf).name, "page": i,
+                                   "extracted": "FAIL" if i in errs else ("ok" if txt else "empty"),
                                    "text_preview": txt[:160].replace("\n", " ")})
             chunks = chunk_pages(pages, ticker=meta["ticker"], period=meta["period"],
                                  source=meta["source"], doc_type=meta["doc_type"],
                                  published_at=meta["published_at"])
             all_chunks.extend(chunks)
-            print(f"  {Path(pdf).name}: {len(pages)} 頁 → {len(chunks)} 塊")
+            # 每份 PDF 後就把進度落地（長批次中途中斷也不丟前面的成果）。
+            jsonl.write_text("\n".join(json.dumps(c, ensure_ascii=False) for c in all_chunks),
+                             encoding="utf-8")
+            with gate1.open("w", encoding="utf-8", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=["pdf", "page", "extracted", "text_preview"])
+                w.writeheader()
+                w.writerows(gate1_rows)
+            fail_note = f"（{len(errs)} 頁抽取失敗）" if errs else ""
+            print(f"  {Path(pdf).name}: {len(pages)} 頁 → {len(chunks)} 塊{fail_note}", flush=True)
 
-        jsonl = Path(args.out) / f"{ticker}.jsonl"
-        jsonl.write_text("\n".join(json.dumps(c, ensure_ascii=False) for c in all_chunks),
-                         encoding="utf-8")
-        gate1 = Path(args.out) / f"{ticker}_gate1.csv"
-        with gate1.open("w", encoding="utf-8", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=["pdf", "page", "text_preview"])
-            w.writeheader()
-            w.writerows(gate1_rows)
-        print(f"{ticker}: {len(all_chunks)} 塊 → {jsonl}；Gate1 抽查表 → {gate1}")
+        print(f"{ticker}: {len(all_chunks)} 塊 → {jsonl}；Gate1 抽查表 → {gate1}"
+              f"（共 {failed_pages} 頁抽取失敗）", flush=True)
 
         if do_ingest:
             from polaris.ingestion.pipeline import ingest_chunks
@@ -100,7 +110,7 @@ def main() -> None:
             report = ingest_chunks(all_chunks, store=get_vector_store(),
                                    embed=llm.embed)
             print(f"  ingested {report.ingested} / quarantined {len(report.quarantined)}"
-                  f" → {settings.bq_dataset}")
+                  f" → {settings.bq_dataset}", flush=True)
 
 
 if __name__ == "__main__":
