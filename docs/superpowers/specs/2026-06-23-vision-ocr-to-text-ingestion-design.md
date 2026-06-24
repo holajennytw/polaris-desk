@@ -1,7 +1,7 @@
 # Vision-OCR-to-text Ingestion 設計（圖表/掃描頁 → 結構化抽取 → 文字 chunk）
 
 - **日期**：2026-06-23
-- **狀態**：Proposed — **可行性已實測（2026-06-24 PoC，見下）**；待 Gate1 全面抽取準確率驗證
+- **狀態**：**Implemented（2026-06-24）** — 8 TDD 程式 + 韌性修補已 merge `jenny/main`；pilot（2330+2891）已寫入 dev dataset `polaris_dev_wayne` 並**實測檢索可命中**（見「實作完成與驗證」）。待 Gate1（R1 抽取準確率）+ Gate2（R5 端到端）正式放行後由 R4 載入 `polaris_core`。
 - **取代**：ColPali 單向量第 4 路（實測 FAIL，見下「背景與決策」）
 - **Owner**：R4（ingestion）；驗證 R1 + R5
 
@@ -37,6 +37,23 @@ Gemini Flash（Vertex，團隊設定）structured output 抽取 → 比對頁面
 與 ColPali 的 0%／不可鑑別形成強烈對比。**A 可行**。殘留風險：①極小切片 ±1%；②密集「掃描」
 財報三表（本簡報 p8 是有文字層的展望頁，非掃描表）尚未單獨測——兩者皆由設計內的
 **Gate1（≥95% 抽取準確率抽樣）+ 財報表升 Pro** 涵蓋。
+
+## 實作完成與驗證（2026-06-24）
+
+程式已 merge `jenny/main`（`147838b`）：`src/polaris/ingestion/vision_{schema,to_text,extract,pages}.py` + `scripts/vision_ingest_pilot.py`，745 測試綠、ruff 乾淨。**測試/驗證怎麼跑、怎麼確認在動 → 見 [`docs/vision-OCR_測試與驗證指南.md`](../../vision-OCR_測試與驗證指南.md)。**
+
+**已驗證能動（dev dataset 實測）**：pilot 真資料已寫入 `polaris_dev_wayne.chunks`（2330+2891，768 維），實跑檢索命中正確頁：
+
+| 提問 | 命中 chunk | 分數 |
+|---|---|---|
+| 台積電 2025Q1 毛利率與營業收入 | `2330-2025Q1-p004-c001`（綜合損益表頁） | 0.817 |
+| 中信金控 2025 第一季 ROE | `2891-2025Q1-p006-c001`（ROE 領先同業頁） | 0.854 |
+
+**實作中發現、已處理的兩個 infra 重點（非程式 bug）**：
+1. **embedding 恆需 `GEMINI_API_KEY`**（即使生成走 Vertex）。金鑰在 **Secret Manager**（`gemini-api-key`），ADC 帳號可讀，跑時 export、永不 commit。
+2. **`gemini-3-*-preview` Vertex 端 QPM 限流**：整批連發會 429 風暴。已加 `call_with_retry` 退避 + `--throttle` 主動節流 + 單頁韌性 + 逐 PDF 落地。全量 346 頁是長時背景工作；pilot 取代表性切片。
+
+**剩餘關卡**：R1 Gate1（≥95% 抽取準確率抽樣）、R5 Gate2（端到端 /ask）、R4 載入 `polaris_core`（憲法 III，唯一可寫 core 的角色）。
 
 ## 目標 / 非目標
 

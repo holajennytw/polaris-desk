@@ -168,6 +168,7 @@ Step 1–4 全程不需 UI，已涵蓋端到端。
 
 ## 相關文件
 
+- **Vision-OCR（圖表/掃描頁→文字）測試與驗證**：[`docs/vision-OCR_測試與驗證指南.md`](vision-OCR_測試與驗證指南.md) —— R1 Gate1 / R5 Gate2 / R7 前端怎麼驗、怎麼確認在動
 - 規格：`specs/004-eval-pipeline/spec.md`（eval pipeline）
 - R5 開工：`docs/R5_eval_開工指南.md`
 - 環境 / 後端切換：`README.md`、`docs/開發環境_BigQuery.md`、`docs/協作開發環境_SOP_v1.md`
