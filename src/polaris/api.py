@@ -36,6 +36,7 @@ import hashlib
 import re
 from datetime import date, datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -491,20 +492,18 @@ _VALUATION_METRICS = {"pe_ratio", "pb_ratio", "ps_ratio"}
 
 def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation]:
     """法說逐字稿 RAG 搜尋（ticker + period + doc_type=transcript）。注入 seam for tests."""
-    from polaris.retriever import retrieve
+    from polaris.retrieval.retriever import make_retriever_search_fn
 
-    return retrieve(
-        question,
-        ticker_filter=ticker,
-        period_filter=period,
-        doc_type_filter="transcript",
-        top_k=5,
+    search = make_retriever_search_fn(
+        viewer=PUBLIC_VIEWER,
+        filters={"company": ticker, "period": period, "doc_type": "transcript"},
     )
+    return search(question)
 
 
 class _PeerCitationOut(BaseModel):
     src: str
-    snippet: str
+    page: str
 
 
 class _PeerMetricSide(BaseModel):
@@ -513,17 +512,30 @@ class _PeerMetricSide(BaseModel):
 
 
 class _PeerKpi(BaseModel):
+    label: str
+    a: _PeerMetricSide
+    b: _PeerMetricSide
+    diff: str
+    better: Literal["a", "b"]
+
+
+class _PeerFinancialRow(BaseModel):
     metric: str
     a: _PeerMetricSide
     b: _PeerMetricSide
+    note: str
 
 
 class _PeerCallSide(BaseModel):
+    stance: str
+    tone: Literal["pos", "neu", "neg"]
+    quote: str
     cite: str
-    snippet: str
 
 
 class _PeerCall(BaseModel):
+    dim: str
+    topic: str
     a: _PeerCallSide
     b: _PeerCallSide
 
@@ -531,8 +543,15 @@ class _PeerCall(BaseModel):
 class _PeerTrendRow(BaseModel):
     period: str
     metric: str
-    a_value: float
-    b_value: float
+    a_value: float | None
+    b_value: float | None
+
+
+class _PeerValuationRow(BaseModel):
+    metric: str
+    a: str
+    b: str
+    note: str
 
 
 class PeerCompareRequest(BaseModel):
@@ -547,9 +566,10 @@ class PeerCompareResponse(BaseModel):
     b_ticker: str
     fiscal_period: str
     kpis: list[_PeerKpi]
+    financial: list[_PeerFinancialRow]
     calls: list[_PeerCall]
     trend: list[_PeerTrendRow]
-    valuation: list[dict]
+    valuation: list[_PeerValuationRow]
     summary: str
     compliance_status: str
 
@@ -559,6 +579,48 @@ def _fmt_value(value: float, unit: str | None) -> str:
     if unit == "%":
         return f"{value}{unit}"
     return f"{value} {unit}".strip()
+
+
+_PEER_METRIC_LABELS = {
+    "gross_margin": "毛利率",
+    "operating_margin": "營業利益率",
+    "net_margin": "淨利率",
+    "roe": "ROE",
+    "roa": "ROA",
+    "capex": "資本支出",
+    "free_cash_flow": "自由現金流",
+    "debt_ratio": "負債比率",
+    "dividend": "股利",
+    "pe_ratio": "PE",
+    "pb_ratio": "PB",
+    "ps_ratio": "PS",
+}
+
+
+def _metric_side(row: dict, period: str) -> _PeerMetricSide:
+    return _PeerMetricSide(
+        v=_fmt_value(row["value"], row.get("unit")),
+        citations=[
+            _PeerCitationOut(src=str(row.get("source_id") or ""), page=period)
+        ],
+    )
+
+
+def _metric_diff(a_row: dict, b_row: dict) -> tuple[str, Literal["a", "b"]]:
+    difference = float(a_row["value"]) - float(b_row["value"])
+    suffix = "pp" if a_row.get("unit") == b_row.get("unit") == "%" else (a_row.get("unit") or "")
+    return f"{abs(difference):g}{suffix}", "a" if difference >= 0 else "b"
+
+
+def _call_side(citation: Citation | None) -> _PeerCallSide:
+    if citation is None:
+        return _PeerCallSide(stance="資料不足", tone="neu", quote="", cite="")
+    return _PeerCallSide(
+        stance="有相關引用",
+        tone="neu",
+        quote=citation.snippet,
+        cite=citation.source_id,
+    )
 
 
 @app.post("/peer-compare", response_model=PeerCompareResponse, tags=["research"])
@@ -578,20 +640,29 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
     common_metrics = [m for m in a_by_metric if m in b_by_metric]
 
     kpis: list[_PeerKpi] = []
+    financial: list[_PeerFinancialRow] = []
     for metric in common_metrics:
         ar = a_by_metric[metric]
         br = b_by_metric[metric]
+        a_side = _metric_side(ar, req.fiscal_period)
+        b_side = _metric_side(br, req.fiscal_period)
+        difference, better = _metric_diff(ar, br)
+        label = _PEER_METRIC_LABELS.get(metric, metric)
         kpis.append(
             _PeerKpi(
-                metric=metric,
-                a=_PeerMetricSide(
-                    v=_fmt_value(ar["value"], ar.get("unit")),
-                    citations=[_PeerCitationOut(src=ar["source_id"], snippet=str(ar["value"]))],
-                ),
-                b=_PeerMetricSide(
-                    v=_fmt_value(br["value"], br.get("unit")),
-                    citations=[_PeerCitationOut(src=br["source_id"], snippet=str(br["value"]))],
-                ),
+                label=label,
+                a=a_side,
+                b=b_side,
+                diff=difference,
+                better=better,
+            )
+        )
+        financial.append(
+            _PeerFinancialRow(
+                metric=label,
+                a=a_side,
+                b=b_side,
+                note=f"差異 {difference}",
             )
         )
 
@@ -600,18 +671,17 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
     b_cites = _search_peer_calls(req.b_ticker, req.fiscal_period, req.question)
 
     calls: list[_PeerCall] = []
-    for ac, bc in zip(a_cites, b_cites):
+    for index in range(max(len(a_cites), len(b_cites))):
+        ac = a_cites[index] if index < len(a_cites) else None
+        bc = b_cites[index] if index < len(b_cites) else None
         calls.append(
             _PeerCall(
-                a=_PeerCallSide(cite=ac.source_id, snippet=ac.snippet),
-                b=_PeerCallSide(cite=bc.source_id, snippet=bc.snippet),
+                dim="法說會",
+                topic=req.question,
+                a=_call_side(ac),
+                b=_call_side(bc),
             )
         )
-    # handle unequal lengths
-    for ac in a_cites[len(b_cites):]:
-        calls.append(_PeerCall(a=_PeerCallSide(cite=ac.source_id, snippet=ac.snippet), b=_PeerCallSide(cite="", snippet="")))
-    for bc in b_cites[len(a_cites):]:
-        calls.append(_PeerCall(a=_PeerCallSide(cite="", snippet=""), b=_PeerCallSide(cite=bc.source_id, snippet=bc.snippet)))
 
     # trend: all periods for common metrics in fiscal data (all periods, not just requested)
     a_all = _structured_store.list_financials(ticker=req.a_ticker)
@@ -650,7 +720,8 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
     summary_parts = [f"比較期間：{req.fiscal_period}"]
     for kpi in kpis:
         summary_parts.append(
-            f"{kpi.metric}：{req.a_ticker} {kpi.a.v}（來源 {kpi.a.citations[0].src}）vs {req.b_ticker} {kpi.b.v}（來源 {kpi.b.citations[0].src}）"
+            f"{kpi.label}：{req.a_ticker} {kpi.a.v}（來源 {kpi.a.citations[0].src}）"
+            f"vs {req.b_ticker} {kpi.b.v}（來源 {kpi.b.citations[0].src}）"
         )
     raw_summary = "；".join(summary_parts)
 
@@ -663,6 +734,7 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         b_ticker=req.b_ticker,
         fiscal_period=req.fiscal_period,
         kpis=kpis,
+        financial=financial,
         calls=calls,
         trend=trend,
         valuation=[],

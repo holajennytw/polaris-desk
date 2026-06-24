@@ -351,9 +351,19 @@ class TestPeerCompare:
         assert body["a_ticker"] == "2330"
         assert body["b_ticker"] == "2454"
         assert body["fiscal_period"] == "2026Q1"
+        assert body["kpis"][0]["label"] == "毛利率"
         assert body["kpis"][0]["a"]["v"] == "57.8%"
         assert body["kpis"][0]["a"]["citations"][0]["src"] == "fin-a-q1"
+        assert body["kpis"][0]["a"]["citations"][0]["page"] == "2026Q1"
+        assert body["kpis"][0]["diff"] == "19.5pp"
+        assert body["kpis"][0]["better"] == "a"
+        assert body["financial"][0]["metric"] == "毛利率"
+        assert body["financial"][0]["note"] == "差異 19.5pp"
+        assert body["calls"][0]["dim"] == "法說會"
+        assert body["calls"][0]["topic"] == "比較毛利率與法說重點"
         assert body["calls"][0]["a"]["cite"] == "call-2330"
+        assert body["calls"][0]["a"]["quote"] == "2330 法說原文"
+        assert body["calls"][0]["a"]["tone"] == "neu"
         assert body["calls"][0]["b"]["cite"] == "call-2454"
         assert body["trend"] == [
             {"period": "2025Q4", "metric": "gross_margin", "a_value": 56.1, "b_value": 37.9},
@@ -365,6 +375,37 @@ class TestPeerCompare:
             ("2330", "2026Q1", "比較毛利率與法說重點"),
             ("2454", "2026Q1", "比較毛利率與法說重點"),
         ]
+
+    def test_peer_call_search_uses_existing_retriever_bridge(self, monkeypatch):
+        from polaris import api
+        from polaris.graph.state import Citation
+        from polaris.retrieval import retriever as retriever_module
+
+        captured: dict = {}
+        expected = [Citation(source_id="call-2330", snippet="原文", origin="embedding")]
+
+        def fake_factory(*, viewer, filters):
+            captured["viewer"] = viewer
+            captured["filters"] = filters
+
+            def search(question):
+                captured["question"] = question
+                return expected
+
+            return search
+
+        monkeypatch.setattr(retriever_module, "make_retriever_search_fn", fake_factory)
+
+        assert api._search_peer_calls("2330", "2026Q1", "比較毛利率") == expected
+        assert captured == {
+            "viewer": "__public__",
+            "filters": {
+                "company": "2330",
+                "period": "2026Q1",
+                "doc_type": "transcript",
+            },
+            "question": "比較毛利率",
+        }
 
 
 class TestRouting:
