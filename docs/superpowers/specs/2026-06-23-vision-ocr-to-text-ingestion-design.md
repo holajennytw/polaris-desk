@@ -66,6 +66,54 @@ PDF 頁
                                                  └─ chunks 表 → 文字 3 路 / /ask（既有，零改動）
 ```
 
+## 流程圖
+
+### 1) 資料流（入庫：PDF 頁 → 可檢索文字 chunk）
+
+> 藍色 = 本案新增（`render_page` / `vision_extract` / `vision_to_chunks`）；灰色 = 現役、已驗證能動。**綠色** = 兩條路最終都匯進同一張 `chunks` 表。
+
+```mermaid
+flowchart TD
+    PDF["PDF 頁"] --> Router{"page_router<br/>該頁有文字層?"}
+    Router -->|"是（文字層）"| TextChunk["既有文字切塊<br/>（不動）"]
+    Router -->|"否 / presentation 圖表頁<br/>文字密度 < 門檻（&lt;20 字）"| Render["render_page<br/>頁 → PNG ~200dpi"]
+    Render --> Vision["vision_extract<br/>Flash 預設 / 財報表升 Pro<br/>structured JSON（response_schema）"]
+    Vision --> Conf{"confidence 夠高?"}
+    Conf -->|"低"| Retry["升 Pro 重試"]
+    Retry --> Conf
+    Conf -->|"仍低"| Drop["標記不入庫<br/>（不寫疑似錯誤數字）"]
+    Conf -->|"OK"| Flatten["vision_to_chunks<br/>JSON 攤平成 chunk_text<br/>＋頁面影像參照"]
+    TextChunk --> Embed["既有 chunk_pages → embed（768 文字向量）"]
+    Flatten --> Embed
+    Embed --> Store[("BigQueryStore.add_documents<br/>polaris_core.chunks")]
+
+    classDef new fill:#cfe8ff,stroke:#2b6cb0,color:#1a365d;
+    classDef sink fill:#c6f6d5,stroke:#2f855a,color:#22543d;
+    classDef drop fill:#fed7d7,stroke:#c53030,color:#742a2a;
+    class Render,Vision,Flatten new;
+    class Embed,Store sink;
+    class Drop drop;
+```
+
+### 2) 使用者流（查詢：圖表題 → 接地回答）
+
+> 檢索端**零改動**——vision chunk 進 `chunks` 後，跟一般文字 chunk 走完全相同的既有路徑（R6 `/ask` → 文字 3 路 → 生成）。差別只在命中的若是 vision chunk，citation 會帶**頁面影像參照**可回看原圖。
+
+```mermaid
+flowchart TD
+    User(["使用者問圖表題<br/>例：台積電 2025Q1 3nm 製程占比?"]) --> Ask["/ask orchestration（R6）"]
+    Ask --> Retr["文字 3 路檢索<br/>BM25 ＋ 768 向量 ＋ Cohere rerank"]
+    Retr --> Chunks[("polaris_core.chunks<br/>（含 vision chunk）")]
+    Chunks --> Hit["命中 vision chunk<br/>extraction=vision｜帶頁面影像參照"]
+    Hit --> Gen["Gemini 生成回答<br/>引用接地：數字 ＋ 頁碼 ＋ 來源"]
+    Gen --> Answer(["回答 ＋ citation（可回看原圖）<br/>NFR-031：不給買賣建議"])
+
+    classDef existing fill:#e2e8f0,stroke:#4a5568,color:#1a202c;
+    classDef out fill:#c6f6d5,stroke:#2f855a,color:#22543d;
+    class Ask,Retr,Chunks,Hit,Gen existing;
+    class Answer out;
+```
+
 ## 元件（皆掛在 `src/polaris/ingestion/`）
 
 1. **`page_router`**：逐頁分流。有文字層 → 既有文字路；`doc_type=presentation` **或** 文字密度低於門檻（如該頁 `pypdf` 抽出 < 20 個非空白字元，視為掃描/圖表頁）→ vision 路。文字頁與 vision 頁可並存於同一份 PDF。
