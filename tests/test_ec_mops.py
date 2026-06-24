@@ -65,3 +65,21 @@ def test_subject_quarter_beats_filename_date_fallback():
     docs = ec_mops.fetch("6505", [2024], lambda _u: _ROWS_REUSED_FILE.encode())
     assert len(docs) == 1
     assert docs[0].fiscal_period == "2024Q1"
+
+
+_ROW_WESTERN_YEAR_SUBJECT = """
+<table><tr data-type='body'>
+<td>2330</td><td>台積電</td><td>114/04/17</td><td>14:00</td><td>—</td>
+<td>本公司受邀參加2025年第一季法人說明會</td>
+<td><a>233020250417M001.pdf</a></td>
+<td><a>233020250417E001.pdf</a></td>
+</tr></table>
+"""
+
+
+def test_subject_with_western_4digit_year_not_misread_as_roc():
+    # 回歸：台積電等公司主旨用「西元 4 碼年」（2025年第一季）。舊正規則 \d{2,3} 會抓到
+    # 「025」當民國 → 1911+25 = 1936Q1（年-89 bug）。應正確解成 2025Q1。
+    docs = ec_mops.fetch("2330", [2025], lambda _u: _ROW_WESTERN_YEAR_SUBJECT.encode())
+    assert {d.fiscal_period for d in docs} == {"2025Q1"}
+    assert {d.lang for d in docs} == {"zh", "en"}

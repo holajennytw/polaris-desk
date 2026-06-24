@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     top_k: int = 8
 
+    # --- Vision-OCR ingestion（圖表/掃描頁→文字，spec 2026-06-23）---
+    # 預設關：active_vision_extractor() 回 None → CI 0 外呼、不 import genai/pymupdf。
+    # 設 VISION_EXTRACTION=1 + 裝 .[vision] 才啟用（離線 ingestion 用）。
+    vision_extraction: bool = False
+    vision_confidence_floor: float = 0.6
+
     # --- ColPali 第 4 路 query 端編碼器（#133）---
     # 預設關閉：active_colpali_query_fn() 回 None → 第 4 路關閉、CI 0 import / 0 下載。
     # 設 COLPALI_QUERY_ENCODER=1 才載入 colpali-engine + torch + 權重（~5GB，需 GPU）。
