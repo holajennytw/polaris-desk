@@ -22,7 +22,8 @@ from pathlib import Path
 
 def _meta_from_filename(name: str) -> dict:
     # 2330_20250417M01_2025Q1_concall_presentation.pdf
-    m = re.match(r"(?P<t>\d+)_(?P<d>\d{8})[ME]\d+_(?P<p>\w+?)_concall_(?P<dt>\w+)\.pdf", name)
+    # 部分 GDrive 策展檔在日期與 M/E 序號間多一個底線（2317_20250514_M002_...），故 [ME] 前允許可選底線。
+    m = re.match(r"(?P<t>\d+)_(?P<d>\d{8})_?[ME]\d+_(?P<p>\w+?)_concall_(?P<dt>\w+)\.pdf", name)
     if not m:
         return {}
     d = m.group("d")
