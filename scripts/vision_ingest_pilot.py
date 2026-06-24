@@ -41,7 +41,10 @@ def main() -> None:
     ap.add_argument("--concurrency", type=int, default=1,
                     help="同時併發的 vision 請求數（thread pool）；>1 吞吐約 N 倍直到吃滿配額（預設 1）")
     ap.add_argument("--ingest", action="store_true", help="寫 DEV dataset（非 polaris_core）")
+    ap.add_argument("--periods", default="",
+                    help="只處理這些季別（逗號分隔，如 2024Q3,2024Q4,...）；空=全部")
     args = ap.parse_args()
+    allowed_periods = {p.strip() for p in args.periods.split(",") if p.strip()}
 
     from polaris.config import settings
     from polaris.ingestion.chunker import chunk_pages
@@ -78,6 +81,8 @@ def main() -> None:
         for pdf in pdfs:
             meta = _meta_from_filename(Path(pdf).name)
             if not meta:
+                continue
+            if allowed_periods and meta["period"] not in allowed_periods:
                 continue
             errs: list[int] = []
             pages = extract_pages_with_vision(
