@@ -38,6 +38,7 @@ export interface SummaryItemVM {
   text: string;
   cite: string;
   page: string;
+  doc_type_label?: string; // 重大訊息 / 法說逐字稿 / 新聞 — 顯示用，非 source_id
 }
 
 export interface ChartPointVM {

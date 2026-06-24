@@ -62,6 +62,11 @@ colpali = [
     "torch>=2.2",
     "pillow>=10.0",
 ]
+# 圖表/掃描頁 vision ingestion（spec 2026-06-23）：頁面渲染。google-genai 已是核心相依。
+# 預設 / CI 不裝 → vision gate 關、不 import。跑 ingestion 才 `uv pip install -e '.[vision]'`。
+vision = [
+    "pymupdf>=1.24",
+]
 
 [build-system]
 requires = ["hatchling"]

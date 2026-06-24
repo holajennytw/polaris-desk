@@ -1,5 +1,9 @@
 # Vision-OCR-to-text Ingestion Implementation Plan
 
+> ✅ **DONE 2026-06-24** — 全 8 task + 3 個實跑韌性修補已 merge `jenny/main`（`147838b`），745 測試綠。
+> pilot（2330+2891）已寫入 `polaris_dev_wayne` 並實測檢索命中。
+> 測試/驗證怎麼跑 → [`docs/vision-OCR_測試與驗證指南.md`](../../vision-OCR_測試與驗證指南.md)。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 圖表/掃描頁用 Gemini vision 抽成結構化文字，當作該頁的 page text 餵進**既有** `chunk_pages → ingest_chunks` 流程，進 `chunks` 表 → 文字 3 路 / `/ask`（零新索引、零 /ask 路由）。

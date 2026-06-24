@@ -13,7 +13,6 @@ import { DocViewer, type DocContent } from "@/components/polaris/DocViewer";
 import { ReportModal } from "@/components/polaris/ReportModal";
 import { KpiSkeleton, PanelSkeleton } from "@/components/polaris/Skeleton";
 import { useResearch } from "@/hooks/useResearch";
-import { useAlerts } from "@/hooks/useAlerts";
 import { useReadStore } from "@/hooks/useReadStore";
 import { useSuggestions } from "@/hooks/useSuggestions";
 import { useContraAlerts } from "@/hooks/useContraAlerts";
@@ -95,16 +94,44 @@ function Chart({ data }: { data: Array<{label:string;value:number}> }) {
   );
 }
 
+const TOUR_MOCK_RESULT = {
+  query: "台積電 2026Q1 法說會重點",
+  compliance_status: "pass",
+  kpis: [
+    { label: "毛利率", value: "57.8", unit: "%", delta: "QoQ +1.6pp", trend: "up" as const, cite: "stub-2330-2026Q1-fin" },
+    { label: "營業利益率", value: "47.5", unit: "%", delta: "QoQ +0.8pp", trend: "up" as const, cite: "stub-2330-2026Q1-fin" },
+    { label: "全年美元營收指引", value: "中段 20%+", unit: "", delta: "上調", trend: "up" as const, cite: "stub-2330-2026Q1-call" },
+  ],
+  summary: [
+    { text: "台積電 2026Q1 毛利率達 57.8%，季增 1.6pp，超出市場預期。", cite: "stub-2330-2026Q1-fin", page: "p.11" },
+    { text: "CoWoS 先進封裝需求強勁，Q4 產能預估較 Q3 翻倍。", cite: "stub-2330-2026Q1-call", page: "p.7" },
+    { text: "全年美元營收指引上調至中段 20% 以上成長。", cite: "stub-2330-2026Q1-transcript", page: "p.3" },
+  ],
+  chart: [
+    { label: "2025Q2", value: 53.1 }, { label: "2025Q3", value: 54.8 },
+    { label: "2025Q4", value: 56.2 }, { label: "2026Q1", value: 57.8 },
+  ],
+  react: [
+    { type: "THINK" as const, text: "解析查詢意圖：台積電 2026Q1 法說會重點", tool: false },
+    { type: "ACT" as const, text: "檢索法說逐字稿與財報 chunks", tool: true },
+    { type: "OBS" as const, text: "找到 12 筆相關段落，覆蓋毛利率、CoWoS 產能、營收指引", tool: false },
+  ],
+  citations: [
+    { ix: "1", label: "台積電_2026Q1_合併財報", detail: "財務報表", cite: "stub-2330-2026Q1-fin", snippet: "毛利率 57.8%，營業利益率 47.5%", period: "2026Q1" },
+    { ix: "2", label: "台積電_2026Q1_法說會逐字稿", detail: "法說會逐字稿", cite: "stub-2330-2026Q1-transcript", snippet: "CoWoS 產能 Q4 預估翻倍", period: "2026Q1" },
+  ],
+};
+
 function ResearchPageInner() {
   const { trigger, data, isMutating } = useResearch();
-  const { data: alerts } = useAlerts();
   const rs = useReadStore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [restoredData, setRestoredData] = useState<typeof data>(undefined);
   const [restoredAt, setRestoredAt] = useState<string | null>(null);
+  const [tourSampleFailed, setTourSampleFailed] = useState(false);
   const { suggestions: dynamicSuggestions, fading: chipsFading } = useSuggestions();
-  const contraAlerts = useContraAlerts();
+  const contraAlerts = useContraAlerts("research");
   const companies = useCompanies();
   const chips = dynamicSuggestions ?? PRESETS;
   const [query, setQuery] = useState("");
@@ -119,6 +146,7 @@ function ResearchPageInner() {
   const [progress, setProgress] = useState(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [thinkingLong, setThinkingLong] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(true);
@@ -169,10 +197,7 @@ function ResearchPageInner() {
   const { rows: financialRows, isLoading: isLoadingFinancials } = useFinancials(inferredTicker);
   const financialKpis = financialsToKpis(financialRows);
 
-  const researchAlerts = [
-    ...(alerts ?? []),  // watchdog alerts 不區分 origin，兩頁共用；等 R3 補 origin 欄位後再加 filter
-    ...contraAlerts,
-  ];
+  const researchAlerts = contraAlerts.filter(a => a.level !== "info");
 
   const runContradictionCheck = async (
     k: KpiVM[] = kpis,
@@ -190,11 +215,11 @@ function ResearchPageInner() {
         });
         if (res.ok) {
           const data = await res.json();
-          contraAlertStore.set(data.alerts ?? []);
+          contraAlertStore.set(data.alerts ?? [], "research");
           ok = true;
         }
       } catch { /* backend not ready, fall through */ }
-      if (!ok) contraAlertStore.set(buildMockContradictions(k, s));
+      if (!ok) contraAlertStore.set(buildMockContradictions(k, s), "research");
     } finally {
       setIsCheckingContra(false);
     }
@@ -204,7 +229,7 @@ function ResearchPageInner() {
     timers.current.forEach(clearTimeout); timers.current = [];
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
 
-    contraAlertStore.clear();
+    contraAlertStore.clear("research");
     setSelectedAlertIdx(null);
     setHasQueried(true);
     setPhase("running"); setStepN(0); setProgress(0);
@@ -219,6 +244,7 @@ function ResearchPageInner() {
       setProgress(p => Math.min(p + 2, 30));
     }, 200);
 
+    setTourSampleFailed(false);
     try {
       const result = await trigger(q ?? query);
 
@@ -248,6 +274,7 @@ function ResearchPageInner() {
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       setPhase("done");
       setProgress(0);
+      setTourSampleFailed(true);
     }
   };
   useEffect(() => () => {
@@ -255,10 +282,30 @@ function ResearchPageInner() {
     if (intervalRef.current) clearInterval(intervalRef.current);
   }, []);
 
+  useEffect(() => {
+    if (phase !== "running") { setThinkingLong(false); return; }
+    const t = setTimeout(() => setThinkingLong(true), 5000);
+    return () => clearTimeout(t);
+  }, [phase]);
+
   const handleTourRunSample = () => {
-    const sample = "台積電 2026Q1 法說會重點";
-    setQuery(sample);
-    run(sample);
+    setQuery(TOUR_MOCK_RESULT.query);
+    setHasQueried(true);
+    setPhase("running");
+    setStepN(0);
+    setProgress(0);
+    setTourSampleFailed(false);
+    // 假進度動畫：2 秒爬升至 100%，結束後注入 mock 資料（不呼叫 API、不寫對話紀錄）
+    const start = Date.now();
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const p = Math.min(Math.round((elapsed / 2000) * 100), 100);
+      setProgress(p);
+      if (p < 100) { timers.current.push(setTimeout(tick, 80)); return; }
+      setPhase("done");
+      setRestoredData(TOUR_MOCK_RESULT as typeof data);
+    };
+    timers.current.push(setTimeout(tick, 80));
   };
 
   const handleTourReset = () => {
@@ -268,7 +315,7 @@ function ResearchPageInner() {
     setProgress(0);
     setRestoredData(undefined);
     setRestoredAt(null);
-    contraAlertStore.clear();
+    contraAlertStore.clear("research");
   };
 
   const running = phase==="running";
@@ -342,7 +389,7 @@ function ResearchPageInner() {
                       {kpis.length > 0
                         ? kpis.map((k,i)=><KpiCard key={i} k={k} onCite={handleOpenDoc}/>)
                         : financialKpis.map((k,i)=>(
-                            <KpiCard key={i} k={{...k, cite:""}} onCite={()=>{}}/>
+                            <KpiCard key={i} k={k} onCite={handleOpenDoc}/>
                           ))
                       }
                     </div>
@@ -361,7 +408,7 @@ function ResearchPageInner() {
                             {summary.map((s,i)=>{
                               const hasContra = contraAlerts.some(a => a.level !== "info" && (a as any).cite_key === s.cite);
                               return (
-                                <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} />{hasContra && <span className="tag mid" style={{marginLeft:5,padding:"1px 7px",fontSize:12,verticalAlign:"middle"}} title="矛盾偵測警告，建議核對引用原文"><span className="tdot"/>矛盾</span>}<span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
+                                <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} />{hasContra && <span className="tag mid" style={{marginLeft:5,padding:"1px 7px",fontSize:12,verticalAlign:"middle"}} title="矛盾偵測警告，建議核對引用原文"><span className="tdot"/>矛盾</span>}{s.cite && <span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.doc_type_label ?? "文件"} {s.page}</span>}</span></li>
                               );
                             })}
                           </ul>
@@ -375,27 +422,7 @@ function ResearchPageInner() {
                       )}
                     </div>
                   </div>
-                  <div className="panel">
-                    <div className="panel-head">
-                      <span className="panel-title">量化分析</span>
-                      <span className="panel-meta">財務指標</span>
-                    </div>
-                    <div className="panel-body">
-                      {(displayData?.chart?.length ?? 0) > 0
-                        ? <>
-                            <Chart data={displayData!.chart}/>
-                            <div className="chart-foot">
-                              <span>單季毛利率（來源：財務資料庫）</span>
-                            </div>
-                          </>
-                        : <div className="chart-empty">
-                            <Icon name="layers" size={20} style={{color:"rgb(var(--muted))",marginBottom:8}}/>
-                            <span>財務指標資料建置中</span>
-                            <span className="font-mono" style={{fontSize:"0.72rem",color:"rgb(var(--muted))"}}>financial_metrics 表尚未入庫</span>
-                          </div>
-                      }
-                    </div>
-                  </div>
+                  {/* 量化分析：等 /research kpis+chart 欄位就緒後啟用 */}
                 </div>
               </>
             )}
@@ -427,6 +454,12 @@ function ResearchPageInner() {
                     <div className="ctx-prog-track"><div className="ctx-prog-fill" style={{width:progress+"%"}}/></div>
                     <span className="font-mono">{running ? (curPhase ?? "") : "done"} · {progress}%</span>
                   </div>
+                  {running && (
+                    <div className="thinking-pulse">
+                      <div className="thinking-dots"><span/><span/><span/></div>
+                      <span>{thinkingLong ? "正在絞盡腦汁中，請稍等" : "正在思考中"}</span>
+                    </div>
+                  )}
                   <ReActTrace steps={reactSteps} activeIndex={running?stepN-1:undefined} visibleCount={running?stepN:undefined}/>
                 </>
               )}
@@ -436,16 +469,21 @@ function ResearchPageInner() {
                 <span className="panel-title"><Icon name="alert" size={14} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>監控系統警示</span>
               </div>
               <div className="alert-list">
-                {researchAlerts.length > 0
-                  ? researchAlerts.map((a,i)=>(
-                      <AlertItem key={a.id} alert={a} selected={selectedAlertIdx===i} read={rs.isRead(a.id)}
-                        onClick={()=>{setSelectedAlertIdx(selectedAlertIdx===i?null:i);rs.markRead(a.id);}}
-                        onDoubleClick={()=>{setModalAlert(a);rs.markRead(a.id);}}/>
-                    ))
-                  : <div className="chart-empty" style={{padding:"20px 16px"}}>
-                      <Icon name="shield" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
-                      <span>{hasQueried ? "本次研究未發現異常訊號" : "執行研究後顯示相關警示"}</span>
+                {running
+                  ? <div className="thinking-pulse" style={{padding:"14px 16px"}}>
+                      <div className="thinking-dots"><span/><span/><span/></div>
+                      <span>正在抓取資料中</span>
                     </div>
+                  : researchAlerts.length > 0
+                    ? researchAlerts.map((a,i)=>(
+                        <AlertItem key={a.id} alert={a} selected={selectedAlertIdx===i} read={rs.isRead(a.id)}
+                          onClick={()=>{setSelectedAlertIdx(selectedAlertIdx===i?null:i);rs.markRead(a.id);}}
+                          onDoubleClick={()=>{setModalAlert(a);rs.markRead(a.id);}}/>
+                      ))
+                    : <div className="chart-empty" style={{padding:"20px 16px"}}>
+                        <Icon name="shield" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
+                        <span>{hasQueried ? "本次研究未發現異常訊號" : "執行研究後顯示相關警示"}</span>
+                      </div>
                 }
               </div>
             </div>
@@ -454,11 +492,16 @@ function ResearchPageInner() {
                 <span className="panel-title"><Icon name="quote" size={14} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>引用追蹤器</span>
                 {citations.length > 0 && <span className="panel-meta">100% 可溯源</span>}
               </div>
-              {citations.length > 0
-                ? <CitationList citations={citations} onOpen={handleOpenDoc}/>
-                : <div className="chart-empty" style={{padding:"20px 16px"}}>
-                    <span>{hasQueried ? "本次研究無引用來源" : "執行研究後顯示引用來源"}</span>
+              {running
+                ? <div className="thinking-pulse" style={{padding:"14px 16px"}}>
+                    <div className="thinking-dots"><span/><span/><span/></div>
+                    <span>正在抓取資料中</span>
                   </div>
+                : citations.length > 0
+                  ? <CitationList citations={citations} onOpen={handleOpenDoc}/>
+                  : <div className="chart-empty" style={{padding:"20px 16px"}}>
+                      <span>{hasQueried ? "本次研究無引用來源" : "執行研究後顯示引用來源"}</span>
+                    </div>
               }
             </div>
           </aside>
@@ -472,9 +515,9 @@ function ResearchPageInner() {
           <div className="dock-row">
             <Icon name="spark" size={18} style={{color:"rgb(var(--primary))",flexShrink:0}}/>
             <input className="dock-input" value={query} onChange={e=>setQuery(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter")run();}} placeholder="輸入研究問題..."/>
+              onKeyDown={e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey||!e.shiftKey))run();}} placeholder="輸入研究問題... (Enter 送出)"/>
             <button className={"dock-tool" + (isListening ? " active" : "")} title={isListening ? "聆聽中…" : "語音輸入"} onClick={startVoice} disabled={running}><Icon name="mic" size={19}/></button>
-            <button className="btn primary dock-send" onClick={()=>run()} disabled={running}>
+            <button className={"btn primary dock-send" + (running ? " sending" : "")} onClick={()=>run()} disabled={running}>
               <Icon name={running?"refresh":"send"} size={18}/>
             </button>
           </div>
@@ -514,6 +557,7 @@ function ResearchPageInner() {
         onRunSample={handleTourRunSample}
         onReset={handleTourReset}
         hasResults={!!displayData}
+        sampleFailed={tourSampleFailed}
       />
       <DocViewer doc={openDoc} onClose={()=>setOpenDoc(null)}/>
     </>
