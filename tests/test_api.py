@@ -147,7 +147,7 @@ class _StubStructuredStore:
     def list_events(self, *, ticker=None, event_type=None, limit=None):
         self.calls.append(("events", ticker, event_type, limit))
         return [
-            {"event_id": "evt-1", "ticker": "2330", "event_type": "monthly_revenue",
+            {"event_id": "evt-1", "ticker": "2330", "event_key": "monthly_revenue",
              "published_at": "2026-06-10", "title": "5月營收", "source_url": "https://mops"},
         ]
 
@@ -194,7 +194,7 @@ class TestEvents:
         r = client.get("/events")
         assert r.status_code == 200
         row = r.json()[0]
-        assert {"event_id", "ticker", "event_type", "published_at",
+        assert {"event_id", "ticker", "event_key", "published_at",
                 "title", "source_url"} <= row.keys()
 
     def test_type_filter_forwarded_as_event_type(self, client, stub_store):

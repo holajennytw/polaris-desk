@@ -137,7 +137,7 @@ export function OnboardingModal() {
           {isLast && !session && (
             <button
               className="sso-btn"
-              onClick={() => signIn("google")}
+              onClick={() => signIn("google", { callbackUrl: "/research" })}
               style={{ marginTop: 14, width: "100%", justifyContent: "center" }}
             >
               <GoogleMark />

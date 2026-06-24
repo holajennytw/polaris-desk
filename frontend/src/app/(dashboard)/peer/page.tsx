@@ -5,12 +5,10 @@ import { historyStore } from "@/lib/historyStore";
 import { api } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 import { AlertItem } from "@/components/polaris/AlertItem";
-import { CitationList } from "@/components/polaris/CitationList";
 import { ReActTrace } from "@/components/polaris/ReActTrace";
 import { ComplianceBanner } from "@/components/polaris/ComplianceBanner";
 import { DocViewer, type DocContent } from "@/components/polaris/DocViewer";
 import { ReportModal } from "@/components/polaris/ReportModal";
-import { useAlerts } from "@/hooks/useAlerts";
 import { useReadStore } from "@/hooks/useReadStore";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useContraAlerts } from "@/hooks/useContraAlerts";
@@ -124,11 +122,15 @@ function PeerSummaryPanel({ aName, bName }: { aName: string; bName: string }) {
 
 // ── Comparison blocks ─────────────────────────────────────────
 
-function getLatestYoy(rows: FinancialRow[]): number | null {
+function getLatestMetric(rows: FinancialRow[], metricId: string): number | null {
   if (!rows.length) return null;
   const periods = [...new Set(rows.map(r => r.fiscal_period).filter(Boolean))].sort() as string[];
   const latestPeriod = periods.at(-1);
-  return rows.find(r => r.fiscal_period === latestPeriod && r.metric_id === "revenue_yoy")?.value ?? null;
+  return rows.find(r => r.fiscal_period === latestPeriod && r.metric_id === metricId)?.value ?? null;
+}
+
+function getLatestYoy(rows: FinancialRow[]): number | null {
+  return getLatestMetric(rows, "revenue_yoy");
 }
 
 function fmtYoy(v: number | null): string {
@@ -136,22 +138,37 @@ function fmtYoy(v: number | null): string {
   return `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 }
 
+function fmtRevenue(v: number | null): string {
+  if (v === null) return "—";
+  const yi = v / 100_000; // 千元 → 億元
+  return `${yi >= 100 ? yi.toFixed(0) : yi.toFixed(1)}億`;
+}
+
 function PeerKpiGrid({ aName, bName, aTicker, bTicker }: {
   aName: string; bName: string; aTicker: string; bTicker: string;
 }) {
   const { rows: aRows } = useFinancials(aTicker || null);
   const { rows: bRows } = useFinancials(bTicker || null);
-  const aYoy = getLatestYoy(aRows);
-  const bYoy = getLatestYoy(bRows);
-  const yoyDiff = (aYoy !== null && bYoy !== null)
+
+  const aRevenue = getLatestMetric(aRows, "revenue");
+  const bRevenue = getLatestMetric(bRows, "revenue");
+  const aYoy     = getLatestYoy(aRows);
+  const bYoy     = getLatestYoy(bRows);
+
+  const revDiff = (aRevenue !== null && bRevenue !== null)
+    ? `${(aRevenue - bRevenue) >= 0 ? "+" : ""}${((aRevenue - bRevenue) / 100_000).toFixed(0)}億`
+    : "—";
+  const revBetter  = (aRevenue !== null && bRevenue !== null) ? (aRevenue >= bRevenue ? "a" : "b") : "";
+  const yoyDiff    = (aYoy !== null && bYoy !== null)
     ? `${(aYoy - bYoy) >= 0 ? "+" : ""}${(aYoy - bYoy).toFixed(1)}pp`
     : "—";
-  const yoyBetter = (aYoy !== null && bYoy !== null) ? (aYoy >= bYoy ? "a" : "b") : "";
+  const yoyBetter  = (aYoy !== null && bYoy !== null) ? (aYoy >= bYoy ? "a" : "b") : "";
 
   const kpis = [
-    { label:"毛利率",     a:"—", b:"—", diff:"待接後端", better:"" },
-    { label:"營業利益率", a:"—", b:"—", diff:"待接後端", better:"" },
-    { label:"營收 YoY",  a:fmtYoy(aYoy), b:fmtYoy(bYoy), diff:yoyDiff, better:yoyBetter },
+    { label:"月營收",      a:fmtRevenue(aRevenue), b:fmtRevenue(bRevenue), diff:revDiff,    better:revBetter },
+    { label:"月營收 YoY",  a:fmtYoy(aYoy),         b:fmtYoy(bYoy),         diff:yoyDiff,    better:yoyBetter },
+    { label:"毛利率",      a:"—",                   b:"—",                  diff:"待接後端",  better:"" },
+    { label:"營業利益率",  a:"—",                   b:"—",                  diff:"待接後端",  better:"" },
   ];
   return (
     <div className="peer-kpi-grid">
@@ -196,8 +213,10 @@ function CallsBlock({ aName, bName, onOpen }: { aName:string; bName:string; onOp
     { topic:"資本支出",      aStance:"高檔", aTone:"neu", aQuote:"全年資本支出維持高檔。",    aSourceId:"", bStance:"—", bTone:"neu", bQuote:"待接後端", bSourceId:"" },
     { topic:"毛利展望",      aStance:"走升", aTone:"pos", aQuote:"良率改善，毛利率季增。",    aSourceId:"", bStance:"—", bTone:"neu", bQuote:"待接後端", bSourceId:"" },
   ];
-  const openQuote = (name: string, quote: string, sourceId: string) => {
+  const openQuote = async (name: string, quote: string, sourceId: string) => {
     if (!sourceId) return;
+    const chunk = await api.chunk(sourceId);
+    if (chunk) { onOpen(chunk); return; }
     onOpen({ key: sourceId, title: `${name} 法說逐字稿`, kind: "transcript", source_id: sourceId, page: "", trust: "mid", highlight: quote, body: [quote] });
   };
   return (
@@ -313,10 +332,9 @@ function CompanySlot({ company, open, search, options, placeholder, onToggle, on
 // ── Page ──────────────────────────────────────────────────────
 
 export default function PeerPage() {
-  const { data: alerts } = useAlerts();
   const rs = useReadStore();
   const companies = useCompanies();
-  const contraAlerts = useContraAlerts();
+  const contraAlerts = useContraAlerts("peer");
   const { suggestions: dynamicSuggestions, fading: chipsFading } = useSuggestions({ mode: "peer" });
   const chips = dynamicSuggestions ?? PRESETS;
 
@@ -324,6 +342,17 @@ export default function PeerPage() {
   const [bId, setBId] = useState("");
   const [tab, setTab] = useState("financial");
   const [fiscalPeriod, setFiscalPeriod] = useState("2026Q1");
+
+  // 從兩間公司的財務資料推導可選季度（有資料才顯示）
+  const { rows: aFinRows } = useFinancials(aId || null);
+  const { rows: bFinRows } = useFinancials(bId || null);
+  const availablePeriods = (() => {
+    const allPeriods = [...aFinRows, ...bFinRows]
+      .map(r => r.fiscal_period)
+      .filter((p): p is string => !!p);
+    const unique = [...new Set(allPeriods)].sort().reverse();
+    return unique.length > 0 ? unique : PERIOD_OPTIONS;
+  })();
   const [query, setQuery] = useState("");
   const [hasQueried, setHasQueried] = useState(false);
   const [parseMsg, setParseMsg] = useState({ ignored:[] as string[], unknown:[] as string[] });
@@ -339,6 +368,7 @@ export default function PeerPage() {
   const [showReport, setShowReport] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(true);
   const [isListening, setIsListening] = useState(false);
+  const [thinkingLong, setThinkingLong] = useState(false);
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -348,6 +378,12 @@ export default function PeerPage() {
     timers.current.forEach(clearTimeout);
     if (intervalRef.current) clearInterval(intervalRef.current);
   }, []);
+
+  useEffect(() => {
+    if (phase !== "running") { setThinkingLong(false); return; }
+    const t = setTimeout(() => setThinkingLong(true), 5000);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   useEffect(() => {
     if (!openSlot) return;
@@ -384,10 +420,7 @@ export default function PeerPage() {
   const total = MOCK_REACT.length || 1;
   const curPhase = running ? PHASES[Math.min(Math.floor((stepN / total) * PHASES.length), PHASES.length - 1)] : null;
 
-  const peerAlerts = [
-    ...(alerts ?? []),  // watchdog alerts 不區分 origin，兩頁共用；等 R3 補 origin 欄位後再加 filter
-    ...contraAlerts,
-  ];
+  const peerAlerts = contraAlerts.filter(a => a.level !== "info");
 
   const switchTab = (t: string) => setTab(t);
 
@@ -400,9 +433,9 @@ export default function PeerPage() {
   const runContraCheck = async (aName: string, bName: string) => {
     if (isCheckingContra) return;
     setIsCheckingContra(true);
-    contraAlertStore.clear();
+    contraAlertStore.clear("peer");
     try {
-      contraAlertStore.set(buildMockPeerContradictions(aName, bName));
+      contraAlertStore.set(buildMockPeerContradictions(aName, bName), "peer");
     } finally {
       setIsCheckingContra(false);
     }
@@ -423,7 +456,7 @@ export default function PeerPage() {
     if (ok[1]) setBId(ok[1].id);
     if (res.tab) switchTab(res.tab);
     const normPeriod = res.period.replace(/\s+/g, "");
-    if (PERIOD_OPTIONS.includes(normPeriod)) setFiscalPeriod(normPeriod);
+    if (availablePeriods.includes(normPeriod)) setFiscalPeriod(normPeriod);
     setParseMsg({
       ignored: ok.slice(2).map(o => o.name),
       unknown: res.ordered.filter(o => o.status === "nodata").map(o => o.name),
@@ -435,7 +468,7 @@ export default function PeerPage() {
 
     timers.current.forEach(clearTimeout); timers.current = [];
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    contraAlertStore.clear();
+    contraAlertStore.clear("peer");
     setSelectedAlertIdx(null);
     setHasQueried(true);
     setPhase("running"); setStepN(0); setProgress(0);
@@ -522,7 +555,7 @@ export default function PeerPage() {
               </div>
               <div className="ptb-period">
                 <select value={fiscalPeriod} onChange={e => setFiscalPeriod(e.target.value)}>
-                  {PERIOD_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                  {availablePeriods.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
             </div>
@@ -584,6 +617,12 @@ export default function PeerPage() {
                     <div className="ctx-prog-track"><div className="ctx-prog-fill" style={{width:progress+"%"}}/></div>
                     <span className="font-mono">{running ? (curPhase ?? "") : "done"} · {progress}%</span>
                   </div>
+                  {running && (
+                    <div className="thinking-pulse">
+                      <div className="thinking-dots"><span/><span/><span/></div>
+                      <span>{thinkingLong ? "模型絞盡腦汁中，快好了" : "正在思考中"}</span>
+                    </div>
+                  )}
                   <ReActTrace steps={MOCK_REACT} activeIndex={running ? stepN-1 : undefined} visibleCount={running ? stepN : undefined}/>
                 </>
               )}
@@ -593,28 +632,37 @@ export default function PeerPage() {
                 <span className="panel-title"><Icon name="alert" size={14} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>監控系統警示</span>
               </div>
               <div className="alert-list">
-                {peerAlerts.length > 0
-                  ? peerAlerts.map((a,i) => (
-                      <AlertItem key={a.id} alert={a} selected={selectedAlertIdx===i} read={rs.isRead(a.id)}
-                        onClick={() => { setSelectedAlertIdx(selectedAlertIdx===i?null:i); rs.markRead(a.id); }}
-                        onDoubleClick={() => { setModalAlert(a); rs.markRead(a.id); }}/>
-                    ))
-                  : <div className="chart-empty" style={{padding:"20px 16px"}}>
-                      <Icon name="shield" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
-                      <span>{hasQueried ? "本次比較未發現異常訊號" : "執行比較後顯示相關警示"}</span>
+                {running
+                  ? <div className="thinking-pulse" style={{padding:"14px 16px"}}>
+                      <div className="thinking-dots"><span/><span/><span/></div>
+                      <span>正在抓取資料中</span>
                     </div>
+                  : peerAlerts.length > 0
+                    ? peerAlerts.map((a,i) => (
+                        <AlertItem key={a.id} alert={a} selected={selectedAlertIdx===i} read={rs.isRead(a.id)}
+                          onClick={() => { setSelectedAlertIdx(selectedAlertIdx===i?null:i); rs.markRead(a.id); }}
+                          onDoubleClick={() => { setModalAlert(a); rs.markRead(a.id); }}/>
+                      ))
+                    : <div className="chart-empty" style={{padding:"20px 16px"}}>
+                        <Icon name="shield" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
+                        <span>{hasQueried ? "本次比較未發現異常訊號" : "執行比較後顯示相關警示"}</span>
+                      </div>
                 }
               </div>
             </div>
             <div className="panel ctx-panel">
               <div className="panel-head">
                 <span className="panel-title"><Icon name="quote" size={14} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>引用追蹤器</span>
-                {hasQueried && <span className="panel-meta">待接後端</span>}
+                <span className="panel-meta">待接後端</span>
               </div>
-              {hasQueried
-                ? <CitationList citations={[]} onOpen={() => {}}/>
+              {running
+                ? <div className="thinking-pulse" style={{padding:"14px 16px"}}>
+                    <div className="thinking-dots"><span/><span/><span/></div>
+                    <span>正在抓取資料中</span>
+                  </div>
                 : <div className="chart-empty" style={{padding:"20px 16px"}}>
-                    <span>執行比較後顯示引用來源</span>
+                    <Icon name="quote" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
+                    <span>{hasQueried ? "引用來源待 POST /peer-compare 上線後顯示" : "執行比較後顯示引用來源"}</span>
                   </div>
               }
             </div>
@@ -631,10 +679,10 @@ export default function PeerPage() {
           <div className="dock-row">
             <Icon name="spark" size={18} style={{color:"rgb(var(--primary))",flexShrink:0}}/>
             <input className="dock-input" value={query} onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => { if(e.key==="Enter") runQuery(); }}
-              placeholder="輸入欲比較的公司，例如：比較台積電與聯發科財務..."/>
+              onKeyDown={e => { if(e.key==="Enter"&&(e.ctrlKey||e.metaKey||!e.shiftKey)) runQuery(); }}
+              placeholder="輸入欲比較的公司，例如：比較台積電與聯發科財務... (Enter 送出)"/>
             <button className={"dock-tool" + (isListening ? " active" : "")} title={isListening ? "聆聽中…" : "語音輸入"} onClick={startVoice} disabled={running}><Icon name="mic" size={19}/></button>
-            <button className="btn primary dock-send" onClick={() => runQuery()} disabled={running}>
+            <button className={"btn primary dock-send" + (running ? " sending" : "")} onClick={() => runQuery()} disabled={running}>
               <Icon name={running ? "refresh" : "send"} size={18}/>
             </button>
           </div>

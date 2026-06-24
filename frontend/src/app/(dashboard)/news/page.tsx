@@ -65,9 +65,9 @@ export default function NewsPage() {
           </div>
 
           {isLoading ? (
-            <div style={{ padding: "48px 16px", textAlign: "center", color: "rgb(var(--muted))" }}>
-              <Icon name="news" size={28} style={{ marginBottom: 10, opacity: 0.25 }} />
-              <div>載入中...</div>
+            <div className="thinking-pulse">
+              <div className="thinking-dots"><span/><span/><span/></div>
+              載入中
             </div>
           ) : items.length === 0 ? (
             <div style={{ padding: "48px 16px", textAlign: "center", color: "rgb(var(--muted))" }}>

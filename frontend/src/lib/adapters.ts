@@ -222,7 +222,7 @@ const _DOC_TYPE_LABEL: Record<string, string> = {
   perf:         "營運報告",
 };
 
-// origin（搜尋方法）→ 中文 fallback，當 doc_type 不存在時用
+// origin（搜尋方法）→ 中文 fallback
 const _ORIGIN_LABEL: Record<ResearchCitationRaw["origin"], string> = {
   stub:      "文件",
   bm25:      "文件",
@@ -232,13 +232,30 @@ const _ORIGIN_LABEL: Record<ResearchCitationRaw["origin"], string> = {
   news:      "新聞",
 };
 
+// #13 新欄位：source_key / event_key → 中文標籤
+const _SOURCE_KEY_LABEL: Record<string, string> = {
+  PRIMARY_EC_TRANSCRIPT:   "法說逐字稿",
+  PRIMARY_EC_PRESENTATION: "法說簡報",
+  PRIMARY_MOPS:            "重大訊息",
+  PRIMARY_NEWS:            "新聞",
+};
+const _EVENT_KEY_LABEL: Record<string, string> = {
+  earnings_call:        "法說會",
+  "major_news.others":  "重大訊息",
+  news:                 "新聞",
+};
+
 function citationLabel(ev: ResearchCitationRaw): string {
-  // 1. 後端直接帶 doc_type（真實 BQ 資料）
+  // 1. source_key（最精確，#13 新欄位）
+  if (ev.source_key) return _SOURCE_KEY_LABEL[ev.source_key] ?? ev.source_key;
+  // 2. event_key（#13 新欄位）
+  if (ev.event_key) return _EVENT_KEY_LABEL[ev.event_key] ?? ev.event_key;
+  // 3. 舊 doc_type（backward compat）
   if (ev.doc_type) return _DOC_TYPE_LABEL[ev.doc_type] ?? ev.doc_type;
-  // 2. stub source_id 格式：stub-{ticker}-{period}-{doctype}
+  // 4. stub source_id 格式：stub-{ticker}-{period}-{doctype}
   const m = ev.source_id.match(/^stub-\d+-\w+-(\w+)$/);
   if (m) return _DOC_TYPE_LABEL[m[1]] ?? m[1];
-  // 3. origin fallback
+  // 5. origin fallback
   return _ORIGIN_LABEL[ev.origin] ?? "文件";
 }
 
@@ -267,19 +284,27 @@ function splitAnswer(text: string): string[] {
 
 export function normalizeResearch(raw: ResearchResponse, query: string): AskVM {
   const bullets = splitAnswer(raw.final_answer);
-  const summary: SummaryItemVM[] = bullets.map((text, i) => ({
-    text,
-    cite: raw.evidence[i]?.source_id ?? raw.evidence[0]?.source_id ?? "",
-    page: "",
-  }));
+  const summary: SummaryItemVM[] = bullets.map((text, i) => {
+    const ev = raw.evidence[i] ?? raw.evidence[0];
+    return {
+      text,
+      cite: ev?.source_id ?? "",
+      page: "",
+      doc_type_label: ev ? citationLabel(ev) : undefined,
+    };
+  });
 
   const citations: CitationTrackerVM[] = raw.evidence.map((ev, i) => ({
     ix:      String(i + 1),
-    label:   citationLabel(ev),
-    detail:  ev.published_at ?? (ev.snippet.length > 60 ? ev.snippet.slice(0, 60) + "…" : ev.snippet),
+    label:   ev.company ? `${ev.company} · ${citationLabel(ev)}` : citationLabel(ev),
+    detail:  ev.published_yyyymm
+               ? String(ev.published_yyyymm).replace(/^(\d{4})(\d{2})$/, "$1-$2")
+               : (ev.published_at ?? (ev.snippet.length > 60 ? ev.snippet.slice(0, 60) + "…" : ev.snippet)),
     cite:    ev.source_id,
     snippet: ev.snippet,
-    period:  ev.fiscal_period ?? "",
+    period:  ev.published_yyyymm
+               ? String(ev.published_yyyymm).replace(/^(\d{4})(\d{2})$/, "$1-$2")
+               : (ev.fiscal_period ?? ""),
   }));
 
   const react: ReActStepVM[] = raw.react_steps.flatMap(expandReActStep);

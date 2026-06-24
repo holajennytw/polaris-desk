@@ -10,6 +10,8 @@ export interface FinancialRow {
   unit: string | null;
   source_id: string | null;
   published_at: string | null;
+  year: number | null;
+  month: number | null;
 }
 
 async function fetchFinancials(ticker: string): Promise<FinancialRow[]> {
@@ -42,7 +44,7 @@ export function inferTickerFromQuery(
 
 // FinancialRow[] → 顯示用 KPI 摘要（最新期別）
 export function financialsToKpis(rows: FinancialRow[]): Array<{
-  label: string; value: string; unit: string; delta: string; trend: "up" | "down";
+  label: string; value: string; unit: string; delta: string; trend: "up" | "down"; cite: string;
 }> {
   if (!rows.length) return [];
 
@@ -50,27 +52,48 @@ export function financialsToKpis(rows: FinancialRow[]): Array<{
   const periods = [...new Set(rows.map(r => r.fiscal_period).filter(Boolean))].sort();
   const latestPeriod = periods.at(-1);
   const periodRows = rows.filter(r => r.fiscal_period === latestPeriod);
-  const get = (id: string) => periodRows.find(r => r.metric_id === id)?.value ?? null;
+  const get = (id: string) => periodRows.find(r => r.metric_id === id) ?? null;
+
+  // 優先用 v_financial_metrics_semantic 的 year + month，沒有時 fallback 到 fiscal_period
+  const firstRow = periodRows[0];
+  const periodLabel =
+    firstRow?.year != null && firstRow?.month != null
+      ? `${firstRow.year}年${firstRow.month}月`
+      : (latestPeriod ?? "");
 
   const result = [];
-  const yoy = get("revenue_yoy");
-  if (yoy !== null) {
+  const revRow = get("revenue");
+  if (revRow?.value != null) {
+    const yi = revRow.value / 100_000; // 千元 → 億元
     result.push({
-      label: `月營收 YoY（${latestPeriod}）`,
-      value: yoy.toFixed(2),
-      unit: "%",
+      label: `月營收 ${periodLabel}`,
+      value: yi >= 100 ? yi.toFixed(0) : yi.toFixed(1),
+      unit: "億元",
       delta: "",
-      trend: yoy >= 0 ? ("up" as const) : ("down" as const),
+      trend: "up" as const,
+      cite: revRow.source_id ?? "",
     });
   }
-  const ytdYoy = get("ytd_yoy");
-  if (ytdYoy !== null) {
+  const yoyRow = get("revenue_yoy");
+  if (yoyRow?.value != null) {
     result.push({
-      label: `累計 YoY（${latestPeriod}）`,
-      value: ytdYoy.toFixed(2),
+      label: `月營收 YoY ${periodLabel}`,
+      value: yoyRow.value.toFixed(2),
       unit: "%",
       delta: "",
-      trend: ytdYoy >= 0 ? ("up" as const) : ("down" as const),
+      trend: yoyRow.value >= 0 ? ("up" as const) : ("down" as const),
+      cite: yoyRow.source_id ?? "",
+    });
+  }
+  const ytdRow = get("ytd_yoy");
+  if (ytdRow?.value != null) {
+    result.push({
+      label: `累計 YoY ${periodLabel}`,
+      value: ytdRow.value.toFixed(2),
+      unit: "%",
+      delta: "",
+      trend: ytdRow.value >= 0 ? ("up" as const) : ("down" as const),
+      cite: ytdRow.source_id ?? "",
     });
   }
   return result;

@@ -18,8 +18,10 @@ const TAB_LABELS: Record<string, string> = { feed:"風險動態", tracking:"追�
 export default function NotificationsPage() {
   const { data: notifs } = useNotifications();
   const { data: alerts } = useAlerts();
-  const contraAlerts = useContraAlerts();
+  const contraAlertsR = useContraAlerts("research");
+  const contraAlertsP = useContraAlerts("peer");
   const rs = useReadStore();
+  const contraAlerts = [...contraAlertsR, ...contraAlertsP].filter(a => a.level !== "info");
   const allAlerts = [...(alerts ?? []), ...contraAlerts];
   const [tab, setTab] = useState<typeof TABS[number]>("feed");
   const { mutate } = useSWRConfig();
@@ -27,6 +29,17 @@ export default function NotificationsPage() {
   const companies = useCompanies();
   const { data: subs, isLoading: isSubsLoading } = useSubscriptions();
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const subscribedCompanies = companies.filter(c => (subs ?? []).includes(c.id));
+  const filteredCompanies = companies.filter(c => {
+    if ((subs ?? []).includes(c.id)) return false;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return c.id.includes(q) || c.name.toLowerCase().includes(q);
+  });
 
   const handleMarkNotifRead = async (id: string, alreadyRead: boolean) => {
     if (alreadyRead) return;
@@ -39,11 +52,14 @@ export default function NotificationsPage() {
     const next = current.includes(ticker)
       ? current.filter((t) => t !== ticker)
       : [...current, ticker];
+    setSaveError(false);
     setIsSaving(true);
     try {
       await api.setSubscriptions(next);
       mutate("subscriptions");
-    } catch { /* ignore */ } finally {
+    } catch {
+      setSaveError(true);
+    } finally {
       setIsSaving(false);
     }
   };
@@ -118,6 +134,7 @@ export default function NotificationsPage() {
             <div className="panel-head">
               <span className="panel-title"><Icon name="target" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>訂閱設定</span>
               {isSaving && <span className="panel-meta">儲存中…</span>}
+              {saveError && <span className="panel-meta" style={{color:"rgb(var(--danger))"}}>儲存失敗，請稍後再試</span>}
             </div>
             {!session ? (
               <div style={{padding:"48px 16px",textAlign:"center",color:"rgb(var(--muted))"}}>
@@ -130,29 +147,84 @@ export default function NotificationsPage() {
             ) : (
               <div style={{padding:"16px"}}>
                 <p style={{fontSize:13,color:"rgb(var(--muted))",marginBottom:16}}>
-                  點選公司即可切換訂閱狀態，系統將自動推送法說會與財報更新通知。
+                  搜尋公司後選取訂閱，接收法說會與財報更新通知。
                 </p>
-                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                  {companies.map(c => {
-                    const isSubbed = (subs ?? []).includes(c.id);
-                    return (
-                      <button
-                        key={c.id}
-                        className={"btn" + (isSubbed ? " primary" : " ghost")}
-                        style={{fontSize:13,padding:"4px 12px",height:"auto"}}
-                        onClick={() => toggleSub(c.id)}
-                        disabled={isSaving}
-                      >
-                        <span className="font-mono">{c.id}</span>
-                        <span style={{marginLeft:6}}>{c.name}</span>
-                        {isSubbed && <Icon name="check" size={13} style={{marginLeft:4}}/>}
-                      </button>
-                    );
-                  })}
-                  {companies.length === 0 && (
-                    <div style={{color:"rgb(var(--muted))",fontSize:13}}>公司清單載入中…</div>
+                {/* 搜尋框 + 下拉 */}
+                <div style={{position:"relative",marginBottom:20}}>
+                  <input
+                    className="dock-input"
+                    style={{width:"100%",boxSizing:"border-box"}}
+                    value={searchQuery}
+                    onChange={e => { setSearchQuery(e.target.value); setDropdownOpen(true); }}
+                    onFocus={() => setDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setDropdownOpen(false), 150)}
+                    placeholder="輸入股票代號或公司名稱..."
+                    disabled={isSaving}
+                  />
+                  {dropdownOpen && (
+                    <div style={{
+                      position:"absolute",top:"calc(100% + 4px)",left:0,right:0,
+                      background:"rgb(var(--card))",
+                      border:"1px solid rgb(var(--border))",
+                      borderRadius:"var(--radius)",
+                      boxShadow:"0 4px 16px rgb(0 0 0/.12)",
+                      zIndex:200,maxHeight:220,overflowY:"auto",
+                    }}>
+                      {filteredCompanies.length > 0 ? filteredCompanies.map(c => (
+                        <button
+                          key={c.id}
+                          onMouseDown={() => { toggleSub(c.id); setSearchQuery(""); setDropdownOpen(false); }}
+                          style={{
+                            display:"flex",alignItems:"center",gap:10,width:"100%",
+                            padding:"10px 14px",background:"none",border:"none",
+                            cursor:"pointer",textAlign:"left",color:"rgb(var(--foreground))",
+                            borderBottom:"1px solid rgb(var(--border))",
+                          }}
+                          className="sub-dropdown-item"
+                        >
+                          <span className="font-mono" style={{fontSize:13,color:"rgb(var(--primary))",minWidth:36}}>{c.id}</span>
+                          <span style={{fontSize:14}}>{c.name}</span>
+                        </button>
+                      )) : (
+                        <div style={{padding:"16px 14px",fontSize:13,color:"rgb(var(--muted))"}}>
+                          {searchQuery ? "找不到符合的公司" : "所有公司皆已訂閱"}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
+                {/* 已訂閱清單 */}
+                {subscribedCompanies.length > 0 ? (
+                  <div>
+                    <div style={{fontSize:12,fontWeight:600,color:"rgb(var(--muted))",marginBottom:8,letterSpacing:".04em"}}>已訂閱</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                      {subscribedCompanies.map(c => (
+                        <span key={c.id} style={{
+                          display:"inline-flex",alignItems:"center",gap:6,
+                          padding:"4px 10px",borderRadius:"var(--radius-lg,20px)",
+                          background:"rgb(var(--primary)/.12)",
+                          border:"1px solid rgb(var(--primary)/.25)",
+                          fontSize:13,fontWeight:500,
+                        }}>
+                          <span className="font-mono" style={{color:"rgb(var(--primary))"}}>{c.id}</span>
+                          <span>{c.name}</span>
+                          <button
+                            onClick={() => toggleSub(c.id)}
+                            disabled={isSaving}
+                            style={{
+                              background:"none",border:"none",cursor:"pointer",
+                              padding:0,lineHeight:1,color:"rgb(var(--muted))",
+                              fontSize:15,marginLeft:2,
+                            }}
+                            title={`取消訂閱 ${c.name}`}
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{fontSize:13,color:"rgb(var(--muted))"}}>尚未訂閱任何公司</div>
+                )}
               </div>
             )}
           </div>
