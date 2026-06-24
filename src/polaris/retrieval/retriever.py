@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -329,14 +329,20 @@ class HybridRetriever:
             ranked.append(_copy_result(item, score=normalized_score, origin="bm25"))
         return ranked
 
-    def _vector_search(self, query: str, filters: dict | None) -> list[SearchResult]:
+    def _vector_search(
+        self,
+        query: str,
+        filters: dict | None,
+        *,
+        top_k: int | None = None,
+    ) -> list[SearchResult]:
         if self.embedding_fn is None or self.store is None:
             return []
         try:
             query_embedding = self.embedding_fn(query)
             if not query_embedding:
                 return []
-            results = self.store.search(query_embedding, self.top_k, filters=filters)
+            results = self.store.search(query_embedding, top_k or self.top_k, filters=filters)
         except Exception:  # noqa: BLE001 - vector backend is optional; BM25 stays available
             # P0：別吞錯 —— 記 warning（含 traceback）讓向量後端失敗看得見，但仍回 []
             # 讓 BM25 fallback 撐住這次查詢（檢索不中斷、行為不退步）。
@@ -347,6 +353,26 @@ class HybridRetriever:
             return []
         return [_normalize_vector_result(result) for result in results]
 
+    def retrieve_candidates(
+        self,
+        query: str,
+        *,
+        filters: dict | None = None,
+        top_k: int | None = None,
+    ) -> list[SearchResult]:
+        """Return merged BM25/vector candidates without running the reranker."""
+        query = (query or "").strip()
+        if not query:
+            return []
+
+        limit = top_k or self.top_k
+        ranked = _merge_results([
+            *self._bm25_search(query, filters),
+            *self._vector_search(query, filters, top_k=limit),
+        ])
+        ranked.sort(key=lambda r: r.score, reverse=True)
+        return [_ensure_citation_metadata(r) for r in ranked[:limit]]
+
     def retrieve(self, query: str, *, filters: dict | None = None) -> list[SearchResult]:
         """3-path retrieval: BM25 keyword + optional vector + optional Cohere Rerank.
 
@@ -354,19 +380,12 @@ class HybridRetriever:
         Rerank uses ``rerank_fn`` if set, otherwise falls back to ``_cohere_rerank``
         which reads ``COHERE_API_KEY`` and skips gracefully when absent.
         """
-        query = (query or "").strip()
-        if not query:
+        candidates = self.retrieve_candidates(query, filters=filters)
+        if not candidates:
             return []
 
-        ranked = _merge_results([
-            *self._bm25_search(query, filters),
-            *self._vector_search(query, filters),
-        ])
-        ranked.sort(key=lambda r: r.score, reverse=True)
-        candidates = ranked[: self.top_k]
-
         reranker = self.rerank_fn if self.rerank_fn is not None else _cohere_rerank
-        candidates = reranker(query, candidates, self.top_k)
+        candidates = reranker(query.strip(), candidates, self.top_k)[: self.top_k]
         # Every result must carry the citation-facing metadata keys so downstream
         # adapters (api.py /research, Deep Research) can read metadata["doc_type"/
         # "published_at"] safely regardless of channel (incl. BM25/stub fallback).
@@ -400,30 +419,69 @@ def make_retriever_search_fn(
     r = retriever if retriever is not None else HybridRetriever()
     combined_filters: dict = {**(filters or {}), "viewer": viewer}
 
-    # Map retriever-internal origins onto the Citation literal. The retriever uses
-    # "vector" but Citation calls that channel "embedding"; anything unrecognised
-    # falls back to "bm25" so the adapter never raises a validation error.
-    _CITATION_ORIGINS = {"stub", "bm25", "embedding", "colpali", "rerank", "news"}
+    def _search(query: str) -> list:
+        return [_result_to_citation(sr, Citation) for sr in r.retrieve(query, filters=combined_filters)]
 
-    def _citation_origin(raw: str | None) -> str:
-        if raw == "vector":
-            return "embedding"
-        return raw if raw in _CITATION_ORIGINS else "bm25"
+    return _search
+
+
+RESEARCH_DOC_TYPE_QUOTAS: Mapping[str, int] = {
+    "transcript": 5,
+    "major_news": 5,
+    "news": 3,
+}
+
+
+def _result_to_citation(sr: SearchResult, citation_cls):
+    raw_origin = sr.metadata.get("origin")
+    allowed_origins = {"stub", "bm25", "embedding", "colpali", "rerank", "news"}
+    if raw_origin == "vector":
+        origin = "embedding"
+    else:
+        origin = raw_origin if raw_origin in allowed_origins else "bm25"
+    return citation_cls(
+        source_id=sr.id,
+        snippet=sr.content,
+        origin=origin,
+        company=company_name(sr.company),
+        event_key=sr.metadata.get("event_key"),
+        source_key=sr.metadata.get("source_key"),
+        published_yyyymm=sr.metadata.get("published_yyyymm"),
+        doc_type=sr.metadata.get("doc_type"),
+        fiscal_period=sr.metadata.get("fiscal_period") or sr.period,
+        published_at=sr.metadata.get("published_at"),
+    )
+
+
+def make_research_search_fn(
+    retriever: "HybridRetriever | None" = None,
+    *,
+    viewer: str = PUBLIC_VIEWER,
+    filters: dict | None = None,
+    doc_type_quotas: Mapping[str, int] = RESEARCH_DOC_TYPE_QUOTAS,
+) -> "Callable[[str], list]":
+    """Build Deep Research search with per-source quotas and one final rerank."""
+    from polaris.graph.state import Citation
+
+    r = retriever if retriever is not None else HybridRetriever()
+    common_filters = {**(filters or {}), "viewer": viewer}
 
     def _search(query: str) -> list:
-        return [
-            Citation(
-                source_id=sr.id,
-                snippet=sr.content,
-                origin=_citation_origin(sr.metadata.get("origin")),
-                company=company_name(sr.company),
-                # P1：三欄與 /ask 一致（同一 SearchResult.metadata 來源；缺值 → None）。
-                event_key=sr.metadata.get("event_key"),
-                source_key=sr.metadata.get("source_key"),
-                published_yyyymm=sr.metadata.get("published_yyyymm"),
+        candidates: list[SearchResult] = []
+        for doc_type, quota in doc_type_quotas.items():
+            source_filters = {"doc_type": doc_type, **common_filters}
+            candidates.extend(
+                r.retrieve_candidates(query, filters=source_filters, top_k=quota)
             )
-            for sr in r.retrieve(query, filters=combined_filters)
-        ]
+
+        merged = _merge_results(candidates)
+        if not merged and r.embedding_fn is None:
+            # Token-free CI has no canonical chunks and uses the built-in corpus.
+            return make_retriever_search_fn(r, viewer=viewer, filters=filters)(query)
+
+        reranker = r.rerank_fn if r.rerank_fn is not None else _cohere_rerank
+        ranked = reranker(query, merged, r.top_k)[: r.top_k]
+        return [_result_to_citation(_ensure_citation_metadata(sr), Citation) for sr in ranked]
 
     return _search
 
@@ -450,4 +508,4 @@ def active_search_fn(viewer: str = PUBLIC_VIEWER) -> "Callable[[str], list]":
     - Production: BM25 + vector (``VECTOR_BACKEND``) + Cohere Rerank if key set
     - viewer forwarded to store for owner-scoped filtering (issue #32)
     """
-    return make_retriever_search_fn(viewer=viewer)
+    return make_research_search_fn(viewer=viewer)

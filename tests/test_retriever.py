@@ -472,6 +472,111 @@ def test_make_retriever_search_fn_maps_vector_origin_to_embedding():
     assert next(c for c in cites if c.source_id == "v1").origin == "embedding"
 
 
+def test_research_search_uses_per_doc_type_quotas_then_reranks_once():
+    """Deep Research must give each canonical text source a candidate quota.
+
+    A single unfiltered vector query lets the much larger major_news corpus crowd
+    transcript/news out before reranking.  Research therefore searches each
+    doc_type independently, merges the candidates, and performs one final rerank.
+    """
+    from polaris.retrieval.retriever import HybridRetriever, make_research_search_fn
+    from polaris.vectorstore.base import SearchResult as SR
+
+    store_calls: list[tuple[int, dict]] = []
+    rerank_calls: list[tuple[list[str], int]] = []
+
+    class PerTypeStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):
+            doc_type = filters["doc_type"]
+            store_calls.append((top_k, dict(filters)))
+            return [
+                SR(
+                    id=f"{doc_type}-1",
+                    content=f"{doc_type} evidence",
+                    score=0.9,
+                    company="2330",
+                    period="2026Q1",
+                    metadata={
+                        "doc_type": doc_type,
+                        "published_at": "2026-04-17",
+                        "fiscal_period": "2026Q1",
+                    },
+                )
+            ]
+
+        def health_check(self):
+            return True
+
+    def final_rerank(query, results, top_k):  # noqa: ARG001
+        rerank_calls.append(([r.id for r in results], top_k))
+        return results
+
+    retriever = HybridRetriever(
+        top_k=8,
+        store=PerTypeStore(),
+        embedding_fn=lambda _query: [0.1],
+        rerank_fn=final_rerank,
+    )
+
+    citations = make_research_search_fn(retriever, viewer="analyst_A")("台積電風險")
+
+    assert store_calls == [
+        (5, {"doc_type": "transcript", "viewer": "analyst_A"}),
+        (5, {"doc_type": "major_news", "viewer": "analyst_A"}),
+        (3, {"doc_type": "news", "viewer": "analyst_A"}),
+    ]
+    assert rerank_calls == [
+        (["transcript-1", "major_news-1", "news-1"], 8)
+    ]
+    assert [c.source_id for c in citations] == [
+        "transcript-1",
+        "major_news-1",
+        "news-1",
+    ]
+
+
+def test_research_citations_expose_document_metadata():
+    """R7 needs real document metadata instead of guessing labels and quarters."""
+    from datetime import date
+
+    from polaris.retrieval.retriever import HybridRetriever, make_research_search_fn
+    from polaris.vectorstore.base import SearchResult as SR
+
+    class TranscriptStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):  # noqa: ARG002
+            if filters.get("doc_type") != "transcript":
+                return []
+            return [
+                SR(
+                    id="chunk-2330-q1",
+                    content="法說原文",
+                    score=0.9,
+                    company="2330",
+                    period="2026Q1",
+                    metadata={
+                        "doc_type": "transcript",
+                        "published_at": date(2026, 4, 17),
+                        "fiscal_period": "2026Q1",
+                    },
+                )
+            ]
+
+        def health_check(self):
+            return True
+
+    retriever = HybridRetriever(
+        store=TranscriptStore(),
+        embedding_fn=lambda _query: [0.1],
+        rerank_fn=lambda _query, results, _top_k: results,
+    )
+
+    citation = make_research_search_fn(retriever)("台積電法說")[0]
+
+    assert citation.doc_type == "transcript"
+    assert citation.fiscal_period == "2026Q1"
+    assert citation.published_at == date(2026, 4, 17)
+
+
 def test_retrieve_results_always_carry_citation_metadata_keys():
     """Every retrieve() result carries doc_type / published_at / fiscal_period in
     metadata so api.py /research + Deep Research adapters can read them safely on
