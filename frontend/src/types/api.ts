@@ -188,6 +188,75 @@ export interface PeerCompareTrendPoint {
   b_value: number | null;
 }
 
+// 後端實際回傳形狀（PR #25 POST /peer-compare）
+export interface BackendPeerCitationRaw {
+  src: string;
+  snippet: string;
+}
+
+export interface BackendPeerKpiSide {
+  v: string;
+  citations: BackendPeerCitationRaw[];
+}
+
+export interface BackendPeerKpiRaw {
+  metric: string;
+  a: BackendPeerKpiSide;
+  b: BackendPeerKpiSide;
+}
+
+export interface BackendPeerCallSide {
+  cite: string;
+  snippet: string;
+}
+
+export interface BackendPeerCallRaw {
+  a: BackendPeerCallSide;
+  b: BackendPeerCallSide;
+}
+
+export interface BackendPeerCompareResponse {
+  a_ticker:          string;
+  b_ticker:          string;
+  fiscal_period:     string;
+  kpis:              BackendPeerKpiRaw[];
+  calls:             BackendPeerCallRaw[];
+  trend:             PeerCompareTrendPoint[];
+  valuation:         unknown[];
+  summary:           string;
+  compliance_status: string;
+}
+
+// 前端正規化後形狀（給 peer/page.tsx 使用，與 peer-result.ts PeerResultLike 對齊）
+export interface PeerCitationNorm {
+  src: string;
+  page: string;  // = snippet，用 snippet 作為 page detail
+}
+
+export interface PeerKpiNorm {
+  label: string;  // = metric
+  a: { v: string; citations: PeerCitationNorm[] };
+  b: { v: string; citations: PeerCitationNorm[] };
+}
+
+export interface PeerCallNorm {
+  a: { cite: string; quote: string };
+  b: { cite: string; quote: string };
+}
+
+export interface PeerCompareResult {
+  a_ticker:          string;
+  b_ticker:          string;
+  fiscal_period:     string;
+  kpis:              PeerKpiNorm[];
+  calls:             PeerCallNorm[];
+  trend:             PeerCompareTrendPoint[];
+  valuation:         unknown[];
+  summary:           string;
+  compliance_status: string;
+}
+
+// 舊版（mock/company endpoint 形狀，保留給 /company/:id 使用）
 export interface PeerCompareResponse {
   a_ticker:         string;
   b_ticker:         string;
