@@ -171,3 +171,57 @@ flowchart TD
 - **成本**：階梯模型（Flash 為主）+ pilot 先行控制；放大前估算全量 token。
 - **渲染相依**：pymupdf/pdftoppm 擇一，加進 ingestion optional 相依。
 - **doc_type=financial_statement 來源**：需確認 ingestion 是否已能標出財報表頁以觸發升 Pro；若無，先用「Flash 低信心」作為升級訊號。
+
+---
+
+## 附錄：「真 ColPali」可行性研究（2026-06-24）
+
+> 群組提問：**能不能做出跟 ColPali 一樣的功能來滿足這個專案及第 4 路？** 本附錄是研究結論，供決策參考；**不改變本案（Approach A 仍為主路）**。
+
+### A. 釐清：repo 現有的「ColPali」不是 ColPali
+
+讀 [`colpali_store.py`](../../../src/polaris/vectorstore/colpali_store.py)、[`colpali_query_encoder.py`](../../../src/polaris/retrieval/colpali_query_encoder.py) 與 [2026-06-20 restore-4th-path 設計](2026-06-20-restore-4th-retrieval-path-vision-design.md) 後確認：
+
+| 真 ColPali（late-interaction） | 本專案實際做的 |
+|---|---|
+| 每頁 ~1031 個 patch 各一個 128 維向量（**多向量**） | 1031 patch **mean-pool 成單一 128 維** |
+| query 每個 token 也是多向量 | query token 也 mean-pool 成單一向量 |
+| **MaxSim late-interaction** 計分（精髓） | BigQuery `VECTOR_SEARCH` **單向量 cosine** |
+| patch 矩陣保留 | **入庫時就丟棄 patch 矩陣** |
+
+2026-06-20 設計 §2 非目標明寫「**不重建 patch 級多向量 / MaxSim**（資料端只存了池化 128 維，沿用之）」。故 hit@5 = 0% **不是 bug，是把多向量壓成單一平均的必然**（所有 query 塌到同方向）。query 端 `content_only` 修補（丟 scaffold token）只是減輕塌縮，**單向量 × 單向量永遠拿不回 late-interaction**。
+
+### B. 不可逆性（關鍵）
+
+`polaris_core.colpali_pages`（5701 頁）存的是**池化後 128 維**，patch 矩陣已不存在。要做真 ColPali，**這 5701 頁必須由 R4 用 GPU 全部重編一次**，無法從現有資料救回。
+
+### C. 真 ColPali 的成本與憲法落差
+
+| 需求 | 與現況落差 |
+|---|---|
+| 多向量編碼器（ColPali/ColQwen2，GPU 常駐） | 憲法技術棧為 `gemini-embedding-2`（768/單向量）；ColPali 是不同空間，**不在 sanctioned stack** |
+| 支援 MaxSim 的向量庫（Vespa / Qdrant 1.10+ / LanceDB） | 預設 `VECTOR_BACKEND=bigquery`，**BigQuery 只有單向量 ANN，不做 MaxSim**；pgvector 亦不支援 → 須架第三個 backend |
+| 重編 5701 頁（保留 patch 矩陣） | R4 GPU 批次，~1.5GB（bf16） |
+| 查詢端 GPU 常駐做 query 多向量編碼 | 新增 serving 相依（冷啟動或常開 GPU） |
+
+### D. 致命點：ColPali 解「找到頁」，不解「引用接地」
+
+憲法硬約束為**每個數字都要有來源**。ColPali 只回「答案在第 N 頁圖」，**不抽出圖中數字**；仍須 render 該頁 → vision LLM 讀數字才能接地——而這**正是 Approach A 在入庫時就完成的事**。
+
+> **結論**：真 ColPali 即使做出來，**底下仍須疊一層 vision 抽取才能接地**。Approach A 不是 ColPali 的替代品，而是它的**必要底座**。
+
+### E. 三條路對比
+
+| | A. Vision-OCR→文字（本案） | B. 真 ColPali（多向量+MaxSim） | C. 混合 |
+|---|---|---|---|
+| 檢索 | 重用既有文字 3 路（已證） | 新 MaxSim 路（視覺召回最強） | A 接地 + B 當召回 booster |
+| 接地 | ✅ 入庫即抽成文字，天然接地 | ❌ 仍須疊 vision 抽取 | ✅ |
+| 合憲法技術棧 | ✅ gemini + bigquery | ❌ 需 GPU 模型 + 新向量庫 | ❌ |
+| 新基建 | 0（無新庫、無新路由） | GPU serving + Qdrant/Vespa + 重 ingest | 全部 |
+| 狀態 | PoC 已證可行（2026-06-24） | 池化版未過 70%；多向量版未驗 | — |
+
+### F. 建議
+
+**第 4 路真正要的「圖表題能答且能接地」，Approach A 比搶救 ColPali 更直接、更合憲法、且已 PoC 證明。** 真 ColPali 僅在**「A 上線後圖表題召回率被證明不足」**時，才作為召回增強器加入，且仍須餵 vision 抽取的 chunk 去接地。
+
+在那之前，若要驗證真 ColPali 是否值得，**最低成本的下一步是『量』而非『建』**：R4 用 GPU 重編「幾百頁」保留 patch 矩陣 → 用 numpy / BigQuery SQL 直接算 MaxSim（**不必先架 Qdrant/Vespa**）→ 跑 hit@5 與 A 的召回對比。**未顯著勝出即不投基建。** 此實驗需逆轉 TD-01（記為 TD-02）並經 PM 簽核。
