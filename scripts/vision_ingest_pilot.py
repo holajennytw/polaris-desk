@@ -48,9 +48,20 @@ def main() -> None:
     if extractor is None:
         print("⏳ vision gate 關（設 VISION_EXTRACTION=1 + 裝 .[vision]）。")
         return
-    if args.ingest and settings.bq_dataset == "polaris_core":
-        print("✋ 拒絕：--ingest 不可寫 polaris_core（憲法 III）。請設 DEV dataset。")
-        return
+    # 入庫前置防呆（不影響 JSONL/Gate1 產出——抽取仍會跑完）：
+    #   1) 永不寫 canonical polaris_core（憲法 III）；2) embedding 恆需 api_key。
+    do_ingest = args.ingest
+    if do_ingest and settings.bq_dataset == "polaris_core":
+        print("✋ --ingest 已停用：不可寫 polaris_core（憲法 III）。設 BQ_DATASET=polaris_dev_<name>"
+              " 後重跑即可入庫；本次仍會產出 JSONL + Gate1。")
+        do_ingest = False
+    if do_ingest:
+        from polaris.llm.gemini import active_llm
+        if active_llm() is None:
+            print("⏸ --ingest 已停用：embedding 恆走 GEMINI_API_KEY（憲法：與 polaris_core 768"
+                  " 向量空間一致，Vertex/ADC 無法替代）。設好金鑰後重跑 --ingest；本次仍會產出"
+                  " JSONL + Gate1。")
+            do_ingest = False
 
     Path(args.out).mkdir(parents=True, exist_ok=True)
     for ticker in args.ticker:
@@ -81,7 +92,7 @@ def main() -> None:
             w.writerows(gate1_rows)
         print(f"{ticker}: {len(all_chunks)} 塊 → {jsonl}；Gate1 抽查表 → {gate1}")
 
-        if args.ingest:
+        if do_ingest:
             from polaris.ingestion.pipeline import ingest_chunks
             from polaris.llm.gemini import active_llm
             from polaris.vectorstore import get_vector_store
