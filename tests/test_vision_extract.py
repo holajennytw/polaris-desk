@@ -34,3 +34,21 @@ def test_financial_statement_uses_pro_directly():
     out = ex.extract(b"img", doc_type="financial_statement")
     assert out.page_summary == "pro"
     assert calls == ["pro"]              # 財報表直接 Pro（密集數字）
+
+
+from polaris.config import Settings
+import polaris.config as cfg
+from polaris.ingestion.vision_extract import active_vision_extractor
+
+
+def test_factory_none_when_gate_off(monkeypatch):
+    monkeypatch.setattr(cfg, "settings", Settings(_env_file=None, vision_extraction=False))
+    assert active_vision_extractor() is None     # 預設關 → CI 0 外呼、不 import genai
+
+
+def test_factory_returns_extractor_when_gate_on(monkeypatch):
+    monkeypatch.setattr(cfg, "settings",
+                        Settings(_env_file=None, vision_extraction=True))
+    ex = active_vision_extractor()
+    assert ex is not None
+    assert hasattr(ex, "extract")

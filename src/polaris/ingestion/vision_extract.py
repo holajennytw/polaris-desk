@@ -28,3 +28,56 @@ class VisionExtractor:
         if out.confidence < self.confidence_floor:
             return self.pro_fn(image_bytes)       # 低信心 → 升 Pro
         return out
+
+
+_VISION_PROMPT = (
+    "你是財報投影片『轉錄器』。只轉錄這張投影片上看得到的文字與數字，"
+    "不要推論、不要計算、不要補充頁面上沒有的東西。每個圖表的標籤與數值、"
+    "單位如實抽出；有表格轉成 markdown。看不清的數值填 null。"
+)
+
+
+def _gemini_extract_fn(model: str) -> ExtractFn:
+    """真 Gemini structured-output 抽取 fn。client 延遲到**首次呼叫**才建
+    （故 active_vision_extractor 只組 closure、不碰 ADC/網路 → 工廠單測 CI-safe）。"""
+    cache: dict = {}
+
+    def _client():
+        if "c" not in cache:
+            from google import genai
+
+            from polaris.config import settings
+            cache["c"] = genai.Client(
+                vertexai=True, project=settings.gcp_project,
+                location=settings.vertex_location,
+            )
+        return cache["c"]
+
+    def _fn(image_bytes: bytes) -> PageExtraction:
+        from google.genai import types
+        resp = _client().models.generate_content(
+            model=model,
+            contents=[_VISION_PROMPT,
+                      types.Part.from_bytes(data=image_bytes, mime_type="image/png")],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=PageExtraction,
+                temperature=0.0,
+            ),
+        )
+        return PageExtraction.model_validate_json(resp.text)
+
+    return _fn
+
+
+def active_vision_extractor() -> "VisionExtractor | None":
+    """gate 開才回真抽取器；否則 None（第 4 路 ingestion 關閉、CI 0 外呼）。"""
+    from polaris.config import settings
+
+    if not getattr(settings, "vision_extraction", False):
+        return None
+    return VisionExtractor(
+        flash_fn=_gemini_extract_fn(settings.gemini_model_flash),
+        pro_fn=_gemini_extract_fn(settings.gemini_model_pro),
+        confidence_floor=settings.vision_confidence_floor,
+    )
