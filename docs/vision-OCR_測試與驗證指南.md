@@ -4,10 +4,34 @@
 > **入庫時**用 Gemini vision 把那些頁抽成結構化文字，併入既有 `chunks` → 文字 3 路 → `/ask`。
 > 取代失敗的單向量 ColPali 第 4 路。設計：[`docs/superpowers/specs/2026-06-23-vision-ocr-to-text-ingestion-design.md`](superpowers/specs/2026-06-23-vision-ocr-to-text-ingestion-design.md)。
 >
-> **現況（2026-06-24）**：程式已 merge `jenny/main`（`147838b`，745 測試綠）；pilot（2330+2891）
-> 已寫入 dev dataset `polaris_dev_wayne` 並**實測檢索可命中**。本檔說明怎麼自己驗。
+> **現況（2026-06-24）**：程式已 merge `jenny/main`（745 測試綠，含 fetch-skill 期別 bug 修補）。
+> dev dataset `polaris_dev_wayne` 已有真資料：**2330 全 4 季 + 1216 + 2412**（2891 持續寫入中），
+> **實測檢索可命中**。各角色**現在就能並行開工**（見下「起跑清單」），不必等全量跑完。
 >
 > 標記：**🤖 = agent 可自動跑**；**🧑 = human 必做**（金鑰 / gcloud 登入，憲法：金鑰永不 commit）。
+
+---
+
+## 各角色起跑清單（先讀這段）
+
+**大前提**：唯一硬性先後 = **R4 寫 `polaris_core` 要等 R1 Gate1 過**；其餘全部可並行。
+行動細節見對應章節；總覽見 GitHub issue [holajennytw/polaris-desk#24](https://github.com/holajennytw/polaris-desk/issues/24)。
+
+| 角色 | 現在可以做 | 章節 | 是否被 gate |
+|------|-----------|------|------------|
+| **R1**（Gate1，關鍵） | 用 `data/vision_chunks/2330_gate1.csv`（49 頁，已產好）抽 20–30 頁/≥4 公司比對數字 **≥95%** 放行 | §1 | ⛔ 是放行者，不被 gate |
+| **R5**（Gate2/eval） | 對 dev 跑檢索驗證 + 把 Ragas 指到 dev 跑圖表題集 | §3 | 🟢 現在可做 |
+| **R7**（前端） | 指向 dev 起 API 問圖表題，確認 citation 帶頁碼；**零前端改動** | §4 | 🟢 現在可做 |
+| **R4**（ingestion owner） | 審 code、把 fetch-skill 修補套上游 plugin repo、確認 `financial_statement` 來源 | §2 | 🟡 載 core 等 Gate1 |
+| **R3**（檢索） | 待命，本案不動檢索端（無 code） | — | ⚪ 無事 |
+| **PM** | 決定放大範圍（20 檔）、Vertex 配額策略（GA 模型 / 升級帳號脫離 trial） | — | — |
+
+> **看 dev 目前有哪些資料可測**（隨全量 pilot 持續增加）：
+> ```bash
+> bq query --use_legacy_sql=false \
+>  'SELECT ticker, COUNT(*) chunks, COUNT(DISTINCT fiscal_period) periods
+>   FROM `polaris-desk-team.polaris_dev_wayne.chunks` GROUP BY ticker ORDER BY ticker'
+> ```
 
 ---
 
@@ -21,7 +45,7 @@ bq query --use_legacy_sql=false \
   FROM `polaris-desk-team.polaris_dev_wayne.chunks` ORDER BY chunk_id'
 ```
 
-**預期輸出**：6 列，2330（p004 損益表 / p004 margins / p008 現金流量表）+ 2891（p004 營運摘要 / p005 獲利 / p006 ROE），每列 `dim=768`。
+**預期輸出**：多列 vision chunk（隨全量 pilot 持續增加），每列 `dim=768`、`chunk_text` 是「頁摘要＋數字條列」。例：`2330-2025Q1-p004-c001` = 台積電綜合損益表頁。
 
 **端到端檢索證據（已實測，2026-06-24）**——對 dev 庫提問，命中正確的 vision 頁：
 
