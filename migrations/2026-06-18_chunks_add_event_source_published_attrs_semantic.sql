@@ -42,11 +42,13 @@ WITH chunks_tagged AS (
       WHEN 'transcript' THEN 'earnings_call'
       WHEN 'major_news' THEN 'major_news.others'
       WHEN 'news' THEN 'news'
+      WHEN 'presentation' THEN 'earnings_call'
     END AS event_key,
     CASE doc_type
       WHEN 'transcript' THEN 'PRIMARY_EC_TRANSCRIPT'
       WHEN 'major_news' THEN 'PRIMARY_MOPS'
       WHEN 'news' THEN 'SECONDARY_NEWS_MEDIA'
+      WHEN 'presentation' THEN 'PRIMARY_COMPANY_IR'
     END AS source_key,
     EXTRACT(YEAR FROM published_at) AS published_year,
     EXTRACT(MONTH FROM published_at) AS published_month,
