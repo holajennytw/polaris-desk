@@ -484,6 +484,193 @@ def events(
     return [EventResponse(**row) for row in rows]
 
 
+# --- Peer Compare (R7 同業比較) -----------------------------------------------
+
+_VALUATION_METRICS = {"pe_ratio", "pb_ratio", "ps_ratio"}
+
+
+def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation]:
+    """法說逐字稿 RAG 搜尋（ticker + period + doc_type=transcript）。注入 seam for tests."""
+    from polaris.retriever import retrieve
+
+    return retrieve(
+        question,
+        ticker_filter=ticker,
+        period_filter=period,
+        doc_type_filter="transcript",
+        top_k=5,
+    )
+
+
+class _PeerCitationOut(BaseModel):
+    src: str
+    snippet: str
+
+
+class _PeerMetricSide(BaseModel):
+    v: str
+    citations: list[_PeerCitationOut]
+
+
+class _PeerKpi(BaseModel):
+    metric: str
+    a: _PeerMetricSide
+    b: _PeerMetricSide
+
+
+class _PeerCallSide(BaseModel):
+    cite: str
+    snippet: str
+
+
+class _PeerCall(BaseModel):
+    a: _PeerCallSide
+    b: _PeerCallSide
+
+
+class _PeerTrendRow(BaseModel):
+    period: str
+    metric: str
+    a_value: float
+    b_value: float
+
+
+class PeerCompareRequest(BaseModel):
+    a_ticker: str = Field(min_length=1)
+    b_ticker: str = Field(min_length=1)
+    fiscal_period: str = Field(min_length=1, description="如 2026Q1")
+    question: str = Field(min_length=1)
+
+
+class PeerCompareResponse(BaseModel):
+    a_ticker: str
+    b_ticker: str
+    fiscal_period: str
+    kpis: list[_PeerKpi]
+    calls: list[_PeerCall]
+    trend: list[_PeerTrendRow]
+    valuation: list[dict]
+    summary: str
+    compliance_status: str
+
+
+def _fmt_value(value: float, unit: str | None) -> str:
+    unit = unit or ""
+    if unit == "%":
+        return f"{value}{unit}"
+    return f"{value} {unit}".strip()
+
+
+@app.post("/peer-compare", response_model=PeerCompareResponse, tags=["research"])
+def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
+    """同業比較：真實財務指標 + 法說 RAG 引用；PE/PB 目前無資料回 []，不造假。"""
+    a_rows = _structured_store.list_financials(ticker=req.a_ticker, period=req.fiscal_period)
+    b_rows = _structured_store.list_financials(ticker=req.b_ticker, period=req.fiscal_period)
+
+    # index by metric_id, exclude valuation metrics (no canonical data yet)
+    a_by_metric = {
+        r["metric_id"]: r for r in a_rows if r["metric_id"] not in _VALUATION_METRICS
+    }
+    b_by_metric = {
+        r["metric_id"]: r for r in b_rows if r["metric_id"] not in _VALUATION_METRICS
+    }
+
+    common_metrics = [m for m in a_by_metric if m in b_by_metric]
+
+    kpis: list[_PeerKpi] = []
+    for metric in common_metrics:
+        ar = a_by_metric[metric]
+        br = b_by_metric[metric]
+        kpis.append(
+            _PeerKpi(
+                metric=metric,
+                a=_PeerMetricSide(
+                    v=_fmt_value(ar["value"], ar.get("unit")),
+                    citations=[_PeerCitationOut(src=ar["source_id"], snippet=str(ar["value"]))],
+                ),
+                b=_PeerMetricSide(
+                    v=_fmt_value(br["value"], br.get("unit")),
+                    citations=[_PeerCitationOut(src=br["source_id"], snippet=str(br["value"]))],
+                ),
+            )
+        )
+
+    # law call RAG for both tickers
+    a_cites = _search_peer_calls(req.a_ticker, req.fiscal_period, req.question)
+    b_cites = _search_peer_calls(req.b_ticker, req.fiscal_period, req.question)
+
+    calls: list[_PeerCall] = []
+    for ac, bc in zip(a_cites, b_cites):
+        calls.append(
+            _PeerCall(
+                a=_PeerCallSide(cite=ac.source_id, snippet=ac.snippet),
+                b=_PeerCallSide(cite=bc.source_id, snippet=bc.snippet),
+            )
+        )
+    # handle unequal lengths
+    for ac in a_cites[len(b_cites):]:
+        calls.append(_PeerCall(a=_PeerCallSide(cite=ac.source_id, snippet=ac.snippet), b=_PeerCallSide(cite="", snippet="")))
+    for bc in b_cites[len(a_cites):]:
+        calls.append(_PeerCall(a=_PeerCallSide(cite="", snippet=""), b=_PeerCallSide(cite=bc.source_id, snippet=bc.snippet)))
+
+    # trend: all periods for common metrics in fiscal data (all periods, not just requested)
+    a_all = _structured_store.list_financials(ticker=req.a_ticker)
+    b_all = _structured_store.list_financials(ticker=req.b_ticker)
+    a_all_idx: dict[tuple[str, str], dict] = {(r["fiscal_period"], r["metric_id"]): r for r in a_all if r["metric_id"] not in _VALUATION_METRICS}
+    b_all_idx: dict[tuple[str, str], dict] = {(r["fiscal_period"], r["metric_id"]): r for r in b_all if r["metric_id"] not in _VALUATION_METRICS}
+
+    # only include metrics with data in more than one period (i.e. actual trend)
+    a_metric_periods: dict[str, set[str]] = {}
+    for (period, metric), _ in a_all_idx.items():
+        a_metric_periods.setdefault(metric, set()).add(period)
+
+    trend_keys: set[tuple[str, str]] = set()
+    for (period, metric) in a_all_idx:
+        if (
+            (period, metric) in b_all_idx
+            and metric in common_metrics
+            and len(a_metric_periods.get(metric, set())) > 1
+        ):
+            trend_keys.add((period, metric))
+
+    trend: list[_PeerTrendRow] = sorted(
+        [
+            _PeerTrendRow(
+                period=period,
+                metric=metric,
+                a_value=a_all_idx[(period, metric)]["value"],
+                b_value=b_all_idx[(period, metric)]["value"],
+            )
+            for period, metric in trend_keys
+        ],
+        key=lambda r: (r.period, r.metric),
+    )
+
+    # build summary with source references
+    summary_parts = [f"比較期間：{req.fiscal_period}"]
+    for kpi in kpis:
+        summary_parts.append(
+            f"{kpi.metric}：{req.a_ticker} {kpi.a.v}（來源 {kpi.a.citations[0].src}）vs {req.b_ticker} {kpi.b.v}（來源 {kpi.b.citations[0].src}）"
+        )
+    raw_summary = "；".join(summary_parts)
+
+    from polaris.graph.nodes import compliance_agent
+
+    _, compliance_status = compliance_agent.review(raw_summary, None)
+
+    return PeerCompareResponse(
+        a_ticker=req.a_ticker,
+        b_ticker=req.b_ticker,
+        fiscal_period=req.fiscal_period,
+        kpis=kpis,
+        calls=calls,
+        trend=trend,
+        valuation=[],
+        summary=raw_summary,
+        compliance_status=compliance_status,
+    )
+
+
 @app.get("/chunk/{source_id}", response_model=ChunkResponse, tags=["research"])
 def chunk(
     source_id: str,
