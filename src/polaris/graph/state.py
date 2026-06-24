@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import operator
+from datetime import date
 from typing import Annotated, Any, Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -48,6 +49,18 @@ class Citation(BaseModel):
     published_yyyymm: int | None = Field(
         default=None,
         description="發佈年月（INT64，如 202606；無則 None）",
+    )
+    doc_type: str | None = Field(
+        default=None,
+        description="文件類型（transcript / major_news / news；無則 None）",
+    )
+    fiscal_period: str | None = Field(
+        default=None,
+        description="財務期別（如 2026Q1；無則 None）",
+    )
+    published_at: date | None = Field(
+        default=None,
+        description="來源發佈日期；無則 None",
     )
 
 

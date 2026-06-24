@@ -32,6 +32,8 @@ Watchdog（specs/003，R7 Alert Inbox 消費端）：
 """
 from __future__ import annotations
 
+import hashlib
+import re
 from datetime import date, datetime
 from pathlib import Path
 
@@ -123,6 +125,70 @@ class ResearchResponse(BaseModel):
     compliance_status: str
 
 
+class ContradictionKpi(BaseModel):
+    label: str
+    value: str | float | int
+    unit: str = ""
+    delta: str | None = None
+    trend: str | None = None
+
+
+class ContradictionSummary(BaseModel):
+    text: str
+    cite: str = ""
+    page: str = ""
+
+
+class ContradictionRequest(BaseModel):
+    kpis: list[ContradictionKpi] = Field(default_factory=list)
+    summary: list[ContradictionSummary] = Field(default_factory=list)
+
+
+class ContradictionAlert(BaseModel):
+    id: str
+    origin: str = "contradiction"
+    level: str
+    title: str
+    summary: str
+    source: str
+    time: str
+    cite_key: str | None = None
+
+
+class ContradictionResponse(BaseModel):
+    alerts: list[ContradictionAlert]
+
+
+_CONTRADICTION_TOPICS = ("全年", "營收", "毛利率", "營業利益率", "指引", "EPS", "資本支出")
+_CONTRADICTORY_QUALIFIERS = (
+    ("中段", "以上"),
+    ("中段", "至少"),
+    ("上修", "下修"),
+    ("成長", "衰退"),
+    ("增加", "減少"),
+)
+
+
+def _numeric_tokens(text: str) -> set[str]:
+    return {m.replace(" ", "") for m in re.findall(r"-?\d+(?:\.\d+)?\s*%?", text)}
+
+
+def _has_provable_conflict(kpi_text: str, summary_text: str) -> bool:
+    for left, right in _CONTRADICTORY_QUALIFIERS:
+        if (left in kpi_text and right in summary_text) or (
+            right in kpi_text and left in summary_text
+        ):
+            return True
+    kpi_numbers = _numeric_tokens(kpi_text)
+    summary_numbers = _numeric_tokens(summary_text)
+    return bool(kpi_numbers and summary_numbers and kpi_numbers.isdisjoint(summary_numbers))
+
+
+def _contradiction_id(kpi: ContradictionKpi, item: ContradictionSummary) -> str:
+    digest = hashlib.sha256(f"{kpi.label}|{kpi.value}|{item.cite}|{item.text}".encode()).hexdigest()
+    return f"contra-{digest[:12]}"
+
+
 @app.get("/healthz", tags=["ops"])
 @app.get("/health", tags=["ops"])
 def healthz() -> dict[str, str]:
@@ -165,6 +231,49 @@ def research(req: ResearchRequest) -> ResearchResponse:
         status=r.status,
         compliance_status=r.compliance_status,
     )
+
+
+@app.post("/contradiction", response_model=ContradictionResponse, tags=["research"])
+def contradiction(req: ContradictionRequest) -> ContradictionResponse:
+    """保守比對 KPI 與摘要；只回報可由數字或方向措辭證明的矛盾。"""
+    now = datetime.now().strftime("%H:%M")
+    alerts: list[ContradictionAlert] = []
+    for kpi in req.kpis:
+        kpi_text = f"{kpi.label} {kpi.value}{kpi.unit}"
+        topics = [topic for topic in _CONTRADICTION_TOPICS if topic in kpi.label]
+        for item in req.summary:
+            if topics and not any(topic in item.text for topic in topics):
+                continue
+            if not _has_provable_conflict(kpi_text, item.text):
+                continue
+            location = " ".join(part for part in (item.cite, item.page) if part)
+            alerts.append(
+                ContradictionAlert(
+                    id=_contradiction_id(kpi, item),
+                    level="mid",
+                    title=f"{kpi.label}：KPI 與摘要表述不一致",
+                    summary=(
+                        f"KPI 顯示「{kpi.value}{kpi.unit}」，摘要顯示「{item.text}」；"
+                        f"請核對 {location or '引用原文'}。"
+                    ),
+                    source=f"矛盾偵測 · {item.cite or '未標引用'} vs KPI",
+                    time=now,
+                    cite_key=item.cite or None,
+                )
+            )
+
+    if not alerts:
+        alerts.append(
+            ContradictionAlert(
+                id="contra-pass",
+                level="info",
+                title="交叉比對通過",
+                summary="本次 KPI 與摘要未發現可由數字或方向措辭證明的矛盾。",
+                source="矛盾偵測引擎",
+                time=now,
+            )
+        )
+    return ContradictionResponse(alerts=alerts)
 
 
 # --- 通知中心（specs/002）— thin 轉接到 NotificationService ------------------
@@ -317,6 +426,31 @@ class EventResponse(BaseModel):
     source_url: str | None = None
 
 
+class ChunkResponse(BaseModel):
+    """R7 DocViewer 的引用原文契約。"""
+
+    source_id: str
+    title: str
+    doc_type: str
+    kind_label: str
+    ticker: str
+    fiscal_period: str | None = None
+    published_at: date | None = None
+    page: str | None = None
+    trust: str = "high"
+    content: str
+    highlight: str
+    hl_tokens: list[str] = Field(default_factory=list)
+
+
+_DOC_TYPE_LABELS = {
+    "transcript": "法說逐字稿",
+    "major_news": "重大訊息",
+    "news": "新聞",
+    "presentation": "法說簡報",
+}
+
+
 @app.get("/companies", response_model=list[CompanyResponse], tags=["structured"])
 def companies() -> list[CompanyResponse]:
     """canonical 公司清單（company_dim，~20 列）。前端顯示用 ticker→公司名對照。"""
@@ -348,6 +482,36 @@ def events(
     """事件流（events），時間倒序，可依 ticker / type 過濾。做公司動態時間軸用。"""
     rows = _structured_store.list_events(ticker=ticker, event_type=type, limit=limit)
     return [EventResponse(**row) for row in rows]
+
+
+@app.get("/chunk/{source_id}", response_model=ChunkResponse, tags=["research"])
+def chunk(
+    source_id: str,
+    viewer: str = Query(default=PUBLIC_VIEWER, description="存取控制身分"),
+) -> ChunkResponse:
+    """展開單一引用原文；不存在與無權限皆回 404，避免洩漏文件是否存在。"""
+    row = _structured_store.get_chunk(source_id, viewer=viewer)
+    if row is None:
+        raise HTTPException(status_code=404, detail="查無此引用")
+
+    doc_type = row.get("doc_type") or "unknown"
+    kind_label = _DOC_TYPE_LABELS.get(doc_type, doc_type)
+    ticker = row.get("ticker") or ""
+    fiscal_period = row.get("fiscal_period")
+    title_parts = [ticker, fiscal_period, kind_label]
+    title = "_".join(part for part in title_parts if part)
+    content = row.get("chunk_text") or ""
+    return ChunkResponse(
+        source_id=row.get("chunk_id") or source_id,
+        title=title,
+        doc_type=doc_type,
+        kind_label=kind_label,
+        ticker=ticker,
+        fiscal_period=fiscal_period,
+        published_at=row.get("published_at"),
+        content=content,
+        highlight=content,
+    )
 
 
 # --- 使用者活動紀錄 + 訂閱（R7-1：Google OAuth 登入後；Firestore）---------------

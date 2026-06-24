@@ -1,4 +1,4 @@
-"""唯讀查 ``polaris_core`` 結構化表給 API（company_dim / financial_metrics / events）。
+"""唯讀查 ``polaris_core`` 給 API（結構化表 + 受 ACL 保護的單筆 chunk）。
 
 R7 前端「結構化資料走 API」分層的後端：把三張非機密的事實/維度表包成穩定
 端點，前端不必直連 BigQuery、也不耦合實體 schema（欄位改名只動這層）。
@@ -119,6 +119,21 @@ class StructuredStore:
         LIMIT @lim
         """
         return self._run_query(sql, params)
+
+    # ── chunk（引用展開；必須套用與向量檢索相同的 ACL）────────────────────
+
+    def get_chunk(self, source_id: str, *, viewer: str) -> dict | None:
+        """依 chunk_id 讀單一原文；查無或 viewer 無權限時一律回 ``None``。"""
+        sql = f"""
+        SELECT chunk_id, ticker, doc_type, fiscal_period, published_at, chunk_text
+        FROM `{self._dataset()}.chunks`
+        WHERE chunk_id = @source_id
+          AND (owner IS NULL OR owner = @viewer)
+          AND (NOT COALESCE(confidential, FALSE) OR owner = @viewer)
+        LIMIT 1
+        """
+        rows = self._run_query(sql, {"source_id": source_id, "viewer": viewer})
+        return rows[0] if rows else None
 
     # ── BigQuery 轉接（同 BigQueryStore 套路）──────────────────────────────
 
