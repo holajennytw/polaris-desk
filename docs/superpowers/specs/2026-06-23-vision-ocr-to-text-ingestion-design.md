@@ -66,6 +66,54 @@ PDF 頁
                                                  └─ chunks 表 → 文字 3 路 / /ask（既有，零改動）
 ```
 
+## 流程圖
+
+### 1) 資料流（入庫：PDF 頁 → 可檢索文字 chunk）
+
+> 藍色 = 本案新增（`render_page` / `vision_extract` / `vision_to_chunks`）；灰色 = 現役、已驗證能動。**綠色** = 兩條路最終都匯進同一張 `chunks` 表。
+
+```mermaid
+flowchart TD
+    PDF["PDF 頁"] --> Router{"page_router<br/>該頁有文字層?"}
+    Router -->|"是（文字層）"| TextChunk["既有文字切塊<br/>（不動）"]
+    Router -->|"否 / presentation 圖表頁<br/>文字密度 < 門檻（&lt;20 字）"| Render["render_page<br/>頁 → PNG ~200dpi"]
+    Render --> Vision["vision_extract<br/>Flash 預設 / 財報表升 Pro<br/>structured JSON（response_schema）"]
+    Vision --> Conf{"confidence 夠高?"}
+    Conf -->|"低"| Retry["升 Pro 重試"]
+    Retry --> Conf
+    Conf -->|"仍低"| Drop["標記不入庫<br/>（不寫疑似錯誤數字）"]
+    Conf -->|"OK"| Flatten["vision_to_chunks<br/>JSON 攤平成 chunk_text<br/>＋頁面影像參照"]
+    TextChunk --> Embed["既有 chunk_pages → embed（768 文字向量）"]
+    Flatten --> Embed
+    Embed --> Store[("BigQueryStore.add_documents<br/>polaris_core.chunks")]
+
+    classDef new fill:#cfe8ff,stroke:#2b6cb0,color:#1a365d;
+    classDef sink fill:#c6f6d5,stroke:#2f855a,color:#22543d;
+    classDef drop fill:#fed7d7,stroke:#c53030,color:#742a2a;
+    class Render,Vision,Flatten new;
+    class Embed,Store sink;
+    class Drop drop;
+```
+
+### 2) 使用者流（查詢：圖表題 → 接地回答）
+
+> 檢索端**零改動**——vision chunk 進 `chunks` 後，跟一般文字 chunk 走完全相同的既有路徑（R6 `/ask` → 文字 3 路 → 生成）。差別只在命中的若是 vision chunk，citation 會帶**頁面影像參照**可回看原圖。
+
+```mermaid
+flowchart TD
+    User(["使用者問圖表題<br/>例：台積電 2025Q1 3nm 製程占比?"]) --> Ask["/ask orchestration（R6）"]
+    Ask --> Retr["文字 3 路檢索<br/>BM25 ＋ 768 向量 ＋ Cohere rerank"]
+    Retr --> Chunks[("polaris_core.chunks<br/>（含 vision chunk）")]
+    Chunks --> Hit["命中 vision chunk<br/>extraction=vision｜帶頁面影像參照"]
+    Hit --> Gen["Gemini 生成回答<br/>引用接地：數字 ＋ 頁碼 ＋ 來源"]
+    Gen --> Answer(["回答 ＋ citation（可回看原圖）<br/>NFR-031：不給買賣建議"])
+
+    classDef existing fill:#e2e8f0,stroke:#4a5568,color:#1a202c;
+    classDef out fill:#c6f6d5,stroke:#2f855a,color:#22543d;
+    class Ask,Retr,Chunks,Hit,Gen existing;
+    class Answer out;
+```
+
 ## 元件（皆掛在 `src/polaris/ingestion/`）
 
 1. **`page_router`**：逐頁分流。有文字層 → 既有文字路；`doc_type=presentation` **或** 文字密度低於門檻（如該頁 `pypdf` 抽出 < 20 個非空白字元，視為掃描/圖表頁）→ vision 路。文字頁與 vision 頁可並存於同一份 PDF。
@@ -94,9 +142,21 @@ PDF 頁
 - **Gate2 端到端**（Owner R5）：對圖表題集跑既有 Ragas eval，看 `/ask` 是否引用正確數字。
 - 兩關皆過 → 正式信任 vision chunk。
 
+## 角色分工（誰做什麼）
+
+> 原則：**code 可由 R2 agent 代工，但「寫進 canonical 庫」與「品質放行」兩個權力點不在 agent 手上**——分別交付給 R4（憲法 III：唯一可寫 `polaris_core`）與 R1（Gate1 放行）。
+
+| 角色 | 這個 A 案要做的事 | 交付物 / 關卡 |
+|------|------------------|---------------|
+| **R2 agent**（本案代工者） | 代寫全部 ingestion code（8 個 TDD task，`src/polaris/ingestion/`）；跑 pilot（2330+2891）**到 dev dataset**。**不可寫 `polaris_core`**（waynehuichi 帳號）。 | code merged；`data/vision_chunks/*.jsonl` + `*_gate1.csv` |
+| **R4**（程式 owner / ingestion） | 收 code 驗收；**用 R4 帳號**（或 R4 GCE SA + `BQ_ALLOW_CORE_WRITE=1`）把 JSONL 載入 `polaris_core`；確認 `doc_type=financial_statement` 來源（無則用「Flash 低信心」當升 Pro 訊號）。 | core ingestion 完成 |
+| **R1**（驗證） | **Gate1 主驗**：抽 20–30 頁、≥4 公司、涵蓋 pie/trend/財報表，人工比對 JSON vs 真圖，**數字準確率 ≥ 95%** 才放行。 | Gate1 sign-off |
+| **R5**（eval） | **Gate2 端到端**：對圖表題集跑既有 Ragas，看 `/ask` 是否引用正確數字。 | Gate2 sign-off |
+| **R3**（檢索） | **待命，無 code**——A 案刻意不動檢索端（不新增第 4 路 / 不改 `/ask` 路由）。 | — |
+
 ## 上線範圍 / Owner / 冪等
 
-- **Owner R4**；純 Gemini API，**不需 GPU**。
+- **程式 owner R4；本案由 R2 agent 代寫**；純 Gemini API，**不需 GPU**。
 - **Rollout：先 pilot 台積電(2330)+中信金(2891)** 跑通 → 過 Gate1 → 再放大到 20 檔 canonical 的 presentation + 掃描財報頁。
 - chunk id 確定性 → **可重跑 upsert**。
 
@@ -111,3 +171,57 @@ PDF 頁
 - **成本**：階梯模型（Flash 為主）+ pilot 先行控制；放大前估算全量 token。
 - **渲染相依**：pymupdf/pdftoppm 擇一，加進 ingestion optional 相依。
 - **doc_type=financial_statement 來源**：需確認 ingestion 是否已能標出財報表頁以觸發升 Pro；若無，先用「Flash 低信心」作為升級訊號。
+
+---
+
+## 附錄：「真 ColPali」可行性研究（2026-06-24）
+
+> 群組提問：**能不能做出跟 ColPali 一樣的功能來滿足這個專案及第 4 路？** 本附錄是研究結論，供決策參考；**不改變本案（Approach A 仍為主路）**。
+
+### A. 釐清：repo 現有的「ColPali」不是 ColPali
+
+讀 [`colpali_store.py`](../../../src/polaris/vectorstore/colpali_store.py)、[`colpali_query_encoder.py`](../../../src/polaris/retrieval/colpali_query_encoder.py) 與 [2026-06-20 restore-4th-path 設計](2026-06-20-restore-4th-retrieval-path-vision-design.md) 後確認：
+
+| 真 ColPali（late-interaction） | 本專案實際做的 |
+|---|---|
+| 每頁 ~1031 個 patch 各一個 128 維向量（**多向量**） | 1031 patch **mean-pool 成單一 128 維** |
+| query 每個 token 也是多向量 | query token 也 mean-pool 成單一向量 |
+| **MaxSim late-interaction** 計分（精髓） | BigQuery `VECTOR_SEARCH` **單向量 cosine** |
+| patch 矩陣保留 | **入庫時就丟棄 patch 矩陣** |
+
+2026-06-20 設計 §2 非目標明寫「**不重建 patch 級多向量 / MaxSim**（資料端只存了池化 128 維，沿用之）」。故 hit@5 = 0% **不是 bug，是把多向量壓成單一平均的必然**（所有 query 塌到同方向）。query 端 `content_only` 修補（丟 scaffold token）只是減輕塌縮，**單向量 × 單向量永遠拿不回 late-interaction**。
+
+### B. 不可逆性（關鍵）
+
+`polaris_core.colpali_pages`（5701 頁）存的是**池化後 128 維**，patch 矩陣已不存在。要做真 ColPali，**這 5701 頁必須由 R4 用 GPU 全部重編一次**，無法從現有資料救回。
+
+### C. 真 ColPali 的成本與憲法落差
+
+| 需求 | 與現況落差 |
+|---|---|
+| 多向量編碼器（ColPali/ColQwen2，GPU 常駐） | 憲法技術棧為 `gemini-embedding-2`（768/單向量）；ColPali 是不同空間，**不在 sanctioned stack** |
+| 支援 MaxSim 的向量庫（Vespa / Qdrant 1.10+ / LanceDB） | 預設 `VECTOR_BACKEND=bigquery`，**BigQuery 只有單向量 ANN，不做 MaxSim**；pgvector 亦不支援 → 須架第三個 backend |
+| 重編 5701 頁（保留 patch 矩陣） | R4 GPU 批次，~1.5GB（bf16） |
+| 查詢端 GPU 常駐做 query 多向量編碼 | 新增 serving 相依（冷啟動或常開 GPU） |
+
+### D. 致命點：ColPali 解「找到頁」，不解「引用接地」
+
+憲法硬約束為**每個數字都要有來源**。ColPali 只回「答案在第 N 頁圖」，**不抽出圖中數字**；仍須 render 該頁 → vision LLM 讀數字才能接地——而這**正是 Approach A 在入庫時就完成的事**。
+
+> **結論**：真 ColPali 即使做出來，**底下仍須疊一層 vision 抽取才能接地**。Approach A 不是 ColPali 的替代品，而是它的**必要底座**。
+
+### E. 三條路對比
+
+| | A. Vision-OCR→文字（本案） | B. 真 ColPali（多向量+MaxSim） | C. 混合 |
+|---|---|---|---|
+| 檢索 | 重用既有文字 3 路（已證） | 新 MaxSim 路（視覺召回最強） | A 接地 + B 當召回 booster |
+| 接地 | ✅ 入庫即抽成文字，天然接地 | ❌ 仍須疊 vision 抽取 | ✅ |
+| 合憲法技術棧 | ✅ gemini + bigquery | ❌ 需 GPU 模型 + 新向量庫 | ❌ |
+| 新基建 | 0（無新庫、無新路由） | GPU serving + Qdrant/Vespa + 重 ingest | 全部 |
+| 狀態 | PoC 已證可行（2026-06-24） | 池化版未過 70%；多向量版未驗 | — |
+
+### F. 建議
+
+**第 4 路真正要的「圖表題能答且能接地」，Approach A 比搶救 ColPali 更直接、更合憲法、且已 PoC 證明。** 真 ColPali 僅在**「A 上線後圖表題召回率被證明不足」**時，才作為召回增強器加入，且仍須餵 vision 抽取的 chunk 去接地。
+
+在那之前，若要驗證真 ColPali 是否值得，**最低成本的下一步是『量』而非『建』**：R4 用 GPU 重編「幾百頁」保留 patch 矩陣 → 用 numpy / BigQuery SQL 直接算 MaxSim（**不必先架 Qdrant/Vespa**）→ 跑 hit@5 與 A 的召回對比。**未顯著勝出即不投基建。** 此實驗需逆轉 TD-01（記為 TD-02）並經 PM 簽核。
