@@ -147,9 +147,22 @@ class _StubStructuredStore:
     def list_events(self, *, ticker=None, event_type=None, limit=None):
         self.calls.append(("events", ticker, event_type, limit))
         return [
-            {"event_id": "evt-1", "ticker": "2330", "event_type": "monthly_revenue",
+            {"event_id": "evt-1", "ticker": "2330", "event_key": "monthly_revenue",
              "published_at": "2026-06-10", "title": "5月營收", "source_url": "https://mops"},
         ]
+
+    def get_chunk(self, source_id, *, viewer):
+        self.calls.append(("chunk", source_id, viewer))
+        if source_id == "missing":
+            return None
+        return {
+            "chunk_id": source_id,
+            "ticker": "2330",
+            "doc_type": "transcript",
+            "fiscal_period": "2026Q1",
+            "published_at": "2026-04-17",
+            "chunk_text": "台積電法說會原文內容。",
+        }
 
 
 @pytest.fixture
@@ -194,12 +207,205 @@ class TestEvents:
         r = client.get("/events")
         assert r.status_code == 200
         row = r.json()[0]
-        assert {"event_id", "ticker", "event_type", "published_at",
+        assert {"event_id", "ticker", "event_key", "published_at",
                 "title", "source_url"} <= row.keys()
 
     def test_type_filter_forwarded_as_event_type(self, client, stub_store):
         client.get("/events?ticker=2330&type=monthly_revenue")
         assert stub_store.calls[-1] == ("events", "2330", "monthly_revenue", None)
+
+
+class TestChunk:
+    def test_returns_doc_viewer_contract(self, client, stub_store):
+        r = client.get("/chunk/chunk-2330-q1?viewer=analyst_A")
+
+        assert r.status_code == 200
+        body = r.json()
+        assert body == {
+            "source_id": "chunk-2330-q1",
+            "title": "2330_2026Q1_法說逐字稿",
+            "doc_type": "transcript",
+            "kind_label": "法說逐字稿",
+            "ticker": "2330",
+            "fiscal_period": "2026Q1",
+            "published_at": "2026-04-17",
+            "page": None,
+            "trust": "high",
+            "content": "台積電法說會原文內容。",
+            "highlight": "台積電法說會原文內容。",
+            "hl_tokens": [],
+        }
+        assert stub_store.calls[-1] == ("chunk", "chunk-2330-q1", "analyst_A")
+
+    def test_missing_or_inaccessible_chunk_is_404(self, client, stub_store):
+        assert client.get("/chunk/missing").status_code == 404
+
+
+class TestContradiction:
+    def test_flags_conflicting_guidance_qualifiers(self, client):
+        r = client.post(
+            "/contradiction",
+            json={
+                "kpis": [
+                    {
+                        "label": "全年美元營收指引",
+                        "value": "中段 25%",
+                        "unit": "",
+                        "delta": None,
+                        "trend": None,
+                    }
+                ],
+                "summary": [
+                    {
+                        "text": "全年美元營收成長將達 25% 以上。",
+                        "cite": "chunk-2330-q1",
+                        "page": "p.7",
+                    }
+                ],
+            },
+        )
+
+        assert r.status_code == 200
+        alert = r.json()["alerts"][0]
+        assert alert["origin"] == "contradiction"
+        assert alert["level"] == "mid"
+        assert alert["cite_key"] == "chunk-2330-q1"
+        assert "中段 25%" in alert["summary"]
+        assert "25% 以上" in alert["summary"]
+
+    def test_returns_info_when_no_provable_conflict(self, client):
+        r = client.post(
+            "/contradiction",
+            json={
+                "kpis": [{"label": "毛利率", "value": "57.8", "unit": "%"}],
+                "summary": [
+                    {
+                        "text": "本季毛利率為 57.8%。",
+                        "cite": "chunk-2330-q1",
+                        "page": "",
+                    }
+                ],
+            },
+        )
+
+        assert r.status_code == 200
+        assert r.json()["alerts"][0]["level"] == "info"
+        assert r.json()["alerts"][0]["title"] == "交叉比對通過"
+
+
+class TestPeerCompare:
+    def test_returns_real_financials_trend_and_nested_call_citations(self, client, monkeypatch):
+        from polaris import api
+        from polaris.graph.state import Citation
+
+        class PeerStore:
+            def list_financials(self, *, ticker=None, period=None, metric=None, limit=None):
+                rows = {
+                    "2330": [
+                        {"ticker": "2330", "fiscal_period": "2026Q1", "metric_id": "gross_margin", "value": 57.8, "unit": "%", "source_id": "fin-a-q1"},
+                        {"ticker": "2330", "fiscal_period": "2026Q1", "metric_id": "operating_margin", "value": 47.5, "unit": "%", "source_id": "fin-a-op"},
+                        {"ticker": "2330", "fiscal_period": "2025Q4", "metric_id": "gross_margin", "value": 56.1, "unit": "%", "source_id": "fin-a-q4"},
+                    ],
+                    "2454": [
+                        {"ticker": "2454", "fiscal_period": "2026Q1", "metric_id": "gross_margin", "value": 38.3, "unit": "%", "source_id": "fin-b-q1"},
+                        {"ticker": "2454", "fiscal_period": "2026Q1", "metric_id": "operating_margin", "value": 20.1, "unit": "%", "source_id": "fin-b-op"},
+                        {"ticker": "2454", "fiscal_period": "2025Q4", "metric_id": "gross_margin", "value": 37.9, "unit": "%", "source_id": "fin-b-q4"},
+                    ],
+                }[ticker]
+                if period is not None:
+                    rows = [row for row in rows if row["fiscal_period"] == period]
+                if metric is not None:
+                    rows = [row for row in rows if row["metric_id"] == metric]
+                return rows[: limit or 200]
+
+        search_calls: list[tuple[str, str, str]] = []
+
+        def fake_search(ticker, period, question):
+            search_calls.append((ticker, period, question))
+            return [
+                Citation(
+                    source_id=f"call-{ticker}",
+                    snippet=f"{ticker} 法說原文",
+                    origin="embedding",
+                    company=ticker,
+                    doc_type="transcript",
+                    fiscal_period=period,
+                )
+            ]
+
+        monkeypatch.setattr(api, "_structured_store", PeerStore())
+        monkeypatch.setattr(api, "_search_peer_calls", fake_search)
+
+        r = client.post(
+            "/peer-compare",
+            json={
+                "a_ticker": "2330",
+                "b_ticker": "2454",
+                "fiscal_period": "2026Q1",
+                "question": "比較毛利率與法說重點",
+            },
+        )
+
+        assert r.status_code == 200
+        body = r.json()
+        assert body["a_ticker"] == "2330"
+        assert body["b_ticker"] == "2454"
+        assert body["fiscal_period"] == "2026Q1"
+        assert body["kpis"][0]["label"] == "毛利率"
+        assert body["kpis"][0]["a"]["v"] == "57.8%"
+        assert body["kpis"][0]["a"]["citations"][0]["src"] == "fin-a-q1"
+        assert body["kpis"][0]["a"]["citations"][0]["page"] == "2026Q1"
+        assert body["kpis"][0]["diff"] == "19.5pp"
+        assert body["kpis"][0]["better"] == "a"
+        assert body["financial"][0]["metric"] == "毛利率"
+        assert body["financial"][0]["note"] == "差異 19.5pp"
+        assert body["calls"][0]["dim"] == "法說會"
+        assert body["calls"][0]["topic"] == "比較毛利率與法說重點"
+        assert body["calls"][0]["a"]["cite"] == "call-2330"
+        assert body["calls"][0]["a"]["quote"] == "2330 法說原文"
+        assert body["calls"][0]["a"]["tone"] == "neu"
+        assert body["calls"][0]["b"]["cite"] == "call-2454"
+        assert body["trend"] == [
+            {"period": "2025Q4", "metric": "gross_margin", "a_value": 56.1, "b_value": 37.9},
+            {"period": "2026Q1", "metric": "gross_margin", "a_value": 57.8, "b_value": 38.3},
+        ]
+        assert body["valuation"] == []  # PE/PB 不在目前 canonical metric 清單，不造假
+        assert body["compliance_status"] == "passed"
+        assert search_calls == [
+            ("2330", "2026Q1", "比較毛利率與法說重點"),
+            ("2454", "2026Q1", "比較毛利率與法說重點"),
+        ]
+
+    def test_peer_call_search_uses_existing_retriever_bridge(self, monkeypatch):
+        from polaris import api
+        from polaris.graph.state import Citation
+        from polaris.retrieval import retriever as retriever_module
+
+        captured: dict = {}
+        expected = [Citation(source_id="call-2330", snippet="原文", origin="embedding")]
+
+        def fake_factory(*, viewer, filters):
+            captured["viewer"] = viewer
+            captured["filters"] = filters
+
+            def search(question):
+                captured["question"] = question
+                return expected
+
+            return search
+
+        monkeypatch.setattr(retriever_module, "make_retriever_search_fn", fake_factory)
+
+        assert api._search_peer_calls("2330", "2026Q1", "比較毛利率") == expected
+        assert captured == {
+            "viewer": "__public__",
+            "filters": {
+                "company": "2330",
+                "period": "2026Q1",
+                "doc_type": "transcript",
+            },
+            "question": "比較毛利率",
+        }
 
 
 class TestRouting:

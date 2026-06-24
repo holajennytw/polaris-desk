@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api";
+import { historyStore } from "@/lib/historyStore";
 import type { HistoryEntry } from "@/lib/historyStore";
 
 const FILTER_TABS = ["all", "research", "peer"];
@@ -42,12 +43,19 @@ export default function HistoryPage() {
   const router = useRouter();
   const [filter, setFilter] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await api.deleteHistory(deleteTarget);
+    setIsDeleting(true);
+    try {
+      await api.deleteHistory(deleteTarget);
+    } catch {
+      historyStore.remove(deleteTarget);
+    }
     mutate("history");
     setDeleteTarget(null);
+    setIsDeleting(false);
   };
 
   const handleItemClick = async (item: HistoryEntry) => {
@@ -82,7 +90,10 @@ export default function HistoryPage() {
           ))}
         </div>
         {isLoading ? (
-          <div style={{ padding: 24, color: "rgb(var(--muted))" }}>載入中...</div>
+          <div className="thinking-pulse">
+            <div className="thinking-dots"><span/><span/><span/></div>
+            載入中
+          </div>
         ) : groups.length === 0 ? (
           <div className="panel" style={{ marginTop: 16 }}>
             <div style={{ padding: "48px 16px", textAlign: "center", color: "rgb(var(--muted))" }}>
@@ -154,8 +165,8 @@ export default function HistoryPage() {
           <div className="hist-confirm-title">刪除此紀錄？</div>
           <div className="hist-confirm-desc">刪除後紀錄將無法還原，確認要繼續嗎？</div>
           <div className="hist-confirm-actions">
-            <button className="btn" onClick={() => setDeleteTarget(null)}>取消</button>
-            <button className="btn danger" onClick={confirmDelete}>確認刪除</button>
+            <button className="btn" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>取消</button>
+            <button className="btn danger" onClick={confirmDelete} disabled={isDeleting}>{isDeleting ? "刪除中…" : "確認刪除"}</button>
           </div>
         </div>
       </div>

@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
-import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
+import { contraAlertStore, type ContraAlert, type ContraPage } from "@/lib/contraAlertStore";
 
-export function useContraAlerts() {
+export function useContraAlerts(page: ContraPage) {
   const [alerts, setAlerts] = useState<ContraAlert[]>([]);
   useEffect(() => {
-    setAlerts(contraAlertStore.get());
-    return contraAlertStore.subscribe(setAlerts);
-  }, []);
+    setAlerts(contraAlertStore.get(page));
+    return contraAlertStore.subscribe(setAlerts, page);
+  }, [page]);
   return alerts;
 }
