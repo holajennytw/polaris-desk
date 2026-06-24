@@ -53,6 +53,39 @@ def test_throttle_paces_vision_calls_only():
     assert slept == [1.5, 1.5]            # 只在 2 個 vision 頁後各 pause 一次
 
 
+class EchoExtractor:
+    """回傳 render 出的 bytes 內容（= 頁碼），用來驗並行下輸出仍照頁序。"""
+    def extract(self, image_bytes, *, doc_type):
+        return PageExtraction(page_summary=f"V:{image_bytes.decode()}", confidence=0.9)
+
+
+def test_concurrency_preserves_page_order():
+    out = extract_pages_with_vision(
+        "x.pdf", doc_type="presentation", extractor=EchoExtractor(),
+        page_texts=["a", "b", "c", "d", "e"],
+        render=lambda p, n, dpi=150: str(n).encode(),   # png 內容 = 頁碼
+        concurrency=3,
+    )
+    assert out == ["V:1", "V:2", "V:3", "V:4", "V:5"]    # 並行但輸出仍照頁序
+
+
+def test_concurrency_failure_reported_per_page_in_order():
+    class Flaky:
+        def extract(self, image_bytes, *, doc_type):
+            if image_bytes == b"3":          # 第 3 頁失敗
+                raise RuntimeError("boom")
+            return PageExtraction(page_summary=f"V:{image_bytes.decode()}", confidence=0.9)
+    errs = []
+    out = extract_pages_with_vision(
+        "x.pdf", doc_type="presentation", extractor=Flaky(),
+        page_texts=["a", "b", "c", "d"],
+        render=lambda p, n, dpi=150: str(n).encode(),
+        concurrency=4, on_error=lambda i, exc: errs.append(i),
+    )
+    assert out == ["V:1", "V:2", "", "V:4"]   # 失敗頁誠實空白、其餘照常
+    assert errs == [3]                        # 失敗頁回報（頁碼）
+
+
 def test_one_page_failure_does_not_abort_batch():
     errors = []
     out = extract_pages_with_vision(

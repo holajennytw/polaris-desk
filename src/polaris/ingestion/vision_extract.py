@@ -41,16 +41,21 @@ def _gemini_extract_fn(model: str) -> ExtractFn:
     """真 Gemini structured-output 抽取 fn。client 延遲到**首次呼叫**才建
     （故 active_vision_extractor 只組 closure、不碰 ADC/網路 → 工廠單測 CI-safe）。"""
     cache: dict = {}
+    import threading
+    _lock = threading.Lock()
 
     def _client():
+        # 雙重檢查鎖：並行模式下多執行緒首呼不會各自建一個 client。
         if "c" not in cache:
-            from google import genai
+            with _lock:
+                if "c" not in cache:
+                    from google import genai
 
-            from polaris.config import settings
-            cache["c"] = genai.Client(
-                vertexai=True, project=settings.gcp_project,
-                location=settings.vertex_location,
-            )
+                    from polaris.config import settings
+                    cache["c"] = genai.Client(
+                        vertexai=True, project=settings.gcp_project,
+                        location=settings.vertex_location,
+                    )
         return cache["c"]
 
     def _once(image_bytes: bytes) -> PageExtraction:

@@ -37,9 +37,14 @@ def main() -> None:
     ap.add_argument("--ticker", action="append", required=True)
     ap.add_argument("--out", default="data/vision_chunks")
     ap.add_argument("--throttle", type=float, default=3.0,
-                    help="每個 vision 頁後暫停秒數，壓在 Vertex QPM 之下避免 429 風暴（預設 3.0）")
+                    help="每送出一個 vision 請求後暫停秒數，壓在 Vertex QPM 之下避免 429（預設 3.0）")
+    ap.add_argument("--concurrency", type=int, default=1,
+                    help="同時併發的 vision 請求數（thread pool）；>1 吞吐約 N 倍直到吃滿配額（預設 1）")
     ap.add_argument("--ingest", action="store_true", help="寫 DEV dataset（非 polaris_core）")
+    ap.add_argument("--periods", default="",
+                    help="只處理這些季別（逗號分隔，如 2024Q3,2024Q4,...）；空=全部")
     args = ap.parse_args()
+    allowed_periods = {p.strip() for p in args.periods.split(",") if p.strip()}
 
     from polaris.config import settings
     from polaris.ingestion.chunker import chunk_pages
@@ -77,10 +82,13 @@ def main() -> None:
             meta = _meta_from_filename(Path(pdf).name)
             if not meta:
                 continue
+            if allowed_periods and meta["period"] not in allowed_periods:
+                continue
             errs: list[int] = []
             pages = extract_pages_with_vision(
                 pdf, doc_type=meta["doc_type"], extractor=extractor,
                 on_error=lambda i, exc: errs.append(i), pause=args.throttle,
+                concurrency=args.concurrency,
             )
             failed_pages += len(errs)
             for i, txt in enumerate(pages, start=1):
