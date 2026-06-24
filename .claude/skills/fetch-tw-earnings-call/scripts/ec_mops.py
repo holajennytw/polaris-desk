@@ -25,7 +25,7 @@ PDF_BASE = "https://mopsov.twse.com.tw/nas/STR/"
 _TR = re.compile(r"<tr[^>]*>.*?</tr>", re.S | re.I)
 _TD = re.compile(r"<td[^>]*>(.*?)</td>", re.S | re.I)
 _TAG = re.compile(r"<[^>]+>")
-_SUBJ_Q = re.compile(r"(\d{2,3})\s*年(?:度)?\s*第\s*([一二三四1-4])\s*季")
+_SUBJ_Q = re.compile(r"(\d{2,4})\s*年(?:度)?\s*第\s*([一二三四1-4])\s*季")
 _CN_Q = {"一": 1, "二": 2, "三": 3, "四": 4, "1": 1, "2": 2, "3": 3, "4": 4}
 
 
@@ -42,7 +42,13 @@ def _cell_text(fragment: str) -> str:
 
 def _period_from_subject(subject: str) -> str:
     m = _SUBJ_Q.search(subject)
-    return to_period(1911 + int(m.group(1)), _CN_Q[m.group(2)]) if m else ""
+    if not m:
+        return ""
+    # 主旨年份可能是民國（2-3 碼，如 114年）或西元（4 碼，如 2025年，台積電等用）。
+    # 西元（>=1911）原樣用；民國 +1911。避免把「2025」的尾 3 碼當民國 → 1936（年-89 bug）。
+    y = int(m.group(1))
+    year = y if y >= 1911 else 1911 + y
+    return to_period(year, _CN_Q[m.group(2)])
 
 
 def _parse(html_text: str, ticker: str) -> list[Doc]:
