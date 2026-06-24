@@ -36,6 +36,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ticker", action="append", required=True)
     ap.add_argument("--out", default="data/vision_chunks")
+    ap.add_argument("--throttle", type=float, default=3.0,
+                    help="每個 vision 頁後暫停秒數，壓在 Vertex QPM 之下避免 429 風暴（預設 3.0）")
     ap.add_argument("--ingest", action="store_true", help="寫 DEV dataset（非 polaris_core）")
     args = ap.parse_args()
 
@@ -78,7 +80,7 @@ def main() -> None:
             errs: list[int] = []
             pages = extract_pages_with_vision(
                 pdf, doc_type=meta["doc_type"], extractor=extractor,
-                on_error=lambda i, exc: errs.append(i),
+                on_error=lambda i, exc: errs.append(i), pause=args.throttle,
             )
             failed_pages += len(errs)
             for i, txt in enumerate(pages, start=1):

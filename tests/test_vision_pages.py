@@ -39,6 +39,20 @@ class FlakyExtractor:
         raise RuntimeError("boom")
 
 
+def test_throttle_paces_vision_calls_only():
+    # 文字頁不該觸發節流（不呼叫 vision）；只有 vision 頁之間 pause。
+    slept = []
+    ex = FakeExtractor()
+    out = extract_pages_with_vision(
+        "x.pdf", doc_type="transcript", extractor=ex,
+        page_texts=["這是一段完整文字層的內容，超過門檻足夠長。", "", ""],  # 1 文字頁 + 2 掃描頁
+        render=lambda p, n, dpi=150: b"PNG",
+        pause=1.5, sleep=slept.append,
+    )
+    assert "VISION:" in out[1] and "VISION:" in out[2]
+    assert slept == [1.5, 1.5]            # 只在 2 個 vision 頁後各 pause 一次
+
+
 def test_one_page_failure_does_not_abort_batch():
     errors = []
     out = extract_pages_with_vision(
