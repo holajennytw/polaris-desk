@@ -70,6 +70,17 @@ def _gemini_extract_fn(model: str) -> ExtractFn:
     return _fn
 
 
+def render_page(pdf_path: str, page_num: int, *, dpi: int = 150) -> bytes:
+    """PDF 第 page_num 頁（1-based）→ PNG bytes（延遲 import pymupdf）。"""
+    import fitz
+
+    doc = fitz.open(pdf_path)
+    try:
+        return doc[page_num - 1].get_pixmap(dpi=dpi).tobytes("png")
+    finally:
+        doc.close()
+
+
 def active_vision_extractor() -> "VisionExtractor | None":
     """gate 開才回真抽取器；否則 None（第 4 路 ingestion 關閉、CI 0 外呼）。"""
     from polaris.config import settings

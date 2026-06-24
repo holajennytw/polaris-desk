@@ -52,3 +52,19 @@ def test_factory_returns_extractor_when_gate_on(monkeypatch):
     ex = active_vision_extractor()
     assert ex is not None
     assert hasattr(ex, "extract")
+
+
+import pytest
+
+
+def test_render_page_smoke():
+    fitz = pytest.importorskip("fitz")   # 無 pymupdf 環境 → skip（CI 不裝）
+    import tempfile, os
+    from polaris.ingestion.vision_extract import render_page
+    doc = fitz.open()
+    doc.new_page(width=200, height=120)
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+        doc.save(f.name); path = f.name
+    png = render_page(path, 1, dpi=72)
+    os.unlink(path)
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"   # PNG magic
