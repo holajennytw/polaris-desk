@@ -427,6 +427,10 @@ def make_retriever_search_fn(
 
 RESEARCH_DOC_TYPE_QUOTAS: Mapping[str, int] = {
     "transcript": 5,
+    # 法說簡報（slide deck）與逐字稿同屬法說會證據，但 canonical doc_type 分兩種；
+    # ingest_ticker.py 以 doc_type="presentation" 入庫，故 retriever 必須同列查詢，
+    # 否則 R4 ingest 的簡報 chunks 永遠不會出現在 /research 引用（前端已有「法說簡報」label）。
+    "presentation": 5,
     "major_news": 5,
     "news": 3,
 }

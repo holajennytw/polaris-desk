@@ -522,14 +522,16 @@ def test_research_search_uses_per_doc_type_quotas_then_reranks_once():
 
     assert store_calls == [
         (5, {"doc_type": "transcript", "viewer": "analyst_A"}),
+        (5, {"doc_type": "presentation", "viewer": "analyst_A"}),
         (5, {"doc_type": "major_news", "viewer": "analyst_A"}),
         (3, {"doc_type": "news", "viewer": "analyst_A"}),
     ]
     assert rerank_calls == [
-        (["transcript-1", "major_news-1", "news-1"], 8)
+        (["transcript-1", "presentation-1", "major_news-1", "news-1"], 8)
     ]
     assert [c.source_id for c in citations] == [
         "transcript-1",
+        "presentation-1",
         "major_news-1",
         "news-1",
     ]
