@@ -60,7 +60,8 @@ export function parseQuery(q: string): ParsedQuery {
   }
 
   // 季別
-  let period = "2026 Q1";
+  // 只有 query 明確包含季度才填入；否則回空字串，由呼叫端沿用目前 fiscalPeriod。
+  let period = "";
   const pm = q.match(PERIOD_PATTERN);
   if (pm) period = `${pm[1]} Q${pm[2]}`;
 

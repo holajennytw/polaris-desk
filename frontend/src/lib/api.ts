@@ -13,6 +13,7 @@ import { historyStore } from "./historyStore";
 import { getSession } from "next-auth/react";
 import type { ChunkRaw, BackendPeerCompareResponse, PeerCompareResult } from "@/types/api";
 import type { DocContent } from "@/components/polaris/DocViewer";
+import { normalizePeerCompare } from "@/lib/peer-result";
 
 // 有登入 → 回 Authorization header；無登入 / 斷網 → 空物件（後端視為匿名）
 async function authHeaders(): Promise<Record<string, string>> {
@@ -241,28 +242,6 @@ export const api = {
       body: JSON.stringify(params),
     }) as BackendPeerCompareResponse;
 
-    // Normalise backend → frontend shape
-    const kpis: PeerCompareResult["kpis"] = raw.kpis.map((k) => ({
-      label: k.metric,
-      a: { v: k.a.v, citations: k.a.citations.map((c) => ({ src: c.src, page: c.snippet })) },
-      b: { v: k.b.v, citations: k.b.citations.map((c) => ({ src: c.src, page: c.snippet })) },
-    }));
-
-    const calls: PeerCompareResult["calls"] = raw.calls.map((c) => ({
-      a: { cite: c.a.cite, quote: c.a.snippet },
-      b: { cite: c.b.cite, quote: c.b.snippet },
-    }));
-
-    return {
-      a_ticker: raw.a_ticker,
-      b_ticker: raw.b_ticker,
-      fiscal_period: raw.fiscal_period,
-      kpis,
-      calls,
-      trend: raw.trend,
-      valuation: raw.valuation,
-      summary: raw.summary,
-      compliance_status: raw.compliance_status,
-    };
+    return normalizePeerCompare(raw);
   },
 };

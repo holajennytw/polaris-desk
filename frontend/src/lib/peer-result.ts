@@ -1,3 +1,8 @@
+import type {
+  BackendPeerCompareResponse,
+  PeerCompareResult,
+} from "@/types/api";
+
 export interface FinancialMetricRow {
   fiscal_period: string;
   metric_id: string;
@@ -55,4 +60,35 @@ export function peerCitations(result: PeerResultLike | null): PeerSource[] {
   });
 
   return sources;
+}
+
+export function normalizePeerCompare(raw: BackendPeerCompareResponse): PeerCompareResult {
+  return {
+    a_ticker: raw.a_ticker,
+    b_ticker: raw.b_ticker,
+    fiscal_period: raw.fiscal_period,
+    kpis: raw.kpis.map((k) => ({
+      label: k.label,
+      a: { v: k.a.v, citations: k.a.citations.map((c) => ({ src: c.src, page: c.page })) },
+      b: { v: k.b.v, citations: k.b.citations.map((c) => ({ src: c.src, page: c.page })) },
+      diff: k.diff,
+      better: k.better,
+    })),
+    financial: raw.financial.map((f) => ({
+      metric: f.metric,
+      a: { v: f.a.v, citations: f.a.citations.map((c) => ({ src: c.src, page: c.page })) },
+      b: { v: f.b.v, citations: f.b.citations.map((c) => ({ src: c.src, page: c.page })) },
+      note: f.note,
+    })),
+    calls: raw.calls.map((c) => ({
+      dim: c.dim,
+      topic: c.topic,
+      a: { stance: c.a.stance, tone: c.a.tone, quote: c.a.quote, cite: c.a.cite },
+      b: { stance: c.b.stance, tone: c.b.tone, quote: c.b.quote, cite: c.b.cite },
+    })),
+    trend: raw.trend,
+    valuation: raw.valuation,
+    summary: raw.summary,
+    compliance_status: raw.compliance_status,
+  };
 }
