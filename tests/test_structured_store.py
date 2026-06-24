@@ -112,7 +112,7 @@ class TestListEvents:
         store.list_events(ticker="2330", event_type="monthly_revenue")
         sql = client.queries[0]
         assert "ticker = @ticker" in sql
-        assert "event_type = @event_type" in sql
+        assert "STARTS_WITH(event_key, @event_key)" in sql
 
 
 class TestBuildJobConfig:

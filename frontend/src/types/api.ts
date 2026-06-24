@@ -3,21 +3,9 @@
 // 只描述結構，不含前端邏輯。
 // ============================================================
 
-export type Severity = "alert" | "watch" | "info";
+// ── 共用基礎型別 ─────────────────────────────────────────────
 
-export interface AlertRaw {
-  event_id: string;
-  ticker: string;
-  summary: string;
-  compliance_status: string;
-  severity: Severity;
-  evidence: Array<{
-    source_id: string;
-    snippet: string;
-    origin: string;
-    company: string | null;
-  }>;
-}
+export type Severity = "alert" | "watch" | "info";
 
 export interface CitationRaw {
   src: string;
@@ -54,6 +42,22 @@ export interface ReactStepRaw {
   tool: boolean;
 }
 
+// ── 公司清單 GET /companies ───────────────────────────────────
+
+export interface CompanyRaw {
+  ticker: string;
+  company_name: string | null;
+  english_name: string | null;
+  market: string | null;
+  industry_id: string | null;
+  industry_name: string | null;
+  is_financial: boolean | null;
+  aliases: string | null;
+}
+
+// ── 研究助理 ─────────────────────────────────────────────────
+// POST /ask
+
 export interface AskCitationRaw {
   source_id: string;
   snippet: string;
@@ -77,16 +81,57 @@ export interface AskResponse {
   trace: NodeTraceRaw[];
 }
 
-export interface CompanyRaw {
-  ticker: string;
-  company_name: string | null;
-  english_name: string | null;
-  market: string | null;
-  industry_id: string | null;
-  industry_name: string | null;
-  is_financial: boolean | null;
-  aliases: string | null;
+// POST /research
+
+export type ResearchCitationOrigin = "stub" | "bm25" | "embedding" | "colpali" | "rerank" | "news";
+
+export interface ResearchCitationRaw {
+  source_id: string;
+  snippet: string;
+  origin: ResearchCitationOrigin;
+  company?: string;
+  event_key?: string;
+  source_key?: string;
+  published_yyyymm?: number;
+  // legacy（stub / BM25 仍可能出現）
+  doc_type?: string;
+  published_at?: string;
+  fiscal_period?: string;
 }
+
+export interface ResearchReActStepRaw {
+  thought: string;
+  action: string;
+  action_input: string;
+  observation: string;
+}
+
+export interface ResearchResponse {
+  final_answer: string;
+  evidence: ResearchCitationRaw[];
+  react_steps: ResearchReActStepRaw[];
+  status: string;
+  compliance_status: string;
+}
+
+// GET /chunk/{source_id}
+
+export interface ChunkRaw {
+  source_id: string;
+  title: string;
+  doc_type: string;
+  kind_label: string;
+  ticker: string;
+  fiscal_period: string;
+  published_at: string;
+  page: string | null;
+  trust: "high" | "mid";
+  content: string;
+  highlight: string;
+  hl_tokens?: string[];
+}
+
+// ── 同業比較 POST /peer-compare ──────────────────────────────
 
 export interface PeerKpiRaw {
   label: string;
@@ -136,6 +181,26 @@ export interface ValuationRowRaw {
   note: string;
 }
 
+export interface PeerCompareTrendPoint {
+  period: string;
+  metric: string;
+  a_value: number | null;
+  b_value: number | null;
+}
+
+export interface PeerCompareResponse {
+  a_ticker:         string;
+  b_ticker:         string;
+  fiscal_period:    string;
+  kpis:             PeerKpiRaw[];
+  financial:        PnlRowRaw[];
+  calls:            CallRowRaw[];
+  valuation:        ValuationRowRaw[];
+  trend:            PeerCompareTrendPoint[];
+  summary:          string;
+  compliance_status: string;
+}
+
 export interface CompanyResponse {
   id: string;
   name: string;
@@ -162,6 +227,24 @@ export interface CompanyResponse {
   };
 }
 
+// ── 警示 GET /alerts ──────────────────────────────────────────
+
+export interface AlertRaw {
+  event_id: string;
+  ticker: string;
+  summary: string;
+  compliance_status: string;
+  severity: Severity;
+  evidence: Array<{
+    source_id: string;
+    snippet: string;
+    origin: string;
+    company: string | null;
+  }>;
+}
+
+// ── 新聞 GET /news ────────────────────────────────────────────
+
 export interface NewsItemRaw {
   id: string;
   source_key: string;
@@ -183,6 +266,8 @@ export interface NewsResponse {
   tabs: NewsTab[];
   items: NewsItemRaw[];
 }
+
+// ── 文件庫 GET /library ───────────────────────────────────────
 
 /** BQ-aligned: colpali_pages × company_dim JOIN（R4 API 接通前為 mock） */
 export interface DocRaw {
@@ -217,6 +302,8 @@ export interface LibraryResponse {
   types: { id: string; label: string; count: number }[];
   docs: DocRaw[];
 }
+
+// ── 歷史 / 通知 / 監看 ───────────────────────────────────────
 
 export interface HistoryItemRaw {
   id: string;
@@ -254,53 +341,4 @@ export interface WatchItemRaw {
   trigger: string;
   status: "active" | "paused";
   last_triggered?: string;
-}
-
-// ── /research 端點（ResearchResponse，與 AskResponse 欄位不同）──
-
-export type ResearchCitationOrigin = "stub" | "bm25" | "embedding" | "colpali" | "rerank" | "news";
-
-export interface ResearchCitationRaw {
-  source_id: string;
-  snippet: string;
-  origin: ResearchCitationOrigin;
-  company?: string;
-  event_key?: string;
-  source_key?: string;
-  published_yyyymm?: number;
-  // legacy（stub / BM25 仍可能出現）
-  doc_type?: string;
-  published_at?: string;
-  fiscal_period?: string;
-}
-
-export interface ResearchReActStepRaw {
-  thought: string;
-  action: string;
-  action_input: string;
-  observation: string;
-}
-
-export interface ResearchResponse {
-  final_answer: string;
-  evidence: ResearchCitationRaw[];
-  react_steps: ResearchReActStepRaw[];
-  status: string;
-  compliance_status: string;
-}
-
-// ── GET /chunk/{source_id} 回應（文件 5_引用追蹤器契約）──
-export interface ChunkRaw {
-  source_id: string;
-  title: string;
-  doc_type: string;
-  kind_label: string;
-  ticker: string;
-  fiscal_period: string;
-  published_at: string;
-  page: string | null;
-  trust: "high" | "mid";
-  content: string;
-  highlight: string;
-  hl_tokens?: string[];
 }
