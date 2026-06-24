@@ -32,8 +32,11 @@ Watchdog（specs/003，R7 Alert Inbox 消費端）：
 """
 from __future__ import annotations
 
+import hashlib
+import re
 from datetime import date, datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -123,6 +126,70 @@ class ResearchResponse(BaseModel):
     compliance_status: str
 
 
+class ContradictionKpi(BaseModel):
+    label: str
+    value: str | float | int
+    unit: str = ""
+    delta: str | None = None
+    trend: str | None = None
+
+
+class ContradictionSummary(BaseModel):
+    text: str
+    cite: str = ""
+    page: str = ""
+
+
+class ContradictionRequest(BaseModel):
+    kpis: list[ContradictionKpi] = Field(default_factory=list)
+    summary: list[ContradictionSummary] = Field(default_factory=list)
+
+
+class ContradictionAlert(BaseModel):
+    id: str
+    origin: str = "contradiction"
+    level: str
+    title: str
+    summary: str
+    source: str
+    time: str
+    cite_key: str | None = None
+
+
+class ContradictionResponse(BaseModel):
+    alerts: list[ContradictionAlert]
+
+
+_CONTRADICTION_TOPICS = ("全年", "營收", "毛利率", "營業利益率", "指引", "EPS", "資本支出")
+_CONTRADICTORY_QUALIFIERS = (
+    ("中段", "以上"),
+    ("中段", "至少"),
+    ("上修", "下修"),
+    ("成長", "衰退"),
+    ("增加", "減少"),
+)
+
+
+def _numeric_tokens(text: str) -> set[str]:
+    return {m.replace(" ", "") for m in re.findall(r"-?\d+(?:\.\d+)?\s*%?", text)}
+
+
+def _has_provable_conflict(kpi_text: str, summary_text: str) -> bool:
+    for left, right in _CONTRADICTORY_QUALIFIERS:
+        if (left in kpi_text and right in summary_text) or (
+            right in kpi_text and left in summary_text
+        ):
+            return True
+    kpi_numbers = _numeric_tokens(kpi_text)
+    summary_numbers = _numeric_tokens(summary_text)
+    return bool(kpi_numbers and summary_numbers and kpi_numbers.isdisjoint(summary_numbers))
+
+
+def _contradiction_id(kpi: ContradictionKpi, item: ContradictionSummary) -> str:
+    digest = hashlib.sha256(f"{kpi.label}|{kpi.value}|{item.cite}|{item.text}".encode()).hexdigest()
+    return f"contra-{digest[:12]}"
+
+
 @app.get("/healthz", tags=["ops"])
 @app.get("/health", tags=["ops"])
 def healthz() -> dict[str, str]:
@@ -165,6 +232,49 @@ def research(req: ResearchRequest) -> ResearchResponse:
         status=r.status,
         compliance_status=r.compliance_status,
     )
+
+
+@app.post("/contradiction", response_model=ContradictionResponse, tags=["research"])
+def contradiction(req: ContradictionRequest) -> ContradictionResponse:
+    """保守比對 KPI 與摘要；只回報可由數字或方向措辭證明的矛盾。"""
+    now = datetime.now().strftime("%H:%M")
+    alerts: list[ContradictionAlert] = []
+    for kpi in req.kpis:
+        kpi_text = f"{kpi.label} {kpi.value}{kpi.unit}"
+        topics = [topic for topic in _CONTRADICTION_TOPICS if topic in kpi.label]
+        for item in req.summary:
+            if topics and not any(topic in item.text for topic in topics):
+                continue
+            if not _has_provable_conflict(kpi_text, item.text):
+                continue
+            location = " ".join(part for part in (item.cite, item.page) if part)
+            alerts.append(
+                ContradictionAlert(
+                    id=_contradiction_id(kpi, item),
+                    level="mid",
+                    title=f"{kpi.label}：KPI 與摘要表述不一致",
+                    summary=(
+                        f"KPI 顯示「{kpi.value}{kpi.unit}」，摘要顯示「{item.text}」；"
+                        f"請核對 {location or '引用原文'}。"
+                    ),
+                    source=f"矛盾偵測 · {item.cite or '未標引用'} vs KPI",
+                    time=now,
+                    cite_key=item.cite or None,
+                )
+            )
+
+    if not alerts:
+        alerts.append(
+            ContradictionAlert(
+                id="contra-pass",
+                level="info",
+                title="交叉比對通過",
+                summary="本次 KPI 與摘要未發現可由數字或方向措辭證明的矛盾。",
+                source="矛盾偵測引擎",
+                time=now,
+            )
+        )
+    return ContradictionResponse(alerts=alerts)
 
 
 # --- 通知中心（specs/002）— thin 轉接到 NotificationService ------------------
@@ -390,6 +500,31 @@ def library(
     return LibraryResponse(stats=stats, types=types, docs=docs)
 
 
+class ChunkResponse(BaseModel):
+    """R7 DocViewer 的引用原文契約。"""
+
+    source_id: str
+    title: str
+    doc_type: str
+    kind_label: str
+    ticker: str
+    fiscal_period: str | None = None
+    published_at: date | None = None
+    page: str | None = None
+    trust: str = "high"
+    content: str
+    highlight: str
+    hl_tokens: list[str] = Field(default_factory=list)
+
+
+_DOC_TYPE_LABELS = {
+    "transcript": "法說逐字稿",
+    "major_news": "重大訊息",
+    "news": "新聞",
+    "presentation": "法說簡報",
+}
+
+
 @app.get("/companies", response_model=list[CompanyResponse], tags=["structured"])
 def companies() -> list[CompanyResponse]:
     """canonical 公司清單（company_dim，~20 列）。前端顯示用 ticker→公司名對照。"""
@@ -421,6 +556,294 @@ def events(
     """事件流（events），時間倒序，可依 ticker / type 過濾。做公司動態時間軸用。"""
     rows = _structured_store.list_events(ticker=ticker, event_type=type, limit=limit)
     return [EventResponse(**row) for row in rows]
+
+
+# --- Peer Compare (R7 同業比較) -----------------------------------------------
+
+_VALUATION_METRICS = {"pe_ratio", "pb_ratio", "ps_ratio"}
+
+
+def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation]:
+    """法說逐字稿 RAG 搜尋（ticker + period + doc_type=transcript）。注入 seam for tests."""
+    from polaris.retrieval.retriever import make_retriever_search_fn
+
+    search = make_retriever_search_fn(
+        viewer=PUBLIC_VIEWER,
+        filters={"company": ticker, "period": period, "doc_type": "transcript"},
+    )
+    return search(question)
+
+
+class _PeerCitationOut(BaseModel):
+    src: str
+    page: str
+
+
+class _PeerMetricSide(BaseModel):
+    v: str
+    citations: list[_PeerCitationOut]
+
+
+class _PeerKpi(BaseModel):
+    label: str
+    a: _PeerMetricSide
+    b: _PeerMetricSide
+    diff: str
+    better: Literal["a", "b"]
+
+
+class _PeerFinancialRow(BaseModel):
+    metric: str
+    a: _PeerMetricSide
+    b: _PeerMetricSide
+    note: str
+
+
+class _PeerCallSide(BaseModel):
+    stance: str
+    tone: Literal["pos", "neu", "neg"]
+    quote: str
+    cite: str
+
+
+class _PeerCall(BaseModel):
+    dim: str
+    topic: str
+    a: _PeerCallSide
+    b: _PeerCallSide
+
+
+class _PeerTrendRow(BaseModel):
+    period: str
+    metric: str
+    a_value: float | None
+    b_value: float | None
+
+
+class _PeerValuationRow(BaseModel):
+    metric: str
+    a: str
+    b: str
+    note: str
+
+
+class PeerCompareRequest(BaseModel):
+    a_ticker: str = Field(min_length=1)
+    b_ticker: str = Field(min_length=1)
+    fiscal_period: str = Field(min_length=1, description="如 2026Q1")
+    question: str = Field(min_length=1)
+
+
+class PeerCompareResponse(BaseModel):
+    a_ticker: str
+    b_ticker: str
+    fiscal_period: str
+    kpis: list[_PeerKpi]
+    financial: list[_PeerFinancialRow]
+    calls: list[_PeerCall]
+    trend: list[_PeerTrendRow]
+    valuation: list[_PeerValuationRow]
+    summary: str
+    compliance_status: str
+
+
+def _fmt_value(value: float, unit: str | None) -> str:
+    unit = unit or ""
+    if unit == "%":
+        return f"{value}{unit}"
+    return f"{value} {unit}".strip()
+
+
+_PEER_METRIC_LABELS = {
+    "gross_margin": "毛利率",
+    "operating_margin": "營業利益率",
+    "net_margin": "淨利率",
+    "roe": "ROE",
+    "roa": "ROA",
+    "capex": "資本支出",
+    "free_cash_flow": "自由現金流",
+    "debt_ratio": "負債比率",
+    "dividend": "股利",
+    "pe_ratio": "PE",
+    "pb_ratio": "PB",
+    "ps_ratio": "PS",
+}
+
+
+def _metric_side(row: dict, period: str) -> _PeerMetricSide:
+    return _PeerMetricSide(
+        v=_fmt_value(row["value"], row.get("unit")),
+        citations=[
+            _PeerCitationOut(src=str(row.get("source_id") or ""), page=period)
+        ],
+    )
+
+
+def _metric_diff(a_row: dict, b_row: dict) -> tuple[str, Literal["a", "b"]]:
+    difference = float(a_row["value"]) - float(b_row["value"])
+    suffix = "pp" if a_row.get("unit") == b_row.get("unit") == "%" else (a_row.get("unit") or "")
+    return f"{abs(difference):g}{suffix}", "a" if difference >= 0 else "b"
+
+
+def _call_side(citation: Citation | None) -> _PeerCallSide:
+    if citation is None:
+        return _PeerCallSide(stance="資料不足", tone="neu", quote="", cite="")
+    return _PeerCallSide(
+        stance="有相關引用",
+        tone="neu",
+        quote=citation.snippet,
+        cite=citation.source_id,
+    )
+
+
+@app.post("/peer-compare", response_model=PeerCompareResponse, tags=["research"])
+def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
+    """同業比較：真實財務指標 + 法說 RAG 引用；PE/PB 目前無資料回 []，不造假。"""
+    a_rows = _structured_store.list_financials(ticker=req.a_ticker, period=req.fiscal_period)
+    b_rows = _structured_store.list_financials(ticker=req.b_ticker, period=req.fiscal_period)
+
+    # index by metric_id, exclude valuation metrics (no canonical data yet)
+    a_by_metric = {
+        r["metric_id"]: r for r in a_rows if r["metric_id"] not in _VALUATION_METRICS
+    }
+    b_by_metric = {
+        r["metric_id"]: r for r in b_rows if r["metric_id"] not in _VALUATION_METRICS
+    }
+
+    common_metrics = [m for m in a_by_metric if m in b_by_metric]
+
+    kpis: list[_PeerKpi] = []
+    financial: list[_PeerFinancialRow] = []
+    for metric in common_metrics:
+        ar = a_by_metric[metric]
+        br = b_by_metric[metric]
+        a_side = _metric_side(ar, req.fiscal_period)
+        b_side = _metric_side(br, req.fiscal_period)
+        difference, better = _metric_diff(ar, br)
+        label = _PEER_METRIC_LABELS.get(metric, metric)
+        kpis.append(
+            _PeerKpi(
+                label=label,
+                a=a_side,
+                b=b_side,
+                diff=difference,
+                better=better,
+            )
+        )
+        financial.append(
+            _PeerFinancialRow(
+                metric=label,
+                a=a_side,
+                b=b_side,
+                note=f"差異 {difference}",
+            )
+        )
+
+    # law call RAG for both tickers
+    a_cites = _search_peer_calls(req.a_ticker, req.fiscal_period, req.question)
+    b_cites = _search_peer_calls(req.b_ticker, req.fiscal_period, req.question)
+
+    calls: list[_PeerCall] = []
+    for index in range(max(len(a_cites), len(b_cites))):
+        ac = a_cites[index] if index < len(a_cites) else None
+        bc = b_cites[index] if index < len(b_cites) else None
+        calls.append(
+            _PeerCall(
+                dim="法說會",
+                topic=req.question,
+                a=_call_side(ac),
+                b=_call_side(bc),
+            )
+        )
+
+    # trend: all periods for common metrics in fiscal data (all periods, not just requested)
+    a_all = _structured_store.list_financials(ticker=req.a_ticker)
+    b_all = _structured_store.list_financials(ticker=req.b_ticker)
+    a_all_idx: dict[tuple[str, str], dict] = {(r["fiscal_period"], r["metric_id"]): r for r in a_all if r["metric_id"] not in _VALUATION_METRICS}
+    b_all_idx: dict[tuple[str, str], dict] = {(r["fiscal_period"], r["metric_id"]): r for r in b_all if r["metric_id"] not in _VALUATION_METRICS}
+
+    # only include metrics with data in more than one period (i.e. actual trend)
+    a_metric_periods: dict[str, set[str]] = {}
+    for (period, metric), _ in a_all_idx.items():
+        a_metric_periods.setdefault(metric, set()).add(period)
+
+    trend_keys: set[tuple[str, str]] = set()
+    for (period, metric) in a_all_idx:
+        if (
+            (period, metric) in b_all_idx
+            and metric in common_metrics
+            and len(a_metric_periods.get(metric, set())) > 1
+        ):
+            trend_keys.add((period, metric))
+
+    trend: list[_PeerTrendRow] = sorted(
+        [
+            _PeerTrendRow(
+                period=period,
+                metric=metric,
+                a_value=a_all_idx[(period, metric)]["value"],
+                b_value=b_all_idx[(period, metric)]["value"],
+            )
+            for period, metric in trend_keys
+        ],
+        key=lambda r: (r.period, r.metric),
+    )
+
+    # build summary with source references
+    summary_parts = [f"比較期間：{req.fiscal_period}"]
+    for kpi in kpis:
+        summary_parts.append(
+            f"{kpi.label}：{req.a_ticker} {kpi.a.v}（來源 {kpi.a.citations[0].src}）"
+            f"vs {req.b_ticker} {kpi.b.v}（來源 {kpi.b.citations[0].src}）"
+        )
+    raw_summary = "；".join(summary_parts)
+
+    from polaris.graph.nodes import compliance_agent
+
+    _, compliance_status = compliance_agent.review(raw_summary, None)
+
+    return PeerCompareResponse(
+        a_ticker=req.a_ticker,
+        b_ticker=req.b_ticker,
+        fiscal_period=req.fiscal_period,
+        kpis=kpis,
+        financial=financial,
+        calls=calls,
+        trend=trend,
+        valuation=[],
+        summary=raw_summary,
+        compliance_status=compliance_status,
+    )
+
+
+@app.get("/chunk/{source_id}", response_model=ChunkResponse, tags=["research"])
+def chunk(
+    source_id: str,
+    viewer: str = Query(default=PUBLIC_VIEWER, description="存取控制身分"),
+) -> ChunkResponse:
+    """展開單一引用原文；不存在與無權限皆回 404，避免洩漏文件是否存在。"""
+    row = _structured_store.get_chunk(source_id, viewer=viewer)
+    if row is None:
+        raise HTTPException(status_code=404, detail="查無此引用")
+
+    doc_type = row.get("doc_type") or "unknown"
+    kind_label = _DOC_TYPE_LABELS.get(doc_type, doc_type)
+    ticker = row.get("ticker") or ""
+    fiscal_period = row.get("fiscal_period")
+    title_parts = [ticker, fiscal_period, kind_label]
+    title = "_".join(part for part in title_parts if part)
+    content = row.get("chunk_text") or ""
+    return ChunkResponse(
+        source_id=row.get("chunk_id") or source_id,
+        title=title,
+        doc_type=doc_type,
+        kind_label=kind_label,
+        ticker=ticker,
+        fiscal_period=fiscal_period,
+        published_at=row.get("published_at"),
+        content=content,
+        highlight=content,
+    )
 
 
 # --- 使用者活動紀錄 + 訂閱（R7-1：Google OAuth 登入後；Firestore）---------------

@@ -115,6 +115,32 @@ class TestListEvents:
         assert "STARTS_WITH(event_key, @event_key)" in sql
 
 
+class TestGetChunk:
+    def test_reads_one_chunk_with_access_control(self):
+        row = {
+            "chunk_id": "chunk-2330-q1",
+            "ticker": "2330",
+            "doc_type": "transcript",
+            "fiscal_period": "2026Q1",
+            "published_at": "2026-04-17",
+            "chunk_text": "法說原文",
+        }
+        store, client = make_store(rows=[row])
+
+        assert store.get_chunk("chunk-2330-q1", viewer="analyst_A") == row
+
+        sql = client.queries[0]
+        assert "chunk_id = @source_id" in sql
+        assert "owner IS NULL OR owner = @viewer" in sql
+        assert "NOT COALESCE(confidential, FALSE) OR owner = @viewer" in sql
+        assert "LIMIT 1" in sql
+
+    def test_returns_none_when_chunk_is_not_visible_or_missing(self):
+        store, _ = make_store(rows=[])
+
+        assert store.get_chunk("missing", viewer="__public__") is None
+
+
 class TestBuildJobConfig:
     def test_no_bigquery_installed_returns_none(self, monkeypatch):
         # 模擬測試環境無 google-cloud-bigquery：_build_job_config 應回 None（fake client 忽略）
