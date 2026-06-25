@@ -13,9 +13,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# 建置時注入非機密 env（機密由 Cloud Run --set-secrets 在 runtime 注入）
-ARG NEXT_PUBLIC_API_BASE
-ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
+# 後端位址不在 build-time 注入：前端走同 origin 的 /api，由 next.config.ts 的
+# rewrites() 在 runtime 依 BACKEND_API_URL proxy 到 polaris-api。
+# 刻意不設 `ENV NEXT_PUBLIC_API_BASE=$ARG`——沒帶 build-arg 時它會是空字串 ""，
+# 讓 config.ts 的 /api 預設失效（API_BASE=""），正是 2026-06-25 prod outage 成因。
 RUN npm run build
 
 FROM node:22-alpine AS runner
