@@ -1,17 +1,27 @@
-"""Polaris Desk Eval pipeline（R5 / G3 硬門檻 Eval ≥ 80%）— 公開 API。
-
-題庫 CSV → runner（workflow / Deep Research）→ smoke 達標率 + Ragas（optional）。
-"""
-from polaris.eval.dataset import EvalItem, load_dataset
-from polaris.eval.runner import EvalRecord, run_dataset, run_item
-from polaris.eval.score import SmokeReport, smoke_score
+"""Polaris Desk R5 Eval 公開 API。"""
+from polaris.eval.dataset import EvalItem, load_dataset, validate_dataset
+from polaris.eval.runner import (
+    EvalRecord,
+    normalize_contexts,
+    read_records_jsonl,
+    run_dataset,
+    run_item,
+    write_records_jsonl,
+)
+from polaris.eval.score import EvaluationReport, SmokeReport, score_records, smoke_score
 
 __all__ = [
     "EvalItem",
     "EvalRecord",
+    "EvaluationReport",
     "SmokeReport",
     "load_dataset",
+    "normalize_contexts",
+    "read_records_jsonl",
     "run_dataset",
     "run_item",
+    "score_records",
     "smoke_score",
+    "validate_dataset",
+    "write_records_jsonl",
 ]

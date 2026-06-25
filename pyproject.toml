@@ -41,17 +41,25 @@ dev = [
     "ruff>=0.5",
     "mypy>=1.10",
 ]
+eval = [
+    # RAGAS 0.4 imports the removed langchain_community Vertex AI adapter.
+    # The evaluator below uses the RAGAS 0.2 single-turn API, so keep this
+    # compatible LangChain stack together until that implementation migrates.
+    "ragas>=0.2,<0.3",
+    "datasets>=3.0",
+    "pandas>=2.2",
+    "matplotlib>=3.9",
+    "langchain-community>=0.3,<0.4",
+    "langchain-google-genai>=2.0,<3.0",
+]
 # D8 真實 LLMLingua backend（torch+transformers+模型權重 ~2GB）。
 # 預設 / CI 不裝 → 走確定性壓縮基線；本機量 ≥50% 目標時才 `uv pip install -e '.[llmlingua]'`。
 llmlingua = [
     "llmlingua>=0.2",
 ]
-# R5 Ragas eval（judge LLM 接 Gemini）。預設 / CI 不裝 → smoke-only（token=0）；
-# 跑 CP/Faithfulness/AR 時才 `uv pip install -e '.[eval]'`。
-eval = [
-    "ragas>=0.2",
-    "datasets>=3.0",
-    "langchain-google-genai>=2.0",
+eval-gate = [
+    "openai>=1.0",
+    "anthropic>=0.40",
 ]
 # 第 4 路 ColPali query 端編碼器（#133）：colpali-v1.2 權重 + torch（~5GB，需 GPU）。
 # 預設 / CI 不裝 → active_colpali_query_fn() 回 None、第 4 路關閉、0 下載。
@@ -76,7 +84,7 @@ build-backend = "hatchling.build"
 packages = ["src/polaris"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 # 不收集 Google Drive / macOS 同步衝突副本（如 "test_cli 2.py"），避免重複計數
 addopts = ["--ignore-glob=* [0-9].py"]

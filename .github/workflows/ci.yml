@@ -7,6 +7,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -35,3 +36,96 @@ jobs:
 
       - name: Eval smoke (token-free, 5 questions)
         run: make eval-smoke
+
+      - name: Upload smoke eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-smoke
+          path: eval_reports/
+          if-no-files-found: ignore
+
+  eval-flash:
+    name: eval-flash
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      RAGAS_JUDGE_MODEL: ${{ vars.RAGAS_JUDGE_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv venv --python 3.13
+      - name: Check Flash configuration
+        id: config
+        shell: bash
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Flash eval skipped: GEMINI_API_KEY is not configured." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install eval dependencies
+        if: steps.config.outputs.configured == 'true'
+        run: uv pip install -e ".[eval]"
+      - name: Run Gemini Flash quick eval
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          uv run python -m polaris.eval --mode flash --quick 10 --output-dir eval_reports
+          cat eval_reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Flash eval artifacts
+        if: steps.config.outputs.configured == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-flash
+          path: eval_reports/
+
+  eval-gate:
+    name: eval-gate
+    if: github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      RAGAS_JUDGE_MODEL: ${{ vars.RAGAS_JUDGE_MODEL }}
+      JUDGE_GEMINI_MODEL: ${{ vars.JUDGE_GEMINI_MODEL }}
+      JUDGE_OPENAI_MODEL: ${{ vars.JUDGE_OPENAI_MODEL }}
+      JUDGE_ANTHROPIC_MODEL: ${{ vars.JUDGE_ANTHROPIC_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv venv --python 3.13
+      - name: Validate gate configuration
+        shell: bash
+        run: |
+          missing=0
+          for name in GEMINI_API_KEY OPENAI_API_KEY ANTHROPIC_API_KEY JUDGE_GEMINI_MODEL JUDGE_OPENAI_MODEL JUDGE_ANTHROPIC_MODEL; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required for the manual eval gate"
+              missing=1
+            fi
+          done
+          exit "$missing"
+      - name: Install gate dependencies
+        run: uv pip install -e ".[eval,eval-gate]"
+      - name: Run full 130-case gate
+        run: |
+          uv run python -m polaris.eval --mode gate --output-dir eval_reports
+          cat eval_reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-gate
+          path: eval_reports/
+          if-no-files-found: ignore

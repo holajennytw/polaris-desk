@@ -152,6 +152,7 @@ def retriever(state: dict[str, Any]) -> dict[str, Any]:
     D7 保險絲（retries=2）：真路徑 DB / 網路暫時性失敗自動重試；stub 走記憶體 dict
     不會失敗，對既有行為零影響。
     """
+    query = str(state.get("query") or "")
     period = state.get("period")
     quarters = list(period.quarters) if period and period.quarters else None
     viewer = state.get("viewer", PUBLIC_VIEWER)
