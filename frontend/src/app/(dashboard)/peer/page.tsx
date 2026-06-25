@@ -761,26 +761,6 @@ export default function PeerPage() {
                   <span key={i} className="parse-chip warn"><Icon name="alert" size={12}/>未識別：{n}</span>
                 ))}
               </div>
-              <div className="ptb-period">
-                <select value={fiscalYear} onChange={e => {
-                  changeYear(e.target.value);
-                  setQuery(q => q.replace(/\d{4}Q[1-4]/, `${e.target.value}${fiscalQuarter}`));
-                }}>
-                  {availableYears.map(y => <option key={y} value={y}>{y}年</option>)}
-                </select>
-                <select value={fiscalQuarter} onChange={e => {
-                  changeQuarter(e.target.value);
-                  setQuery(q => q.replace(/\d{4}Q[1-4]/, `${fiscalYear}${e.target.value}`));
-                }}>
-                  {availableQuartersForYear.map(q => <option key={q} value={q}>{q}</option>)}
-                </select>
-                {availableMonthsForPeriod.length > 0 && (
-                  <select value={selectedMonth ?? ""} onChange={e => changeMonth(e.target.value ? Number(e.target.value) : null)}>
-                    <option value="">全季</option>
-                    {availableMonthsForPeriod.map(m => <option key={m} value={m}>{m}月</option>)}
-                  </select>
-                )}
-              </div>
             </div>
 
             {/* Comparison content */}

@@ -100,6 +100,7 @@ function ResearchPageInner() {
   const [isCheckingContra, setIsCheckingContra] = useState(false);
   const [openDoc, setOpenDoc] = useState<DocContent|null>(null);
   const [phase, setPhase] = useState("idle");
+  const [loadError, setLoadError] = useState(false);
   const [stepN, setStepN] = useState(0);
   const [progress, setProgress] = useState(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -189,6 +190,7 @@ function ResearchPageInner() {
     contraAlertStore.clear("research");
     setSelectedAlertIdx(null);
     setHasQueried(true);
+    setLoadError(false);
     setPhase("running"); setStepN(0); setProgress(0);
 
     // 從查詢推斷 ticker，讓 useFinancials 預先取 R4 財務資料
@@ -227,11 +229,16 @@ function ResearchPageInner() {
         runContradictionCheck(result?.kpis ?? [], result?.summary ?? []);
       }, 220 * total + 300));
 
-    } catch {
+    } catch (err) {
+      // 請求失敗（後端 4xx/5xx、斷網、API_BASE/proxy 設錯…）。不要 silent 吞成
+      // 「查無資料」——那會跟「真的沒資料」混淆。明確標記錯誤 + 提示使用者。
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+      console.error("[research] request failed", err);
+      setLoadError(true);
       setPhase("done");
       setProgress(0);
       setTourSampleFailed(true);
+      toast.error("研究請求失敗，請稍後再試（後端無回應或設定錯誤）");
     }
   };
   useEffect(() => () => {
@@ -369,7 +376,7 @@ function ResearchPageInner() {
                   <div className="panel">
                     <div className="panel-head">
                       <span className="panel-title"><Icon name="layers" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>營運重點摘要</span>
-                      <span className="panel-meta">{summary.length > 1 ? `${summary.length} 條 · 全數可溯源` : summary.length === 1 ? "AI 摘要" : "查無資料"}</span>
+                      <span className="panel-meta">{summary.length > 0 ? `${summary.length} 條 · 全數可溯源` : loadError ? "請求失敗" : "查無資料"}</span>
                     </div>
                     <div className="panel-body">
                       {isMutating ? <PanelSkeleton/> : (
@@ -399,7 +406,11 @@ function ResearchPageInner() {
                             </ul>
                           )
                         ) : (
-                          <EmptyState message="查詢的資料未涵蓋於現有資料庫" sub="請確認公司代號及財報期別是否已入庫" />
+                          <div className="chart-empty">
+                            <Icon name={loadError ? "alert" : "layers"} size={20} style={{color:"rgb(var(--muted))",marginBottom:8}}/>
+                            <span>{loadError ? "研究請求失敗，未取得後端回應" : "查詢的資料未涵蓋於現有資料庫"}</span>
+                            <span className="font-mono" style={{fontSize:"0.72rem",color:"rgb(var(--muted))"}}>{loadError ? "請稍後再試；若持續發生請確認後端服務與 API 設定" : "請確認公司代號及財報期別是否已入庫"}</span>
+                          </div>
                         )
                       )}
                     </div>

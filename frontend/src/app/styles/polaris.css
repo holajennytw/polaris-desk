@@ -532,10 +532,6 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
 .bsel-opt { white-space: nowrap; font-family: var(--sans); font-size: 15.5px; font-weight: 600; color: rgb(var(--muted)); background: none; border: none; border-radius: var(--radius-xs); padding: 6px 13px; cursor: pointer; transition: all .14s; }
 .bsel-opt:hover { color: rgb(var(--foreground)); }
 .bsel-opt.active { color: rgb(var(--foreground)); background: rgb(var(--card)); box-shadow: var(--shadow-sm); }
-.ptb-period { display: inline-flex; align-items: center; gap: 4px; font-size: 14.5px; color: rgb(var(--muted)); }
-.ptb-period select { font-family: var(--mono); font-size: 13px; color: rgb(var(--foreground)); background: rgb(var(--muted-bg)); border: 1px solid rgb(var(--border)); border-radius: var(--radius-sm); padding: 5px 8px; cursor: pointer; outline: none; }
-.ptb-period select:hover { border-color: rgb(var(--primary)); }
-:root[data-theme="dark"] .ptb-period select { background: rgb(var(--card)); }
 
 /* ── Peer L2：常駐 KPI（sticky 貼頂）── */
 .peer-l2 { padding: 0 0 4px; margin-bottom: 4px; }
@@ -897,7 +893,6 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
   .cpick-btn { font-size: 14.5px; padding: 5px 10px; }
   .cpick-static { font-size: 14.5px; padding: 5px 10px; }
   .cpick-dropdown { max-width: calc(100vw - 32px); }
-  .ptb-period select { font-size: 13px; }
   /* 內文 / 財報摘要整體縮小 */
   body { font-size: 16px; }
   .summary li { font-size: 15.5px; line-height: 1.6; }
@@ -995,8 +990,6 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
   .cpick-static { font-size: 14px; width: 100%; box-sizing: border-box; }
   .cpick-dropdown { min-width: 0; width: max-content; max-width: calc(100vw - 32px); }
   .ptb-x { padding: 0 5px; }
-  .ptb-period { width: 100%; flex-wrap: wrap; }
-  .ptb-period select { flex: 1; min-width: 72px; box-sizing: border-box; }
 }
 
 /* ============================================================

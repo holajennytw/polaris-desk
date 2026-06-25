@@ -16,6 +16,7 @@ flowchart TB
     subgraph L0["基礎層"]
         CFG["config.py"]
         RETRY["retry.py"]
+        ONTO["ontology/companies.py — ticker→中文名 canonical"]
     end
 
     subgraph L1["LLM / 向量 / 壓縮"]
@@ -43,8 +44,9 @@ flowchart TB
         PLAN["nodes/planner_agent.py"]
         WRITE["nodes/writer_agent.py"]
         CAGENT["nodes/compliance_agent.py"]
+        VR["nodes/visual_reader.py — Phase B 讀圖 (gated)"]
         STUBS["nodes/stubs.py (wiring 真 agent)"]
-        RETR["retrieval/retriever.py — HybridRetriever"]
+        RETR["retrieval/retriever.py — HybridRetriever (PUBLIC_VIEWER 存取控制)"]
     end
 
     subgraph L4["編排 / 專用 agent"]
@@ -76,9 +78,11 @@ flowchart TB
     VFAC --> VBQ & VPG & VCP
     STATE --> TEMPORAL & RETR & NOTIF
     PROMPTS --> PLAN & WRITE & CAGENT
-    GEM --> STUBS & RETR & DR & INGEST
+    ONTO --> STATE & WRITE & STUBS & VR & RETR
+    GEM --> STUBS & RETR & DR & INGEST & VR
     COMPR --> WRITE
     STUBS --> WF
+    VR --> WF
     RETR --> STUBS & DR
     WF --> DR & EVAL
     WD --> NOTIF
@@ -95,24 +99,26 @@ flowchart TB
 flowchart TB
     subgraph Client["🖥️ Frontend — Next.js (frontend/)"]
         UI["Dashboard + polaris/ 元件<br/>KpiCard / CitationList / ComplianceBanner<br/>ReActTrace / AlertItem / DocViewer"]
-        Hooks["hooks/ — useAsk useResearch useAlerts<br/>useNotifications useFinancials useCompanies<br/>useSubscriptions useUnread"]
+        Hooks["hooks/ — useAsk useResearch useAlerts<br/>useNotifications useFinancials useCompanies<br/>useSubscriptions useUnread<br/>useContraAlerts useSuggestions useReadStore"]
         ApiLib["lib/api.ts — 唯一資料存取層 (+ mocks fallback)"]
         UI --> Hooks --> ApiLib
     end
 
-    subgraph API["⚙️ Backend — FastAPI (api.py)"]
+    subgraph API["⚙️ Backend — FastAPI (api.py · 23 路由)"]
         AUTH["auth.py — Google OAuth (current_user)"]
-        RR["/ask · /research"]
+        RR["/ask · /research · /peer-compare · /contradiction<br/>(viewer 存取控制, issue #32)<br/>/suggestions — 規則式提示晶片 (token-free · NFR-031)"]
+        RC["/chunk/{source_id} — 展引用原文<br/>無權限/不存在皆 404"]
         RW["/alerts"]
         RN["/notifications · /notifications/events · /{id}/read"]
-        RS["/companies · /financials · /events"]
+        RS["/companies · /financials · /events · /library"]
         RU["/history · /subscriptions"]
         ROPS["/health · /healthz"]
     end
 
     subgraph Core["🧠 Core (src/polaris/)"]
-        WF["graph/workflow.py — 5 節點<br/>Planner→Retriever→Calculator→Writer→Compliance"]
-        DR["graph/deep_research — ReAct agent (同業比較)"]
+        WF["graph/workflow.py — 5 節點 + visual_reader<br/>Planner→Retriever→Calculator→Writer→Compliance"]
+        DR["graph/deep_research — ReAct agent (深度研究)"]
+        PC["peer-compare / contradiction — 結構化同業比較<br/>+ KPI 矛盾偵測 (_search_peer_calls)"]
         WD["graph/watchdog — MOPS 事件 agent"]
         NEWS["graph/news — 新聞卡"]
         RETR["retrieval/retriever — HybridRetriever (3 路)"]
@@ -141,8 +147,10 @@ flowchart TB
         MOPS["公開資訊觀測站 / MOPS"]
     end
 
-    ApiLib -->|HTTPS JSON| API
-    RR --> WF & DR
+    ApiLib -->|"HTTPS JSON (/api proxy rewrite, #35)"| API
+    RR --> WF & DR & PC
+    RC --> SST
+    PC --> RETR
     RW --> WD
     RN --> NOTIF
     RS --> SST["structured_store → BigQuery"]
@@ -195,7 +203,7 @@ flowchart LR
 
     subgraph RETR["🔎 HybridRetriever.retrieve() — 3 路"]
         direction TB
-        BM["① BM25 keyword (rank_bm25)"] --> MRG["_merge_results 去重+合併 channels"]
+        BM["① BM25 keyword (rank_bm25)<br/>polaris_core 真語料 v_chunk_semantic (#30)"] --> MRG["_merge_results 去重+合併 channels"]
         VEC["② Vector — embed query → VectorStore.search"] --> MRG
         MRG --> RRK["③ Cohere Rerank (rerank-v3.5 · opt-in)"]
     end
@@ -209,6 +217,8 @@ flowchart LR
     WRT --> CMP["Compliance — NFR-031 不得產出買賣建議"]
     CMP --> ANS["答案 + 引用清單 + ReAct trace"]
 ```
+
+> **doc_type fallback（#23 / #39）**：同業/法說檢索時若該檔**逐字稿缺漏**（目前僅 4/20 ticker 有逐字稿），`_search_peer_calls` 自動退回**法說簡報 (presentation)**（20/20 ticker 皆有），由 `RESEARCH_DOC_TYPE_QUOTAS` 控配額，引用接地不受影響。
 
 ---
 
@@ -338,16 +348,20 @@ flowchart TD
     DASH --> CH{"操作"}
 
     CH -->|提問| ASK["useAsk → POST /ask"]
+    DASH -.->|輸入提示晶片| SG["useSuggestions → GET /suggestions?mode=research｜peer<br/>規則式精選 · 失敗則前端 preset"]
+    SG -.-> ASK
     ASK --> RES["答案 + CitationList<br/>+ ComplianceBanner + ReActTrace"]
-    RES --> CITE["點引用 → DocViewer 查原文"]
+    RES --> CITE["點引用 → DocViewer<br/>→ GET /chunk/{source_id} (viewer 存取控制)<br/>無權限/不存在皆 404"]
     RES --> SAVE["存 /history (Firestore, 依 uid)"]
 
     CH -->|深度研究| DRP["useResearch → POST /research → ReportModal"]
+    CH -->|同業比較| PCP["POST /peer-compare<br/>KPI + 財務 + 法說引用 (A vs B)"]
+    CH -->|矛盾偵測| CON["useContraAlerts → POST /contradiction<br/>KPI 與摘要不一致 → ContraAlert"]
     CH -->|看快訊| ALV["useAlerts → GET /alerts (Watchdog)"]
     CH -->|通知中心| NT["useNotifications → GET /notifications<br/>標已讀 POST /{id}/read"]
     CH -->|訂閱個股| SUB["useSubscriptions → GET/POST /subscriptions"]
     SUB -.->|觸發監看| ALV
-    CH -->|財務/公司/新聞| ST["useFinancials / useCompanies<br/>GET /financials /companies /events → KpiCard"]
+    CH -->|財務/公司/文件庫| ST["useFinancials / useCompanies<br/>GET /financials /companies /events /library → KpiCard"]
 ```
 
 ---
@@ -357,9 +371,10 @@ flowchart TD
 | # | 重點 | 程式落點 | 為什麼 |
 |---|------|----------|--------|
 | 1 | **單一切換點換後端** | `vectorstore/factory.py` ← `VECTOR_BACKEND` | BigQuery（預設/共用 `polaris_core`）↔ pgvector（離線 Demo），程式不動只改一個 env |
-| 2 | **檢索純 3 路** | `retrieval/retriever.py` | BM25 + 向量 + Cohere rerank；視覺內容改在 ingestion 用 **Vision-OCR** 抽成文字，**ColPali 第 4 路退役** |
+| 2 | **檢索純 3 路** | `retrieval/retriever.py` | BM25（讀 `polaris_core` 真語料 #30）+ 向量 + Cohere rerank；逐字稿缺漏時退回**法說簡報** (#23/#39)；視覺內容改在 ingestion 用 **Vision-OCR** 抽成文字，**ColPali 第 4 路退役** |
 | 3 | **合規硬約束貫穿兩條路** | workflow `compliance` 節點 + notifications 第④關 | 落實 NFR-031；研究答案與 user 通知都必審，被攔不外洩原文 |
 | 4 | **引用接地 = 發送前提** | Retriever 帶 `Citation` + notifications 第③關 grounding | 沒來源的 user 事件 `rejected`；Writer 壓縮 context 但 citations 不受影響 |
 | 5 | **介面/實作分離（注入式 seam）** | `nodes/stubs.py`、`Channel` Protocol、Deep Research `search` | wiring 不動換實作；測試可 monkeypatch 單一節點/管道 |
 | 6 | **儲存分流** | `structured_store→BigQuery`、`user_store→Firestore` | 結構化財報走 BQ；個人 history/訂閱走 Firestore，前端不直連資料庫 |
 | 7 | **publish 永不對生產者拋例外** | `notifications/service.py` | 六態 `DeliveryStatus`（delivered/deduped/digested/blocked/filtered/rejected）+ channel 失敗降級記錄 |
+| 8 | **引用原文存取控制** | `PUBLIC_VIEWER` 透傳 `/ask` `/research` `/chunk`（issue #32） | `/chunk/{source_id}` 無權限/不存在皆回 404，不洩漏文件是否存在；公開身分只能展開公開文件 |
