@@ -242,7 +242,35 @@ flowchart TB
 > visual_reader 是 best-effort 加分節點：`VISUAL_READER` flag 預設關 → no-op；開啟且
 > 看圖題的檢索脈絡缺數字時，render 被引用頁丟給 gemini vision 讀圖、攤平成文字脈絡補進
 > contexts（origin=vision）。取不到頁圖 / 抽取空白 / 任何外呼失敗 → no-op，never halts、不編造。
-> 查詢期 PDF 來源（`pdf_corpus_dir` 本地慣例，GCS/Drive 取檔為 TODO）與觸發門檻（eval 校準）為待整合點。
+> **查詢期 PDF 來源（PR #33）**：`pdf_corpus_dir` 依真實入庫檔名慣例
+> `{ticker}_*_{period}_concall_presentation.pdf` 遞迴解析，支援本地路徑或 `gs://` URI
+> （`_find_local_pdf` / `_fetch_gcs_pdf_bytes` / `render_page_bytes`）。**觸發門檻可調**：
+> `visual_reader_numberless_floor`（脈絡無數字比例 ≥ 此值才升級），由 eval 報告的場景 3 升級率
+> （`EvalRecord.escalated`）資料驅動校準。註：repo 無持久 PDF 庫，prod 需掛載 corpus 或 staged 到 GCS。
+
+**visual_reader PDF 來源解析（PR #33）** —— 把引用 ID（ticker+period+page）反查回磁碟/GCS 上的真實 PDF：
+
+```mermaid
+flowchart LR
+    V["visual_reader 觸發"] --> SE{"should_escalate?<br/>看圖題 & 脈絡無數字比例<br/>≥ numberless_floor"}
+    SE -->|否| NOP1(["no-op {}"])
+    SE -->|是| SRC{"pdf_corpus_dir 型態"}
+    SRC -->|"本地路徑"| LOC["_find_local_pdf<br/>遞迴 glob<br/>{ticker}_*_{period}_concall_presentation.pdf"]
+    SRC -->|"gs://"| GCS["_fetch_gcs_pdf_bytes<br/>list_blobs + 比對檔名 + download"]
+    SRC -->|"空 / 找不到"| NOP2(["no-op"])
+    LOC --> RND["render_page(path, page)"]
+    GCS --> RNDB["render_page_bytes(bytes, page)<br/>(記憶體 render)"]
+    RND & RNDB --> VX["active_vision_extractor.extract<br/>→ flatten → contexts(origin=vision)"]
+    VX --> ESC(["escalated · EvalRecord 觀測升級率"])
+
+    classDef new fill:#1e4d3a,stroke:#3ad98a,color:#fff
+    class LOC,GCS,RNDB,VX new
+```
+
+> 真實入庫檔名慣例（見 `scripts/vision_ingest_pilot.py`）：
+> `{ticker}_{發布日期}M{nn}_{period}_concall_{type}.pdf`，例如
+> `2330_20251016M01_2025Q3_concall_presentation.pdf`（presentation 優先）。
+> 舊版（PR #28）用捏造的 `{ticker}/{period}.pdf` → 永遠抓不到、永遠 no-op；PR #33 改對。
 
 ```mermaid
 flowchart LR
