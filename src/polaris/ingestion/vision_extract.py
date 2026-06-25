@@ -97,6 +97,17 @@ def render_page(pdf_path: str, page_num: int, *, dpi: int = 150) -> bytes:
         doc.close()
 
 
+def render_page_bytes(pdf_bytes: bytes, page_num: int, *, dpi: int = 150) -> bytes:
+    """記憶體 PDF bytes（如 GCS 下載）第 page_num 頁（1-based）→ PNG bytes。"""
+    import fitz
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        return doc[page_num - 1].get_pixmap(dpi=dpi).tobytes("png")
+    finally:
+        doc.close()
+
+
 def active_vision_extractor() -> "VisionExtractor | None":
     """gate 開才回真抽取器；否則 None（第 4 路 ingestion 關閉、CI 0 外呼）。"""
     from polaris.config import settings

@@ -72,8 +72,10 @@ class Settings(BaseSettings):
     # 預設關：節點 no-op、prod 行為零變動。設 VISUAL_READER=1 + VISION_EXTRACTION=1
     # 才啟用（看圖題且檢索文字缺數字時，render 被引用頁 → vision 讀圖補脈絡）。
     visual_reader: bool = False
-    # 查詢期頁圖來源：本地 PDF 語料根目錄，慣例 {dir}/{ticker}/{period}.pdf。
-    # 空 → _default_page_image_fn 回 None（節點 no-op）。GCS/Drive 取檔為後續整合點。
+    # 查詢期頁圖來源：源 PDF 語料根目錄（本地路徑或 gs://bucket/prefix）。
+    # 依真實檔名慣例 {ticker}_*_{period}_concall_presentation.pdf 遞迴解析（見
+    # scripts/vision_ingest_pilot.py）。空 / 找不到 → 節點 no-op。prod 需把 corpus
+    # 掛載到本地或 staged 到 GCS（目前無持久 PDF 庫，pilot 用本地 data/）。
     pdf_corpus_dir: str = ""
 
     # --- ColPali 第 4 路 query 端編碼器（#133）---

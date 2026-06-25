@@ -22,7 +22,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from polaris.ingestion.vision_extract import active_vision_extractor, render_page
+from polaris.ingestion.vision_extract import (
+    active_vision_extractor,
+    render_page,
+    render_page_bytes,
+)
 from polaris.ingestion.vision_to_text import flatten_extraction
 from polaris.ontology import company_name
 
@@ -127,24 +131,73 @@ def read_visual_pages(
     return out
 
 
-def _default_page_image_fn(target: VisualTarget) -> bytes | None:
-    """prod 頁圖解析：依 ``settings.pdf_corpus_dir`` 本地慣例找 PDF → render。
+#: 源 PDF 檔名慣例（見 scripts/vision_ingest_pilot.py）：
+#: ``{ticker}_{YYYYMMDD}M{nn}_{period}_concall_{type}.pdf``。看圖題優先取 presentation
+#: （圖在簡報、不在逐字稿），否則退而取同期任一 concall PDF。
+def _pdf_globs(ticker: str, period: str) -> tuple[str, str]:
+    return (
+        f"{ticker}_*_{period}_concall_presentation.pdf",
+        f"{ticker}_*_{period}_concall_*.pdf",
+    )
 
-    慣例：``{pdf_corpus_dir}/{company}/{period}.pdf``。無設定 / 找不到檔 → None
-    （節點 no-op，誠實不編造）。GCS / Drive 取檔為後續整合點。
-    """
+
+def _find_local_pdf(root: str, ticker: str, period: str) -> str | None:
+    """在本地 ``root`` 遞迴找符合慣例的 PDF；presentation 優先。找不到 → None。"""
     from pathlib import Path
 
+    base = Path(root)
+    if not base.is_dir():
+        return None
+    for pat in _pdf_globs(ticker, period):
+        hits = sorted(base.glob(f"**/{pat}"))
+        if hits:
+            return str(hits[0])
+    return None
+
+
+def _fetch_gcs_pdf_bytes(
+    uri_root: str, ticker: str, period: str, *, client: Any = None
+) -> bytes | None:
+    """``gs://bucket/prefix`` 下依慣例找 PDF blob → 下載 bytes；presentation 優先。
+
+    ``client`` 可注入（測試）；prod 延遲 import google-cloud-storage。找不到 → None。
+    """
+    if not uri_root.startswith("gs://"):
+        return None
+    rest = uri_root[len("gs://"):].rstrip("/")
+    bucket, _, prefix = rest.partition("/")
+    if client is None:
+        from google.cloud import storage  # 延遲 import（重相依不進 CI 必經路徑）
+
+        from polaris.config import settings
+        client = storage.Client(project=settings.gcp_project)
+
+    blobs = list(client.list_blobs(bucket, prefix=prefix or None))
+    for suffix in (f"{period}_concall_presentation.pdf", f"{period}_concall_"):
+        for b in blobs:
+            name = b.name
+            if name.endswith(".pdf") and f"/{ticker}_" in f"/{name}" and suffix in name:
+                return b.download_as_bytes()
+    return None
+
+
+def _default_page_image_fn(target: VisualTarget) -> bytes | None:
+    """prod 頁圖解析：``settings.pdf_corpus_dir`` 為本地目錄或 ``gs://`` URI。
+
+    依真實檔名慣例找該公司/季別的 concall PDF → render 第 ``target.page`` 頁為 PNG。
+    無設定 / 找不到 / render 失敗 → None（節點 no-op，誠實不編造）。
+    """
     from polaris.config import settings
 
     corpus = getattr(settings, "pdf_corpus_dir", "") or ""
     if not corpus or not target.company or not target.period:
         return None
-    pdf = Path(corpus) / target.company / f"{target.period}.pdf"
-    if not pdf.is_file():
-        return None
     try:
-        return render_page(str(pdf), target.page)
+        if corpus.startswith("gs://"):
+            data = _fetch_gcs_pdf_bytes(corpus, target.company, target.period)
+            return render_page_bytes(data, target.page) if data else None
+        path = _find_local_pdf(corpus, target.company, target.period)
+        return render_page(path, target.page) if path else None
     except Exception:  # noqa: BLE001 — 取圖失敗不可弄垮 workflow，誠實退 None
         return None
 
