@@ -19,10 +19,24 @@
 --   3. 表 DDL 仍以 migrations/2026-06-18_create_r6_ontology.sql 為準（schema 一致）。
 --   4. 與 financial_metric.csv 單一事實來源的關係：本檔僅補這 4 列；若日後做全量
 --      重載（bq load --replace ...），seed CSV 仍為權威來源。
+--   5. ⚠️ 編碼（本檔含中文字串字面值）：在 Windows 上以 bq CLI 套用時，務必先設
+--      PYTHONUTF8=1，否則 bq（Python）會以系統 CP1252 解讀 SQL，把中文存成 mojibake
+--      （UTF-8 位元組被當 CP1252 再轉碼；0x8D 等未定義位元組更會直接遺失成 U+FFFD，
+--      無法逆轉，只能刪列重灌）。並用 `cmd /c '... < file.sql'` 重導向（勿用
+--      PowerShell pipe，pipe 會再次重新編碼字串）。套用指令見下方 §1。
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 1) MERGE —— 僅新增不存在的 metric_id（既有 22 列不受影響）
 --    前置：export BQ_ALLOW_CORE_WRITE=1；帳號需 polaris_core dataset WRITER。
+--    ⚠️ 含中文，套用前務必設 PYTHONUTF8=1（見上方備註 5）。
+--    Windows / PowerShell 套用範例：
+--      $env:BQ_ALLOW_CORE_WRITE = "1"; $env:PYTHONUTF8 = "1"
+--      cmd /c 'bq query --use_legacy_sql=false --project_id=polaris-desk-team \
+--                < migrations/2026-06-25_add_r6_financial_metric_rows.sql'
+--    Linux/macOS 套用範例：
+--      BQ_ALLOW_CORE_WRITE=1 PYTHONUTF8=1 \
+--        bq query --use_legacy_sql=false --project_id=polaris-desk-team \
+--        < migrations/2026-06-25_add_r6_financial_metric_rows.sql
 -- ════════════════════════════════════════════════════════════════════════════
 
 MERGE `polaris-desk-team.polaris_core.r6_financial_metric` T
