@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from polaris.graph.nodes import stubs
+from polaris.graph.nodes.visual_reader import visual_reader
 from polaris.graph.state import ResearchState
 
 
@@ -71,6 +72,10 @@ def build_workflow():
     g.add_node("writer", stubs.writer)
     g.add_node("compliance", stubs.compliance)
 
+    # visual_reader：retriever 後的 best-effort escalation（flag 關 → no-op，never halts）。
+    # 看圖題且檢索文字缺數字時，render 被引用頁 → vision 讀圖補脈絡（Phase B）。
+    g.add_node("visual_reader", visual_reader)
+
     # 1 個基礎設施節點（halt 收尾）
     g.add_node("terminal", _terminal)
 
@@ -81,8 +86,10 @@ def build_workflow():
         "planner", _route, {"continue": "retriever", "terminal": "terminal"}
     )
     g.add_conditional_edges(
-        "retriever", _route, {"continue": "calculator", "terminal": "terminal"}
+        "retriever", _route, {"continue": "visual_reader", "terminal": "terminal"}
     )
+    # visual_reader never halts → 直接續接 calculator（best-effort，無條件邊）。
+    g.add_edge("visual_reader", "calculator")
     g.add_conditional_edges(
         "calculator", _route, {"continue": "writer", "terminal": "terminal"}
     )

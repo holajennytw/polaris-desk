@@ -68,6 +68,14 @@ class Settings(BaseSettings):
     vision_extraction: bool = False
     vision_confidence_floor: float = 0.6
 
+    # --- visual_reader 節點（Phase B：查詢期 vision 讀圖 escalation）---
+    # 預設關：節點 no-op、prod 行為零變動。設 VISUAL_READER=1 + VISION_EXTRACTION=1
+    # 才啟用（看圖題且檢索文字缺數字時，render 被引用頁 → vision 讀圖補脈絡）。
+    visual_reader: bool = False
+    # 查詢期頁圖來源：本地 PDF 語料根目錄，慣例 {dir}/{ticker}/{period}.pdf。
+    # 空 → _default_page_image_fn 回 None（節點 no-op）。GCS/Drive 取檔為後續整合點。
+    pdf_corpus_dir: str = ""
+
     # --- ColPali 第 4 路 query 端編碼器（#133）---
     # 預設關閉：active_colpali_query_fn() 回 None → 第 4 路關閉、CI 0 import / 0 下載。
     # 設 COLPALI_QUERY_ENCODER=1 才載入 colpali-engine + torch + 權重（~5GB，需 GPU）。

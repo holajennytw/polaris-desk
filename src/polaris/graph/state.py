@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 # Citation
 # ---------------------------------------------------------------------------
 
-CitationOrigin = Literal["stub", "bm25", "embedding", "colpali", "rerank", "news"]
+CitationOrigin = Literal["stub", "bm25", "embedding", "colpali", "rerank", "news", "vision"]
 
 
 class Citation(BaseModel):
