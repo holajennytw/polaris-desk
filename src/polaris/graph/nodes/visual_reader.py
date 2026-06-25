@@ -68,15 +68,25 @@ def _has_number(text: str) -> bool:
     return any(ch.isdigit() for ch in text or "")
 
 
-def should_escalate(question: str, contexts: list[dict[str, Any]]) -> bool:
-    """看圖題且檢索文字脈絡全無數字 → 升級讀圖。
+def should_escalate(
+    question: str,
+    contexts: list[dict[str, Any]],
+    *,
+    numberless_floor: float = 1.0,
+) -> bool:
+    """看圖題且檢索脈絡「無數字比例」達門檻 → 升級讀圖。
 
-    保守觸發：只要任一脈絡已含數字（文字路已能答），就不付 vision 成本。門檻交由
-    eval 校準（specs/004）。
+    ``numberless_floor`` 為觸發靈敏度，交由 eval 校準（specs/004）：
+    - ``1.0``（預設）＝**全部**脈絡都無數字才升級（最保守、保留原行為）。
+    - 調低 → 部分脈絡無數字即升級（更積極）。空脈絡視為比例 1.0（什麼都沒撈到 → 升級）。
     """
     if not any(h in (question or "") for h in _CHART_HINTS):
         return False
-    return not any(_has_number(c.get("text", "")) for c in (contexts or []))
+    items = contexts or []
+    if not items:
+        return numberless_floor <= 1.0
+    numberless = sum(1 for c in items if not _has_number(c.get("text", "")))
+    return (numberless / len(items)) >= numberless_floor
 
 
 def read_visual_pages(
@@ -214,7 +224,8 @@ def visual_reader(state: dict[str, Any]) -> dict[str, Any]:
 
     question = state.get("query", "")
     contexts = state.get("contexts") or []
-    if not should_escalate(question, contexts):
+    floor = float(getattr(settings, "visual_reader_numberless_floor", 1.0))
+    if not should_escalate(question, contexts, numberless_floor=floor):
         return {}
 
     extractor = active_vision_extractor()

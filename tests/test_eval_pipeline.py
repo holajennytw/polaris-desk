@@ -96,6 +96,31 @@ class TestRunner:
         assert record.answer.strip()
         assert record.contexts
         assert record.compliance_status == "passed"
+        # 預設 flag 關 → 不升級；escalated 觀測欄為 False
+        assert record.escalated is False
+
+    def test_escalated_flag_true_when_vision_citation_present(self, monkeypatch):
+        """eval 可觀測 visual_reader 是否觸發（#3 校準訊號）：
+
+        結果含 origin='vision' citation → EvalRecord.escalated=True，讓校準跑能
+        報出場景 3 的升級率。
+        """
+        from polaris.eval import runner
+        from polaris.graph.state import Citation
+
+        def fake_workflow(question: str) -> dict:
+            return {
+                "answer": "讀圖結果",
+                "contexts": [{"text": "HPC 佔比: 52%"}],
+                "citations": [Citation(source_id="2330-2025Q3-p009-c001",
+                                       snippet="HPC 佔比: 52%", origin="vision")],
+                "compliance_status": "passed",
+            }
+
+        monkeypatch.setattr(runner, "_run_workflow", fake_workflow)
+        record = run_item(make_item(item_id="V003", scenario="3", category="圖表",
+                                    question="營收結構圖哪個部門最高？"))
+        assert record.escalated is True
 
     def test_deterministic(self):
         from polaris.llm.gemini import available as gemini_available
@@ -156,6 +181,22 @@ class TestReport:
         assert "煙測分" in md  # 誠實標註，防止誤判 G3 已過
         assert "達標率" in md
         assert "stub 語料" in md  # 預設 stub 模式明示語料來源
+
+    def test_markdown_reports_visual_escalation_rate(self):
+        """場景 3 有題時，報告列出 visual_reader 升級率（#3 校準訊號）。"""
+        from polaris.eval.runner import EvalRecord
+
+        recs = [
+            EvalRecord(item=make_item(item_id="V1", scenario="3"), answer="a",
+                       contexts=["x"], compliance_status="passed",
+                       citation_count=1, escalated=True),
+            EvalRecord(item=make_item(item_id="V2", scenario="3"), answer="b",
+                       contexts=["y"], compliance_status="passed",
+                       citation_count=1, escalated=False),
+        ]
+        md = render_markdown(recs, smoke_score(recs))
+        assert "升級" in md  # 升級率呈現
+        assert "1/2" in md   # 2 題場景 3、1 題觸發
 
     def test_markdown_real_corpus_drops_stub_warning(self):
         """真檢索（polaris_core）模式：報告改標真語料煙測、不再宣稱 stub / 非真分。"""

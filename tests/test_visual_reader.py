@@ -82,6 +82,24 @@ class TestShouldEscalate:
         assert should_escalate(q, contexts) is False
 
 
+class TestShouldEscalateTunable:
+    """觸發門檻 numberless_floor 交由 eval 校準（#3）。"""
+
+    _Q = "從這張營收結構圖看，哪個部門佔比最高？"
+    _MIXED = [
+        _ctx("2330-2025Q3-p009-c001", text="HPC 佔比 52%"),  # 有數字
+        _ctx("2330-2025Q3-p010-c001", text="本季概況"),       # 無數字
+    ]
+
+    def test_default_floor_requires_all_numberless(self):
+        # floor=1.0（預設）：一半脈絡已有數字 → 不升級（保留原行為）
+        assert should_escalate(self._Q, self._MIXED) is False
+
+    def test_lower_floor_escalates_on_partial_numberless(self):
+        # floor=0.5：50% 脈絡無數字 ≥ 0.5 → 升級（更積極）
+        assert should_escalate(self._Q, self._MIXED, numberless_floor=0.5) is True
+
+
 # ── read_visual_pages ────────────────────────────────────────────────────────
 
 class TestReadVisualPages:

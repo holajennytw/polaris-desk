@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # 預設關：節點 no-op、prod 行為零變動。設 VISUAL_READER=1 + VISION_EXTRACTION=1
     # 才啟用（看圖題且檢索文字缺數字時，render 被引用頁 → vision 讀圖補脈絡）。
     visual_reader: bool = False
+    # 觸發靈敏度（交由 eval 校準，specs/004）：看圖題的檢索脈絡「無數字比例」≥ 此值才升級。
+    # 1.0=全部脈絡無數字才升級（最保守）；調低→更積極。
+    visual_reader_numberless_floor: float = 1.0
     # 查詢期頁圖來源：源 PDF 語料根目錄（本地路徑或 gs://bucket/prefix）。
     # 依真實檔名慣例 {ticker}_*_{period}_concall_presentation.pdf 遞迴解析（見
     # scripts/vision_ingest_pilot.py）。空 / 找不到 → 節點 no-op。prod 需把 corpus
