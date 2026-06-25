@@ -104,9 +104,9 @@ flowchart TB
         UI --> Hooks --> ApiLib
     end
 
-    subgraph API["⚙️ Backend — FastAPI (api.py · 22 路由)"]
+    subgraph API["⚙️ Backend — FastAPI (api.py · 23 路由)"]
         AUTH["auth.py — Google OAuth (current_user)"]
-        RR["/ask · /research · /peer-compare · /contradiction<br/>(viewer 存取控制, issue #32)"]
+        RR["/ask · /research · /peer-compare · /contradiction<br/>(viewer 存取控制, issue #32)<br/>/suggestions — 規則式提示晶片 (token-free · NFR-031)"]
         RC["/chunk/{source_id} — 展引用原文<br/>無權限/不存在皆 404"]
         RW["/alerts"]
         RN["/notifications · /notifications/events · /{id}/read"]
@@ -147,7 +147,7 @@ flowchart TB
         MOPS["公開資訊觀測站 / MOPS"]
     end
 
-    ApiLib -->|HTTPS JSON| API
+    ApiLib -->|"HTTPS JSON (/api proxy rewrite, #35)"| API
     RR --> WF & DR & PC
     RC --> SST
     PC --> RETR
@@ -203,7 +203,7 @@ flowchart LR
 
     subgraph RETR["🔎 HybridRetriever.retrieve() — 3 路"]
         direction TB
-        BM["① BM25 keyword (rank_bm25)"] --> MRG["_merge_results 去重+合併 channels"]
+        BM["① BM25 keyword (rank_bm25)<br/>polaris_core 真語料 v_chunk_semantic (#30)"] --> MRG["_merge_results 去重+合併 channels"]
         VEC["② Vector — embed query → VectorStore.search"] --> MRG
         MRG --> RRK["③ Cohere Rerank (rerank-v3.5 · opt-in)"]
     end
@@ -217,6 +217,8 @@ flowchart LR
     WRT --> CMP["Compliance — NFR-031 不得產出買賣建議"]
     CMP --> ANS["答案 + 引用清單 + ReAct trace"]
 ```
+
+> **doc_type fallback（#23 / #39）**：同業/法說檢索時若該檔**逐字稿缺漏**（目前僅 4/20 ticker 有逐字稿），`_search_peer_calls` 自動退回**法說簡報 (presentation)**（20/20 ticker 皆有），由 `RESEARCH_DOC_TYPE_QUOTAS` 控配額，引用接地不受影響。
 
 ---
 
@@ -346,6 +348,8 @@ flowchart TD
     DASH --> CH{"操作"}
 
     CH -->|提問| ASK["useAsk → POST /ask"]
+    DASH -.->|輸入提示晶片| SG["useSuggestions → GET /suggestions?mode=research｜peer<br/>規則式精選 · 失敗則前端 preset"]
+    SG -.-> ASK
     ASK --> RES["答案 + CitationList<br/>+ ComplianceBanner + ReActTrace"]
     RES --> CITE["點引用 → DocViewer<br/>→ GET /chunk/{source_id} (viewer 存取控制)<br/>無權限/不存在皆 404"]
     RES --> SAVE["存 /history (Firestore, 依 uid)"]
@@ -367,7 +371,7 @@ flowchart TD
 | # | 重點 | 程式落點 | 為什麼 |
 |---|------|----------|--------|
 | 1 | **單一切換點換後端** | `vectorstore/factory.py` ← `VECTOR_BACKEND` | BigQuery（預設/共用 `polaris_core`）↔ pgvector（離線 Demo），程式不動只改一個 env |
-| 2 | **檢索純 3 路** | `retrieval/retriever.py` | BM25 + 向量 + Cohere rerank；視覺內容改在 ingestion 用 **Vision-OCR** 抽成文字，**ColPali 第 4 路退役** |
+| 2 | **檢索純 3 路** | `retrieval/retriever.py` | BM25（讀 `polaris_core` 真語料 #30）+ 向量 + Cohere rerank；逐字稿缺漏時退回**法說簡報** (#23/#39)；視覺內容改在 ingestion 用 **Vision-OCR** 抽成文字，**ColPali 第 4 路退役** |
 | 3 | **合規硬約束貫穿兩條路** | workflow `compliance` 節點 + notifications 第④關 | 落實 NFR-031；研究答案與 user 通知都必審，被攔不外洩原文 |
 | 4 | **引用接地 = 發送前提** | Retriever 帶 `Citation` + notifications 第③關 grounding | 沒來源的 user 事件 `rejected`；Writer 壓縮 context 但 citations 不受影響 |
 | 5 | **介面/實作分離（注入式 seam）** | `nodes/stubs.py`、`Channel` Protocol、Deep Research `search` | wiring 不動換實作；測試可 monkeypatch 單一節點/管道 |
