@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import { parseQuery } from "@/lib/peer";
 import { useFinancials, type FinancialRow } from "@/hooks/useFinancials";
+import { fmtPeriodOption } from "@/lib/formatters";
 import { peerCitations } from "@/lib/peer-result";
 import type { PeerCompareResult, PeerCompareTrendPoint } from "@/types/api";
 import type { ReActStepVM, CompanyVM, KpiVM, SummaryItemVM } from "@/types/viewmodel";
@@ -31,7 +32,7 @@ const PRESETS = [
   "聯發科與聯詠估值比較",
 ];
 const PHASES = ["解析查詢意圖","檢索 A 公司文件","檢索 B 公司文件","交叉比對指標","生成比較摘要","合規檢查"];
-const PERIOD_OPTIONS = ["2026Q1","2025Q4","2025Q3","2025Q2","2025Q1","2024Q4"];
+const PERIOD_OPTIONS = ["2026Q2","2026Q1","2025Q4","2025Q3","2025Q2","2025Q1","2024Q4"];
 
 function buildMockPeerContradictions(aName: string, bName: string): ContraAlert[] {
   const now = new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
@@ -394,7 +395,7 @@ export default function PeerPage() {
   const [aId, setAId] = useState("");
   const [bId, setBId] = useState("");
   const [tab, setTab] = useState("financial");
-  const [fiscalPeriod, setFiscalPeriod] = useState("2026Q1");
+  const [fiscalPeriod, setFiscalPeriod] = useState("2026Q2");
 
   const { rows: aFinRows } = useFinancials(aId || null);
   const { rows: bFinRows } = useFinancials(bId || null);
@@ -404,6 +405,19 @@ export default function PeerPage() {
       .filter((p): p is string => !!p);
     const unique = [...new Set(allPeriods)].sort().reverse();
     return unique.length > 0 ? unique : PERIOD_OPTIONS;
+  })();
+
+  // fiscal_period → latest month in that quarter (for display label only)
+  const periodMeta = (() => {
+    const map: Record<string, number> = {};
+    [...aFinRows, ...bFinRows].forEach(r => {
+      if (r.fiscal_period && r.month != null) {
+        if (!(r.fiscal_period in map) || r.month > map[r.fiscal_period]) {
+          map[r.fiscal_period] = r.month;
+        }
+      }
+    });
+    return map;
   })();
 
   const [query, setQuery] = useState("");
@@ -427,7 +441,7 @@ export default function PeerPage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const slotRef = useRef<HTMLDivElement>(null);
   // Stable ref for current query/ticker/period to avoid stale closures
-  const runParamsRef = useRef({ aId: "", bId: "", fiscalPeriod: "2026Q1", query: "" });
+  const runParamsRef = useRef({ aId: "", bId: "", fiscalPeriod: "2026Q2", query: "" });
 
   useEffect(() => () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -449,6 +463,14 @@ export default function PeerPage() {
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, [openSlot]);
+
+  // Auto-select latest period when BQ financials load and current selection is stale
+  useEffect(() => {
+    if (availablePeriods.length > 0 && !availablePeriods.includes(fiscalPeriod)) {
+      setFiscalPeriod(availablePeriods[0]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availablePeriods]);
 
   const A = companies.find(c => c.id === aId);
   const B = companies.find(c => c.id === bId);
@@ -641,7 +663,9 @@ export default function PeerPage() {
               </div>
               <div className="ptb-period">
                 <select value={fiscalPeriod} onChange={e => changePeriod(e.target.value)}>
-                  {availablePeriods.map(p => <option key={p} value={p}>{p}</option>)}
+                  {availablePeriods.map(p => (
+                    <option key={p} value={p}>{fmtPeriodOption(p, periodMeta[p])}</option>
+                  ))}
                 </select>
               </div>
             </div>

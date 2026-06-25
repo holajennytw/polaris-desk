@@ -35,3 +35,16 @@ export function fmtPeriodLabel(
   if (year != null && month != null) return `${year}年${month}月`;
   return fiscalPeriod ?? "";
 }
+
+/** fiscal_period → 下拉選單顯示標籤
+ *  有月份：「2026年 Q2 · 5月」
+ *  無月份：「2026年 Q2」
+ *  無法解析：回傳原始字串
+ */
+export function fmtPeriodOption(fiscalPeriod: string, month?: number | null): string {
+  const m = fiscalPeriod.match(/^(\d{4})Q([1-4])$/);
+  if (!m) return fiscalPeriod;
+  const [, year, q] = m;
+  const base = `${year}年 Q${q}`;
+  return month != null ? `${base} · ${month}月` : base;
+}
