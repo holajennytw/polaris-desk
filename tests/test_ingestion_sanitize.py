@@ -1,7 +1,11 @@
 """Ingestion 端淨化 / 驗證（LLM04 + LLM01 源頭防線）單元測試。"""
 from __future__ import annotations
 
-from polaris.ingestion.sanitize import sanitize_text, validate_for_ingestion
+from polaris.ingestion.sanitize import (
+    is_low_information,
+    sanitize_text,
+    validate_for_ingestion,
+)
 
 
 def test_strips_html_comment_injection():
@@ -37,3 +41,25 @@ def test_validate_flags_empty_id_content_and_length():
 
 def test_validate_passes_clean_chunk():
     assert validate_for_ingestion("stub-2330-2025Q1", "台積電 2025Q1 法說摘要。") == []
+
+
+def test_is_low_information_separator_rows():
+    # 純表格分隔列 / 水平線 / bullet → 無資訊（vision table_markdown 常見殘留）。
+    assert is_low_information("-" * 120)
+    assert is_low_information("| --- | --- | --- |")
+    assert is_low_information("====   ====")
+    assert is_low_information("•・…")
+    assert is_low_information("")
+
+
+def test_is_low_information_keeps_real_content():
+    # 有實字 / 數字 → 有資訊，即使很短。
+    assert not is_low_information("目錄")
+    assert not is_low_information("營收 100 億")
+    assert not is_low_information("| 項目 | 金額 |\n|---|---|\n| 營收 | 100 |")
+    assert not is_low_information("2025Q1")
+
+
+def test_validate_flags_low_information_chunk():
+    issues = validate_for_ingestion("2882-2025Q1-p036-c002", "-" * 120)
+    assert any("low information" in i for i in issues)

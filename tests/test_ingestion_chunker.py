@@ -45,6 +45,13 @@ class TestChunkPage:
         chunks = chunk_page("內容<!-- injected -->​正常")
         assert "<!--" not in chunks[0]
 
+    def test_skips_separator_only_chunks(self):
+        # vision table_markdown 殘留的純分隔列（國泰金 2882 曾佔 73% 塊）不該成塊。
+        page = "營收成長 15%。\n\n" + "-" * 2000 + "\n\n毛利率 40%。"
+        chunks = chunk_page(page)
+        assert all("營收" in c or "毛利率" in c for c in chunks)
+        assert not any(set(c.strip()) <= set("-| :") for c in chunks)
+
 
 class TestChunkPages:
     def test_ids_deterministic_and_page_grounded(self):
