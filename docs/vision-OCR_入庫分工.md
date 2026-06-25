@@ -3,7 +3,7 @@
 > 目標：把 Google Drive 策展庫的**中文**法說簡報（`*M0NN_..._concall_presentation.pdf`）
 > 經 vision-OCR 抽取 → 768 embedding → 寫進 **dev dataset**（`polaris_dev_wayne`，**非** polaris_core）。
 > 來源資料夾：<https://drive.google.com/drive/folders/1aFEfM32eNNbpJIQ6bjFwDKZcwACz_OcJ>
-> 完整中文簡報清單見 [`vision-OCR_gdrive_中文簡報清單.csv`](./vision-OCR_gdrive_中文簡報清單.csv)（111 份）。
+> 完整中文簡報清單見 [`vision-OCR_gdrive_中文簡報清單.csv`](./vision-OCR_gdrive_中文簡報清單.csv)（97 份）。
 
 最後更新：2026-06-25 01:0x（CST）
 
@@ -11,29 +11,30 @@
 
 1. **本機反覆休眠**：長批次跑到一半，筆電闔蓋/閒置休眠就把背景程序收掉（`caffeinate` 擋不了闔蓋休眠）。
    → 多台機器分頭跑，每台時間短、不怕被休眠打斷。
-2. **AI Studio 免費層 embedding 配額**：`embed_content_free_tier_requests` = **1000 requests/天**（PT 午夜重置）。
-   逐塊 embed（pilot `--ingest` 的預設路徑）會在密集 ticker（如 2882=1455 塊）一天內爆掉。
-   → **務必用批次補救腳本** `scripts/vision_reembed_recovery.py`（一個請求帶 48 塊 → 全部 ~7000 塊只要 ~145 requests）。
-   → 每位接手者用**自己 Google 專案的新金鑰**（各有獨立 1000/天），分頭跑就不互相排擠。
+2. **AI Studio 免費層 embedding 配額**：`embed_content_free_tier_requests` = **1000 requests/天/專案**（PT 午夜重置）。
+   ⚠️ `gemini-embedding-2` **不支援批次**（`contents=[多段]` 只回 1 個向量、其餘被丟棄）→ **1 request = 1 chunk**；
+   密集 ticker（如 2882=1455 塊）就要 ~1455 requests，單一專案一天的額度大致只夠一檔。
+   → 用補救腳本 `scripts/vision_reembed_recovery.py`（逐塊 embed、只補 BQ 缺的、配額耗盡優雅停可續跑）。
+   → 每位接手者用**自己 Google 專案的新金鑰**（各有獨立 1000/天）；N 塊就需要 ⌈N/1000⌉ 個不同專案。
 
 ## 目前狀態（2026-06-25 11:42 CST）— ✅ 全部入庫完成（無待認領項目）
 
-**全 21 檔中文法說簡報已抽取 + embedding 入 `polaris_dev_wayne.chunks`（清理後 **3816 塊** / 768 維）；
+**全 20 檔中文法說簡報已抽取 + embedding 入 `polaris_dev_wayne.chunks`（清理後 **3622 塊** / 768 維）；
 `polaris_core` 未動（憲法 III）。** 已做品質清理（見下「品質清理」）：移除 1191 塊純線條雜訊塊。
+（6505 台塑化 已於 2026-06-25 從 GDrive 來源移除，連同入庫資料一併刪除。）
 
 | ticker | 公司 | 入庫(BQ) | ticker | 公司 | 入庫(BQ) |
 |---|---|---|---|---|---|
-| 1216 | 統一 | 98 | 2884 | 玉山金 | 266 |
-| 2303 | UMC 聯電 | 80 | 2886 | 兆豐金 | 213 |
-| 2308 | Delta 台達電 | 103 | 2891 | 中信金 | 587 |
-| 2317 | 鴻海 | 178 | 2892 | 第一金 | 309 |
-| 2330 | 台積電 | 110 | 3034 | Novatek 聯詠 | 69 |
-| 2357 | ASUS 華碩 | 121 | 3037 | Unimicron 欣興 | 87 |
-| 2382 | Quanta 廣達 | 35 | 3231 | Wistron 緯創 | 140 |
-| 2412 | 中華電 | 137 | 3711 | ASEH 日月光 | 120 |
-| 2454 | MediaTek 聯發科 | 118 | 6505 | 台塑化 | 194 |
+| 1216 | 統一 | 98 | 2882 | 國泰金 | 398 |
+| 2303 | UMC 聯電 | 80 | 2884 | 玉山金 | 266 |
+| 2308 | Delta 台達電 | 103 | 2886 | 兆豐金 | 213 |
+| 2317 | 鴻海 | 178 | 2891 | 中信金 | 587 |
+| 2330 | 台積電 | 110 | 2892 | 第一金 | 309 |
+| 2357 | ASUS 華碩 | 121 | 3034 | Novatek 聯詠 | 69 |
+| 2382 | Quanta 廣達 | 35 | 3037 | Unimicron 欣興 | 87 |
+| 2412 | 中華電 | 137 | 3231 | Wistron 緯創 | 140 |
+| 2454 | MediaTek 聯發科 | 118 | 3711 | ASEH 日月光 | 120 |
 | 2881 | 富邦金 | 438 | 6669 | Wiwynn 緯穎 | 15 |
-| 2882 | 國泰金 | 398 | | | |
 
 > 下一步（非本檔範圍）：R1 Gate1 抽查（`*_gate1.csv`）→ 達標後由 R4 帳號把 dev 塊
 > 合併進 `polaris_core`（一般開發者 / agent 不可寫 core）。
@@ -44,7 +45,7 @@
 - **源頭修掉**：`sanitize.is_low_information()`（整塊只剩繪製字元 → <2 實字）同時接進
   `validate_for_ingestion`（reject）與 `chunker.chunk_page`（切塊時略過）→ 雙層防線，重跑不會再生。
   真表格 / 含數字列 / 「目錄」這類短標題都保留。
-- **清掉舊資料**：dev BQ 刪 1191 塊 → 3816；重複冗餘 1392→204（剩的是各季合理重複的免責聲明，保留）。
+- **清掉舊資料**：dev BQ 刪 1191 塊（其後再移除 6505 台塑化 194 塊）→ 3622；重複冗餘 1392→204（剩的是各季合理重複的免責聲明，保留）。
 - **驗證**：embedding 全 768 維非退化；最近鄰一致性測試（國泰金 IFRS 17 → 命中其他 IFRS 17 / 清償能力塊）OK。
 - R1 Gate1 抽查時若仍見純線條塊請回報（理論上已不會有）。
 
