@@ -41,6 +41,15 @@ def render_markdown(
         "（目標 = 0）",
         "",
     ]
+    visual = [r for r in records if r.item.scenario == "3"]
+    if visual:
+        escalated = sum(1 for r in visual if r.escalated)
+        lines += [
+            f"- 場景 3（圖表）：{len(visual)} 題、visual_reader 升級 "
+            f"**{escalated}/{len(visual)}**（{escalated / len(visual):.0%}；門檻調校見 "
+            "`visual_reader_numberless_floor`）",
+            "",
+        ]
     if report.failed_ids:
         lines += ["## 不及格清單（回報 owner，R5 不修題）", ""]
         by_id = {s.item_id: s for s in report.scores}

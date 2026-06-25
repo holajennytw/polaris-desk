@@ -24,6 +24,8 @@ class EvalRecord:
     ground_truth: str = ""
     compliance_status: str = "unknown"
     citation_count: int = 0
+    #: visual_reader 是否觸發（任一 citation origin=='vision'）——#3 觸發門檻校準訊號。
+    escalated: bool = False
 
 
 def _run_workflow(question: str) -> dict:
@@ -57,13 +59,15 @@ def run_item(item: EvalItem) -> EvalRecord:
     """跑一題，回 :class:`EvalRecord`。場景 2→Deep Research，其餘（含場景 3 圖表）→workflow。"""
     result = _DISPATCH.get(item.scenario, _run_workflow)(item.question)
     contexts = [c.get("text", "") for c in result.get("contexts", []) if c.get("text")]
+    citations = result.get("citations", [])
     return EvalRecord(
         item=item,
         answer=result.get("answer", ""),
         contexts=contexts,
         ground_truth=item.golden_answer,
         compliance_status=result.get("compliance_status", "unknown"),
-        citation_count=len(result.get("citations", [])),
+        citation_count=len(citations),
+        escalated=any(getattr(c, "origin", None) == "vision" for c in citations),
     )
 
 
