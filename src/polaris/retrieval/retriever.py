@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import functools
 import logging
 import re
 from collections.abc import Callable, Mapping
@@ -80,6 +81,48 @@ _FALLBACK_CORPUS = [
         metadata={"source_id": "stub-2317-2025Q1-segment", "origin": "keyword_fallback"},
     ),
 ]
+
+
+# BM25 真實語料載入（issue #30）──────────────────────────────────────────────
+#
+# 啟動時從 canonical ``polaris_core.v_chunk_semantic`` 取最新數季 chunks 建 BM25
+# 語料，取代上面 3 筆 hardcoded stub。無金鑰（CI / 本地無憑證）或載入失敗 → 退回
+# ``_FALLBACK_CORPUS``，CI 仍 0 外呼、確定性不變。閘控訊號沿用 gemini.available()
+# （與 active_embedding_fn / active_retriever 一致）：prod 兩把憑證俱在 → 真實語料。
+
+#: 預設載入最新幾季（issue #30：最新 2 季 ~2,900 列 / ~4 MiB，可調）。
+BM25_CORPUS_PERIODS = 2
+
+
+def _load_real_corpus() -> list[SearchResult]:
+    """從 VECTOR_BACKEND 後端載入真實 BM25 語料；失敗或後端不支援 → 回 []。"""
+    store = get_vector_store()
+    loader = getattr(store, "load_bm25_corpus", None)
+    if loader is None:  # pgvector fallback 後端未實作 → 用 stub
+        return []
+    try:
+        return list(loader(periods=BM25_CORPUS_PERIODS))
+    except Exception:  # noqa: BLE001 — 載入失敗不可中斷檢索，退回 stub（記 warning）
+        logger.warning(
+            "BM25 real corpus load failed; falling back to stub corpus", exc_info=True
+        )
+        return []
+
+
+@functools.lru_cache(maxsize=1)
+def _cached_real_corpus() -> tuple[SearchResult, ...]:
+    """整個 process 只讀一次（issue #30：每次 app 重啟載入一次，非 polling）。"""
+    return tuple(_load_real_corpus())
+
+
+def active_bm25_corpus() -> list[SearchResult]:
+    """有憑證 → 真實 polaris_core 語料（快取一次）；否則 / 載入失敗 → stub。"""
+    from polaris.llm.gemini import available
+
+    if not available():
+        return list(_FALLBACK_CORPUS)
+    real = _cached_real_corpus()
+    return list(real) if real else list(_FALLBACK_CORPUS)
 
 
 def _token_list(text: str) -> list[str]:
@@ -291,6 +334,9 @@ class HybridRetriever:
     # Cohere Rerank (3rd path, opt-in): inject a fake for tests; None = use
     # _cohere_rerank which reads COHERE_API_KEY and skips gracefully if absent.
     rerank_fn: RerankFn | None = field(default=None, repr=False)
+    # BM25 語料（issue #30）：None = 依憑證自動載入真實 polaris_core 語料（CI 無金鑰
+    # → stub）；測試可注入確定性語料。
+    bm25_corpus: list[SearchResult] | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -301,9 +347,11 @@ class HybridRetriever:
         # AND Deep Research's active_search_fn — to real polaris_core vectors.
         if self.embedding_fn is None:
             self.embedding_fn = active_embedding_fn()
+        if self.bm25_corpus is None:
+            self.bm25_corpus = active_bm25_corpus()
 
     def _bm25_search(self, query: str, filters: dict | None) -> list[SearchResult]:
-        candidates = [item for item in _FALLBACK_CORPUS if _matches_filters(item, filters)]
+        candidates = [item for item in (self.bm25_corpus or []) if _matches_filters(item, filters)]
         query_tokens = _token_list(query)
         if not candidates or not query_tokens:
             return []

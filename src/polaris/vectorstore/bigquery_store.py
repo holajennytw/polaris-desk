@@ -170,6 +170,53 @@ class BigQueryStore(VectorStore):
             for row in rows
         ]
 
+    # ── BM25 真實語料載入（issue #30：取代 retriever 的 3 筆 hardcoded stub）──────
+
+    def load_bm25_corpus(self, periods: int = 2) -> list[SearchResult]:
+        """從 ``v_chunk_semantic`` 載入最新 ``periods`` 季 chunks 當 BM25 語料。
+
+        刻意讀語意 view 而非 ``chunks``：view 不含 768-float ``embedding``（掃描量
+        ~4 MiB 而非 ~65 MiB，issue #30 確認），且順帶帶出
+        ``event_key / source_key / published_yyyymm`` 三個引用欄，讓 BM25 通道的結果
+        也有來源（解 #6：stub 無 doc_type / 無來源）。app 啟動時讀一次即可。
+        """
+        sql = f"""
+        SELECT chunk_id, chunk_text, ticker, fiscal_period, doc_type, published_at,
+               event_key, source_key, published_yyyymm
+        FROM `{self._semantic_view}`
+        WHERE fiscal_period IN (
+            SELECT DISTINCT fiscal_period FROM `{self._semantic_view}`
+            ORDER BY fiscal_period DESC LIMIT @periods
+        )
+        """
+        rows = self._run_query(sql, {"periods": periods})
+        return [
+            SearchResult(
+                id=row["chunk_id"],
+                content=row["chunk_text"],
+                score=0.0,  # BM25 分數於 retriever 端排序時計算
+                company=row.get("ticker"),
+                period=row.get("fiscal_period"),
+                metadata={
+                    k: v
+                    for k, v in {
+                        "source_id": row["chunk_id"],
+                        "doc_type": row.get("doc_type"),
+                        "published_at": (
+                            row["published_at"].isoformat()
+                            if hasattr(row.get("published_at"), "isoformat")
+                            else row.get("published_at")
+                        ),
+                        "event_key": row.get("event_key"),
+                        "source_key": row.get("source_key"),
+                        "published_yyyymm": row.get("published_yyyymm"),
+                    }.items()
+                    if v is not None
+                },
+            )
+            for row in rows
+        ]
+
     def _run_query(self, sql: str, params: dict[str, Any]) -> list[dict]:
         client = self._get_client()
         job_config = self._build_job_config(params)
