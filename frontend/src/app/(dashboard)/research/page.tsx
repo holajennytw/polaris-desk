@@ -97,6 +97,7 @@ function Chart({ data }: { data: Array<{label:string;value:number}> }) {
 const TOUR_MOCK_RESULT = {
   query: "台積電 2026Q1 法說會重點",
   compliance_status: "pass",
+  retrieval_degraded: false,
   kpis: [
     { label: "毛利率", value: "57.8", unit: "%", delta: "QoQ +1.6pp", trend: "up" as const, cite: "stub-2330-2026Q1-fin" },
     { label: "營業利益率", value: "47.5", unit: "%", delta: "QoQ +0.8pp", trend: "up" as const, cite: "stub-2330-2026Q1-fin" },
@@ -383,6 +384,12 @@ function ResearchPageInner() {
                 ) : (
                 <>
                 <ComplianceBanner/>
+                {displayData?.retrieval_degraded && (
+                  <div className="mock-note">
+                    <Icon name="alert" size={15} style={{ flexShrink: 0, color: "rgb(var(--warning, 200 150 50))" }}/>
+                    <span>向量搜尋未命中，本次結果來自備援資料，內容可能不完整。</span>
+                  </div>
+                )}
                 {(isMutating || isLoadingFinancials) ? <KpiSkeleton/> : (
                   (kpis.length > 0 || financialKpis.length > 0) && (
                     <div className="kpi-grid">

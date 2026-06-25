@@ -1,6 +1,22 @@
 # R3 需求清單（R7 前端提出）
 
-> 整理日期：2026-06-17｜最後更新：2026-06-24｜撰寫：R7
+> 整理日期：2026-06-17｜最後更新：2026-06-25 晚｜撰寫：R7
+
+---
+
+## ⚠️ R3 仍待交付清單（截至 2026-06-24）
+
+| 端點 | 影響功能 | 備註 |
+|------|---------|------|
+| `GET /alerts` 補 `origin`/`title`/`source`/`time` 欄位 | 研究助理 + 同業比較監控警示面板空白 | 欄位規格見 §1 |
+| `GET /tracking-feed` | 通知中心「追蹤通知」tab 空白 | 規格見 §8 |
+| `GET /suggestions?mode=peer` | 同業比較快速提問 chip 仍為靜態 hardcode | 規格見 §5 |
+| `POST /research` 補 `chart` + `kpis` | 量化分析 KPI 卡 + 毛利率趨勢圖（前端已隱藏等後端） | ⏰ 時間充裕才做；規格見 §9 |
+| `POST /contradiction` 請求格式更新 | 改接受 `citations[]`（新格式）取代舊 `kpis+summary` | 2026-06-25 新增；規格見 §2b |
+| `POST /resolve` 語意強化 | `inferTickerFromQuery` 前端版無法處理語意查詢，需後端語意識別 | 2026-06-25 新增；規格見 §10 |
+
+> Demo 預計 2026-06-25；R2 已確認 Demo 可用 mock 撐場，上述端點為 Demo 後正式版本需求。
+
 
 > ⚠️ **2026-06-24 更新**：GitHub Issue #3 已關閉，改追蹤 **[Issue #23](https://github.com/holajennytw/polaris-desk/issues/23)**。
 > Issue #23 整合了 R3 + R4 的全資料來源 RAG 需求，含完整 `POST /research`、`GET /chunk/{source_id}`、`POST /peer-compare` response schema。
@@ -10,19 +26,22 @@
 
 ---
 
-## 優先級總覽
+## 優先級總覽（2026-06-24 傍晚更新）
 
 | # | 端點 | 優先 | 狀態 | 對應前端功能 |
 |---|------|------|------|------------|
-| 1 | `GET /alerts` 補欄位 | 🔴 高 | 欄位不完整 | 研究助理 + 同業比較 監控警示面板 |
-| 2 | `POST /contradiction` | 🔴 高 | 端點不存在 | 研究助理 + 同業比較 矛盾偵測 |
-| 3 | `POST /research` citation metadata | 🟡 中 | PR #6 待 merge | 兩頁引用追蹤器文件標籤 |
-| 4 | `GET /chunk/{source_id}` | 🔴 高 | 端點不存在 | 引用追蹤器點擊展開原文 |
-| 5 | `GET /suggestions`（同業比較版） | 🟡 中 | 僅研究助理有 | 同業比較頁快速提問 chip |
-| 6 | `POST /peer-compare` | ⚪ 排工時 | 端點不存在 | 同業比較整頁 |
-| 7 | `POST /history` | 🟡 中 | 待 R2 決定儲存架構 | 研究助理 + 同業比較查詢後自動寫入對話紀錄 |
-| 8 | `GET /subscriptions` + `POST /subscriptions` + `GET /tracking-feed` | 🟡 中 | 端點不存在 | 通知中心「訂閱設定」tab（讀 + 寫）+ 追蹤通知顯示 |
-| 9 | `POST /research` 補 `chart` + `kpis` | 🟡 中 | 欄位不存在 | 研究助理頁「量化分析」圖表 + KPI 卡 |
+| 1 | `GET /alerts` 補欄位 | 🔴 高 | ⏳ 仍未交付 | 研究助理 + 同業比較 監控警示面板 |
+| 2 | `POST /contradiction` | 🔴 高 | ✅ **PR #25 已 merge** | 研究助理 + 同業比較 矛盾偵測 |
+| 3 | `POST /research` citation metadata | 🟡 中 | ✅ **PR #25 已 merge**（三路檢索 + doc_type split） | 兩頁引用追蹤器文件標籤 |
+| 4 | `GET /chunk/{source_id}` | 🔴 高 | ✅ **PR #25 已 merge** | 引用追蹤器點擊展開原文 |
+| 5 | `GET /suggestions`（同業比較版） | 🟡 中 | ⏳ 仍未交付 | 同業比較頁快速提問 chip |
+| 6 | `POST /peer-compare` | ⚪ 排工時 | ✅ **PR #25 + PR #27 已 merge**（前後端全串接完成 2026-06-25） | 同業比較整頁 |
+| 7 | `POST /history` / `GET /history` | 🟡 中 | ✅ **R7 自行實作**（Firestore，PR #11） | 對話紀錄 |
+| 8 | `GET/POST /subscriptions` | 🟡 中 | ✅ **R7 自行實作**（Firestore，PR #11） | 通知中心訂閱設定 |
+| 8b | `GET /tracking-feed` | 🟡 中 | ⏳ 仍未交付 | 追蹤通知顯示 |
+| 9 | `POST /research` 補 `chart` + `kpis` | 🟡 中 | ⏳ 仍未交付（前端量化分析已隱藏） | 研究助理頁「量化分析」圖表 + KPI 卡 |
+| 10 | `POST /contradiction` 請求格式更新 | 🟡 中 | ⏳ 新增需求（2026-06-25） | 移除前端 `buildMockContradictions()` mock |
+| 11 | `POST /resolve` 語意強化 | 🟢 低 | ⏳ 新增需求（2026-06-25） | 移除前端 `inferTickerFromQuery()` 本地比對 |
 
 ---
 
@@ -157,6 +176,61 @@
 ### 備註
 
 偵測到高/中風險時，請問是否會自動 push 到 NotificationService？還是需要 R7 前端拿到結果後另外呼叫 `POST /notifications/events`？
+
+---
+
+## 2b. `POST /contradiction` — 請求格式更新（2026-06-25 新增）
+
+> 此節為 §2 的格式升版需求。PR #25 已實作舊格式（`kpis + summary`），
+> 但 2026-06-25 R7 前端改以 `citations[]` 為中心（新增 `CitationOrigin` 型別），
+> 建議 R3 評估是否更新端點格式。若維持舊格式，前端需在呼叫前自行組裝 kpis/summary。
+
+### 背景
+
+舊的請求格式依賴前端把 KPI 和摘要拼好再送；新格式直接把 retriever 回傳的 citations 送過去，讓後端自行判斷矛盾。後者不需要前端做格式轉換，耦合較低。
+
+### 新格式 Request
+
+```json
+{
+  "citations": [
+    {
+      "source_id": "2330-2025Q4-revenue-chunk-01",
+      "snippet": "本季營收 8,028 億元，較去年同期成長 39%",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "2330-2025Q4-revenue-chunk-03",
+      "snippet": "2025Q4 合併營收約 7,985 億元",
+      "origin": "bm25"
+    }
+  ]
+}
+```
+
+`origin` 可能值：`"stub" | "bm25" | "embedding" | "colpali" | "rerank" | "news"`（對應 `CitationOrigin`，前端 `types/api.ts#L86`）
+
+### 新格式 Response
+
+```json
+{
+  "pairs": [
+    {
+      "a_source_id": "2330-2025Q4-revenue-chunk-01",
+      "b_source_id": "2330-2025Q4-revenue-chunk-03",
+      "description": "兩份文件對 2025Q4 營收數字說法不一致（8,028 億 vs 7,985 億）",
+      "severity": "high"
+    }
+  ]
+}
+```
+
+若無矛盾，回傳 `{ "pairs": [] }`。
+
+### R7 前端後續動作（R3 更新格式後）
+
+- 刪除 `research/page.tsx` 裡的 `buildMockContradictions()` 函式（約 30 行）
+- `runContradictionCheck` 改為純 API 呼叫，失敗時顯示「矛盾偵測暫時無法使用」
 
 ---
 
@@ -584,6 +658,51 @@ return { query, kpis: (raw.kpis ?? []).map(normalizeKpi), summary, chart: raw.ch
 ```
 
 不需改 Chart component 或 KpiCard，前端結構已就緒。
+
+---
+
+## 10. `POST /resolve` — 語意 ticker 識別強化（2026-06-25 新增）
+
+### 背景
+
+`POST /resolve` 端點已存在，前端 `api.resolve(query)` 也已接通。但 `hooks/useFinancials.ts` 目前沒有使用它，而是用本地函式 `inferTickerFromQuery()` 做字串比對：
+
+```typescript
+// 現在（前端版）—— 只比對 id 和 name，語意查詢無效
+function inferTickerFromQuery(query, companies) {
+  return companies.find(c =>
+    query.includes(c.id) || query.includes(c.name)
+  )?.id ?? null;
+}
+```
+
+「台積電 2025Q4 營收」可以找到 `2330`，但「半導體龍頭上季獲利」找不到。
+
+### 前端需要的改善
+
+1. **語意識別**：「半導體龍頭」應能解析成 `2330`
+2. **複數 ticker**：「台積電和聯發科比較」應回傳 `["2330", "2454"]`（`ordered` 陣列已支援）
+3. **無結果處理**：真的找不到時回傳 `ordered: []`，前端顯示「找不到相關公司」
+
+### 現有 Response 格式（不需改）
+
+```typescript
+// frontend/src/types/api.ts
+interface ResolveResponse {
+  ordered: Array<{ id: string; name: string; status: "ok" | "nodata" }>;
+  period: string;
+  tab: string;
+}
+```
+
+### 優先度
+
+**低**：字串比對已能處理大多數直接輸入公司名稱 / 代碼的查詢，語意識別是品質提升。
+
+### R7 前端後續動作（R3 改善後）
+
+- `hooks/useFinancials.ts` 的 `inferTickerFromQuery()` 廢棄，改呼叫 `api.resolve(query)`
+- 保留一個 Sprint 再刪（其他頁面可能仍在引用）
 
 ---
 
