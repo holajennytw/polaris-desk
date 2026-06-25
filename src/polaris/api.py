@@ -564,14 +564,22 @@ _VALUATION_METRICS = {"pe_ratio", "pb_ratio", "ps_ratio"}
 
 
 def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation]:
-    """法說逐字稿 RAG 搜尋（ticker + period + doc_type=transcript）。注入 seam for tests."""
+    """法說 RAG 搜尋：優先逐字稿，無逐字稿時退回法說簡報。注入 seam for tests.
+
+    台股多數公司不提供法說逐字稿（目前僅 4/20 家入庫），但全 20 家都有法說簡報
+    （presentation）。逐字稿查空時退回簡報，避免那些公司的同業比較回空引用。
+    """
     from polaris.retrieval.retriever import make_retriever_search_fn
 
-    search = make_retriever_search_fn(
-        viewer=PUBLIC_VIEWER,
-        filters={"company": ticker, "period": period, "doc_type": "transcript"},
-    )
-    return search(question)
+    for doc_type in ("transcript", "presentation"):
+        search = make_retriever_search_fn(
+            viewer=PUBLIC_VIEWER,
+            filters={"company": ticker, "period": period, "doc_type": doc_type},
+        )
+        cites = search(question)
+        if cites:
+            return cites
+    return []
 
 
 class _PeerCitationOut(BaseModel):

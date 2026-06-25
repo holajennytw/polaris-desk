@@ -520,16 +520,20 @@ def test_research_search_uses_per_doc_type_quotas_then_reranks_once():
 
     citations = make_research_search_fn(retriever, viewer="analyst_A")("台積電風險")
 
+    # presentation 是法說家族第二來源：台股多數公司無逐字稿、只有法說簡報，
+    # Deep Research 須一併撈簡報（全 20 家入庫），否則那些公司的法說內容全被漏掉。
     assert store_calls == [
         (5, {"doc_type": "transcript", "viewer": "analyst_A"}),
+        (4, {"doc_type": "presentation", "viewer": "analyst_A"}),
         (5, {"doc_type": "major_news", "viewer": "analyst_A"}),
         (3, {"doc_type": "news", "viewer": "analyst_A"}),
     ]
     assert rerank_calls == [
-        (["transcript-1", "major_news-1", "news-1"], 8)
+        (["transcript-1", "presentation-1", "major_news-1", "news-1"], 8)
     ]
     assert [c.source_id for c in citations] == [
         "transcript-1",
+        "presentation-1",
         "major_news-1",
         "news-1",
     ]
