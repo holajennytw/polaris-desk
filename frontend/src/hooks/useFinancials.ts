@@ -6,11 +6,11 @@ import type { FinancialRow } from "@/types/api";
 
 export type { FinancialRow };
 
-export function useFinancials(ticker: string | null) {
-  const key = ticker ? `financials-${ticker}` : null;
+export function useFinancials(ticker: string | null, limit = 200) {
+  const key = ticker ? `financials-${ticker}-${limit}` : null;
   const { data, isLoading } = useSWR<FinancialRow[]>(
     key,
-    () => api.financials(ticker!),
+    () => api.financials(ticker!, limit),
     { revalidateOnFocus: false },
   );
   return { rows: data ?? [], isLoading: !!ticker && isLoading };

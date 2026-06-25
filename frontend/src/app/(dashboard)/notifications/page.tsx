@@ -11,6 +11,7 @@ import { useReadStore } from "@/hooks/useReadStore";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { api } from "@/lib/api";
+import { logError } from "@/lib/logger";
 
 const TABS = ["feed","tracking","rules"] as const;
 const TAB_LABELS: Record<string, string> = { feed:"風險動態", tracking:"追蹤通知", rules:"訂閱設定" };
@@ -57,7 +58,8 @@ export default function NotificationsPage() {
     try {
       await api.setSubscriptions(next);
       mutate("subscriptions");
-    } catch {
+    } catch (e) {
+      logError("toggleSub", e);
       setSaveError(true);
     } finally {
       setIsSaving(false);

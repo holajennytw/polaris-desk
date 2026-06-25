@@ -34,12 +34,12 @@ function normalizeGrounded(g: GroundedValue): GroundedVM {
 export function normalizeAlert(raw: AlertRaw): AlertVM {
   return {
     id: raw.event_id,
-    origin: "research",  // watchdog alerts 顯示於所有面板，filter 已移至 pages
+    origin: (raw.origin as AlertVM["origin"]) ?? "research",
     level: sevToLevel(raw.severity),
-    title: raw.ticker ? `${raw.ticker} · MOPS 監控` : "系統警示",
+    title: raw.title || (raw.ticker ? `${raw.ticker} · MOPS 監控` : "系統警示"),
     summary: raw.summary,
-    source: raw.ticker ?? "MOPS Watchdog",
-    time: "",
+    source: raw.source || raw.ticker || "MOPS Watchdog",
+    time: raw.time ?? "",
     stock: raw.ticker,
   };
 }
@@ -280,11 +280,24 @@ function expandReActStep(step: ResearchReActStepRaw): ReActStepVM[] {
   return items;
 }
 
-// final_answer 切成摘要條列：先嘗試換行符，不夠再用句號
+// LLM markdown 清理：去掉列表標記（- / * / 1.）和粗體標記（**...**）
+function stripMarkdown(line: string): string {
+  return line
+    .replace(/^[\-\*]\s+/, "")
+    .replace(/^\d+\.\s+/, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/`(.*?)`/g, "$1")
+    .trim();
+}
+
+// final_answer 切成摘要條列：只按換行切，保留 LLM 段落結構
+// 不再用句號強切，以免把一段連續論述拆成假條列
 function splitAnswer(text: string): string[] {
-  const byLine = text.split(/\n+/).map((s) => s.trim()).filter(Boolean);
-  if (byLine.length > 1) return byLine;
-  return text.split(/(?<=。)/).map((s) => s.trim()).filter(Boolean);
+  const lines = text
+    .split(/\n+/)
+    .map(stripMarkdown)
+    .filter(Boolean);
+  return lines.length > 0 ? lines : [text.trim()].filter(Boolean);
 }
 
 export function normalizeResearch(raw: ResearchResponse, query: string): AskVM {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api";
+import { logError } from "@/lib/logger";
 import { historyStore } from "@/lib/historyStore";
 import type { HistoryEntry } from "@/lib/historyStore";
 
@@ -50,7 +51,8 @@ export default function HistoryPage() {
     setIsDeleting(true);
     try {
       await api.deleteHistory(deleteTarget);
-    } catch {
+    } catch (e) {
+      logError("confirmDelete", e);
       historyStore.remove(deleteTarget);
     }
     mutate("history");

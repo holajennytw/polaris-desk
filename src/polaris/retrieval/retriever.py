@@ -486,7 +486,7 @@ RESEARCH_DOC_TYPE_QUOTAS: Mapping[str, int] = {
 
 def _result_to_citation(sr: SearchResult, citation_cls):
     raw_origin = sr.metadata.get("origin")
-    allowed_origins = {"stub", "bm25", "embedding", "colpali", "rerank", "news"}
+    allowed_origins = {"stub", "bm25", "embedding", "colpali", "rerank", "news", "vision"}
     if raw_origin == "vector":
         origin = "embedding"
     else:

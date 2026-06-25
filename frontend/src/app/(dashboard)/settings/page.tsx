@@ -2,7 +2,6 @@
 import { signIn, signOut, useSession } from "next-auth/react";
 import { Icon } from "@/components/ui/Icon";
 import { useThemeToggle } from "@/hooks/useThemeToggle";
-import { USE_MOCK } from "@/lib/config";
 
 function GoogleMark() {
   return (
@@ -57,10 +56,6 @@ export default function SettingsPage() {
             <div className="pref-row">
               <div><div className="pref-t">外觀主題</div><div className="pref-d">淺色 / 深色模式</div></div>
               <button ref={themeButtonRef} className="btn sm" onClick={toggleTheme}><Icon name={isDark?"sun":"moon"} size={14}/>{isDark?"淺色":"深色"}</button>
-            </div>
-            <div className="pref-row">
-              <div><div className="pref-t">資料來源</div><div className="pref-d">mock JSON ↔ 真實 API</div></div>
-              <span className="tag muted font-mono">USE_MOCK={USE_MOCK?"true":"false"}</span>
             </div>
           </div>
           {session && <button className="set-logout" onClick={() => signOut()}><Icon name="logout" size={16}/>登出帳號</button>}

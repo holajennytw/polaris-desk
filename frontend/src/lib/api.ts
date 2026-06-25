@@ -1,9 +1,6 @@
-// ============================================================
-// lib/api.ts — 唯一資料存取層
-// USE_MOCK=true → 讀 /mocks/xxx.json（public/ 靜態檔，模擬 400ms 延遲）
-// USE_MOCK=false → 打 ${API_BASE}${path}
-// ============================================================
-import { USE_MOCK, API_BASE } from "./config";
+// lib/api.ts — 唯一資料存取層，直接打 ${API_BASE}${path}
+import { API_BASE } from "./config";
+import { logError } from "./logger";
 import {
   normalizeAlerts, normalizeAsk, normalizeResearch, normalizeComparison, normalizeNews,
   normalizeLibrary, normalizeNotifications,
@@ -26,13 +23,6 @@ async function authHeaders(): Promise<Record<string, string>> {
   }
 }
 
-async function mockFetch(mock: string): Promise<unknown> {
-  await new Promise((r) => setTimeout(r, 400));
-  const res = await fetch(`/mocks/${mock}.json`);
-  if (!res.ok) throw new Error(`Mock fetch failed: ${mock}`);
-  return res.json();
-}
-
 async function realFetch(path: string, init?: RequestInit): Promise<unknown> {
   const auth = await authHeaders();
   const res = await fetch(`${API_BASE}${path}`, {
@@ -43,11 +33,10 @@ async function realFetch(path: string, init?: RequestInit): Promise<unknown> {
   return res.json();
 }
 
-const get = (mock: string, path: string) =>
-  USE_MOCK ? mockFetch(mock) : realFetch(path);
+const get = (path: string) => realFetch(path);
 
-const post = (mock: string, path: string, body: unknown) =>
-  USE_MOCK ? mockFetch(mock) : realFetch(path, {
+const post = (path: string, body: unknown) =>
+  realFetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -57,46 +46,41 @@ const post = (mock: string, path: string, body: unknown) =>
 
 export const api = {
   async ask(query: string) {
-    const raw = await post("ask", "/ask", { query }) as any;
+    const raw = await post("/ask", { query }) as any;
     return normalizeAsk(raw, query);
   },
 
   async research(query: string) {
-    const raw = await post("research", "/research", { question: query }) as any;
+    const raw = await post("/research", { question: query }) as any;
     return normalizeResearch(raw, query);
   },
 
   async alerts() {
-    const raw = await get("alerts", "/alerts") as any[];
+    const raw = await get("/alerts") as any[];
     return normalizeAlerts(raw);
   },
 
   async notifications() {
-    const raw = await get("notifications", "/notifications") as any;
+    const raw = await get("/notifications") as any;
     return normalizeNotifications(raw);
   },
 
   async companies() {
-    const raw = await get("companies", "/companies") as any[];
+    const raw = await get("/companies") as any[];
     return raw.map(normalizeCompany);
   },
 
   async company(id: string) {
-    const mock = `company.${id}`;
-    const raw = await (USE_MOCK ? mockFetch(mock) : realFetch(`/company/${id}`)) as any;
+    const raw = await realFetch(`/company/${id}`) as any;
     return normalizeComparison(raw);
   },
 
   async resolve(query: string) {
-    const raw = await post("resolve", "/resolve", { query }) as any;
+    const raw = await post("/resolve", { query }) as any;
     return normalizeResolve(raw);
   },
 
   async news() {
-    if (USE_MOCK) {
-      const raw = await get("news", "/news") as any;
-      return normalizeNews(raw);
-    }
     const raw = await realFetch("/events?type=news&limit=100") as any[];
     const items = raw.map(e => ({
       id: e.event_id as string,
@@ -117,7 +101,7 @@ export const api = {
   },
 
   async library() {
-    const raw = await get("library", "/library") as any;
+    const raw = await get("/library") as any;
     return normalizeLibrary(raw);
   },
 
@@ -139,7 +123,9 @@ export const api = {
           tags: (h.tickers ?? []) as string[],
         }));
       }
-    } catch {}
+    } catch (e) {
+      logError("api.history", e);
+    }
     return historyStore.read();
   },
 
@@ -147,7 +133,8 @@ export const api = {
     try {
       const raw = await realFetch(`/history/${encodeURIComponent(id)}`) as any;
       return { query: raw.query, page: raw.origin ?? "research", result: raw.result };
-    } catch {
+    } catch (e) {
+      logError("api.historyOne", e);
       return null;
     }
   },
@@ -163,7 +150,6 @@ export const api = {
   },
 
   postHistory(origin: "research" | "peer", query: string, tickers: string[], result: unknown): void {
-    if (USE_MOCK) return;
     authHeaders().then((auth) =>
       fetch(`${API_BASE}/history`, {
         method: "POST",
@@ -176,12 +162,11 @@ export const api = {
   },
 
   async watch() {
-    const raw = await get("watch", "/watch") as any[];
+    const raw = await get("/watch") as any[];
     return raw.map(normalizeWatchItem);
   },
 
   async chunk(sourceId: string): Promise<DocContent | null> {
-    if (USE_MOCK) return null;
     try {
       const raw = await realFetch(`/chunk/${encodeURIComponent(sourceId)}`) as ChunkRaw;
       return {
@@ -196,28 +181,28 @@ export const api = {
         hlTokens: raw.hl_tokens,
         body: raw.content.split(/(?<=。)|\n/).map((s) => s.trim()).filter(Boolean),
       };
-    } catch {
+    } catch (e) {
+      logError("api.chunk", e);
       return null;
     }
   },
 
   async financials(ticker: string, limit = 30): Promise<FinancialRow[]> {
     try {
-      const path = `/financials?ticker=${encodeURIComponent(ticker)}&limit=${limit}`;
-      const raw = await get(`financials.${ticker}`, path) as FinancialRow[];
+      const raw = await get(`/financials?ticker=${encodeURIComponent(ticker)}&limit=${limit}`) as FinancialRow[];
       return Array.isArray(raw) ? raw : [];
-    } catch {
+    } catch (e) {
+      logError("api.financials", e);
       return [];
     }
   },
 
   async healthz() {
-    const raw = await get("healthz", "/healthz") as any;
+    const raw = await get("/healthz") as any;
     return raw;
   },
 
   async markNotificationRead(id: string): Promise<void> {
-    if (USE_MOCK) return;
     try {
       await realFetch(`/notifications/${encodeURIComponent(id)}/read`, { method: "POST" });
     } catch { /* best-effort，localStorage 已讀狀態仍保留 */ }
@@ -227,7 +212,8 @@ export const api = {
     try {
       const raw = await realFetch("/subscriptions") as { status: string; tickers: string[] };
       return raw.tickers ?? [];
-    } catch {
+    } catch (e) {
+      logError("api.getSubscriptions", e);
       return [];
     }
   },
@@ -245,6 +231,7 @@ export const api = {
     b_ticker: string;
     fiscal_period: string;
     question: string;
+    month?: number | null;
   }): Promise<PeerCompareResult> {
     const raw = await realFetch("/peer-compare", {
       method: "POST",

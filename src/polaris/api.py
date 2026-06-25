@@ -400,6 +400,11 @@ class AlertResponse(BaseModel):
     compliance_status: str
     severity: str
     evidence: list[Citation]
+    # 前端顯示用（R3_需求清單_from_R7.md §1）
+    title: str = ""
+    time: str = ""
+    source: str = ""
+    origin: str = "research"
 
 
 @app.get("/alerts", response_model=list[AlertResponse], tags=["watchdog"])
@@ -409,17 +414,23 @@ def alerts() -> list[AlertResponse]:
     R7 Alert Inbox 直接消費本端點；severity 上色、blocked 標紅。
     無 Gemini 金鑰時 Watchdog 走確定性 fallback（token=0）。
     """
-    return [
-        AlertResponse(
+    events = load_mock_events(_WATCHDOG_MOCK_EVENTS)
+    results = []
+    for event in events:
+        a = run_watchdog(event)
+        results.append(AlertResponse(
             event_id=a.event_id,
             ticker=a.ticker,
             summary=a.summary,
             compliance_status=a.compliance_status,
             severity=a.severity,
             evidence=a.evidence,
-        )
-        for a in (run_watchdog(e) for e in load_mock_events(_WATCHDOG_MOCK_EVENTS))
-    ]
+            title=event.title,
+            time=event.published_at.strftime("%H:%M"),
+            source=f"MOPS · {event.ticker}",
+            origin="research",
+        ))
+    return results
 
 
 # --- 結構化資料讀層（polaris_core 直讀，給前端財務卡 / 事件時間軸 / 公司清單）---
@@ -451,6 +462,7 @@ class FinancialMetricResponse(BaseModel):
     ticker: str | None = None
     fiscal_period: str | None = None
     metric_id: str | None = None
+    metric_name: str | None = None
     value: float | None = None
     unit: str | None = None
     source_id: str | None = None
@@ -645,6 +657,7 @@ class _PeerFinancialRow(BaseModel):
     metric: str
     a: _PeerMetricSide
     b: _PeerMetricSide
+    better: Literal["a", "b"]
     note: str
 
 
@@ -681,6 +694,7 @@ class PeerCompareRequest(BaseModel):
     b_ticker: str = Field(min_length=1)
     fiscal_period: str = Field(min_length=1, description="如 2026Q1")
     question: str = Field(min_length=1)
+    month: int | None = Field(default=None, ge=1, le=12, description="月份（1-12），null 表示全季")
 
 
 class PeerCompareResponse(BaseModel):
@@ -699,39 +713,74 @@ class PeerCompareResponse(BaseModel):
 def _fmt_value(value: float, unit: str | None) -> str:
     unit = unit or ""
     if unit == "%":
-        return f"{value}{unit}"
-    return f"{value} {unit}".strip()
+        return f"{value:.2f}%"
+    if "千元" in unit:
+        yi = value / 100_000
+        return f"{yi:.0f} 億" if yi >= 100 else f"{yi:.1f} 億"
+    # EPS 等其他單位：固定 2 位小數，不附單位後綴（單位已在 label 顯示）
+    return f"{value:.2f}"
 
+
+# 頂部 KPI 卡片只顯示這幾個核心指標（依優先級排序）
+_KPI_PRIORITY = ["eps", "gross_margin", "net_margin", "revenue_yoy", "revenue"]
 
 _PEER_METRIC_LABELS = {
-    "gross_margin": "毛利率",
-    "operating_margin": "營業利益率",
-    "net_margin": "淨利率",
-    "roe": "ROE",
-    "roa": "ROA",
-    "capex": "資本支出",
-    "free_cash_flow": "自由現金流",
-    "debt_ratio": "負債比率",
-    "dividend": "股利",
-    "pe_ratio": "PE",
-    "pb_ratio": "PB",
-    "ps_ratio": "PS",
+    # 月營收指標（financial_metrics 事實表）
+    "revenue":            "月營收",
+    "revenue_delta":      "月增額",
+    "revenue_prior_year": "去年同期",
+    "revenue_yoy":        "月營收 YoY",
+    "ytd_revenue":        "累計營收",
+    "ytd_delta":          "累計增額",
+    "ytd_yoy":            "累計 YoY",
+    # 季報損益指標
+    "gross_profit":            "毛利額",
+    "gross_margin":            "毛利率",
+    "operating_expense":       "營業費用",
+    "operating_income":        "營業利益",
+    "operating_margin":        "營業利益率",
+    "pretax_income":           "稅前淨利",
+    "net_income":              "淨利",
+    "net_margin":              "淨利率",
+    "eps":                     "EPS",
+    "revenue_q":               "季營收",
+    "ytd_revenue_prior_year":  "累計去年同期",
+    # 資產負債指標
+    "roe":                "ROE",
+    "roa":                "ROA",
+    "capex":              "資本支出",
+    "free_cash_flow":     "自由現金流",
+    "debt_ratio":         "負債比率",
+    "dividend":           "股利",
+    # 估值
+    "pe_ratio":           "PE",
+    "pb_ratio":           "PB",
+    "ps_ratio":           "PS",
 }
 
 
 def _metric_side(row: dict, period: str) -> _PeerMetricSide:
+    month = row.get("month")
+    page_label = f"{period[:4]}年{month}月" if month else period
     return _PeerMetricSide(
         v=_fmt_value(row["value"], row.get("unit")),
         citations=[
-            _PeerCitationOut(src=str(row.get("source_id") or ""), page=period)
+            _PeerCitationOut(src=str(row.get("source_id") or ""), page=page_label)
         ],
     )
 
 
 def _metric_diff(a_row: dict, b_row: dict) -> tuple[str, Literal["a", "b"]]:
     difference = float(a_row["value"]) - float(b_row["value"])
-    suffix = "pp" if a_row.get("unit") == b_row.get("unit") == "%" else (a_row.get("unit") or "")
-    return f"{abs(difference):g}{suffix}", "a" if difference >= 0 else "b"
+    unit = a_row.get("unit") or ""
+    better: Literal["a", "b"] = "a" if difference >= 0 else "b"
+    if unit == "%" and a_row.get("unit") == b_row.get("unit"):
+        return f"{abs(difference):.2f}pp", better
+    if "千元" in unit:
+        yi = abs(difference) / 100_000
+        fmt = f"{yi:.0f} 億" if yi >= 100 else f"{yi:.1f} 億"
+        return fmt, better
+    return f"{abs(difference):.2f}", better
 
 
 def _call_side(citation: Citation | None) -> _PeerCallSide:
@@ -751,17 +800,36 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
     a_rows = _structured_store.list_financials(ticker=req.a_ticker, period=req.fiscal_period)
     b_rows = _structured_store.list_financials(ticker=req.b_ticker, period=req.fiscal_period)
 
-    # index by metric_id, exclude valuation metrics (no canonical data yet)
-    a_by_metric = {
-        r["metric_id"]: r for r in a_rows if r["metric_id"] not in _VALUATION_METRICS
-    }
-    b_by_metric = {
-        r["metric_id"]: r for r in b_rows if r["metric_id"] not in _VALUATION_METRICS
-    }
+    # 若指定月份，只保留該月的月營收（month == req.month）與不含月份的季度指標（month is None）
+    if req.month is not None:
+        a_rows = [r for r in a_rows if r.get("month") is None or r.get("month") == req.month]
+        b_rows = [r for r in b_rows if r.get("month") is None or r.get("month") == req.month]
+
+    # index by metric_id, exclude valuation metrics (no canonical data yet).
+    # 逐列建 dict（取第一筆 = published_at DESC 最新），避免 dict comprehension 取到最舊那筆。
+    a_by_metric: dict[str, dict] = {}
+    for r in a_rows:
+        mid = r.get("metric_id")
+        if mid and mid not in _VALUATION_METRICS and mid not in a_by_metric:
+            a_by_metric[mid] = r
+
+    b_by_metric: dict[str, dict] = {}
+    for r in b_rows:
+        mid = r.get("metric_id")
+        if mid and mid not in _VALUATION_METRICS and mid not in b_by_metric:
+            b_by_metric[mid] = r
 
     common_metrics = [m for m in a_by_metric if m in b_by_metric]
 
-    kpis: list[_PeerKpi] = []
+    # 財務明細表只顯示有意義的指標，排除純衍生計算欄（delta、prior_year 等）
+    _FINANCIAL_DISPLAY = {
+        "eps", "gross_margin", "net_margin", "operating_margin", "operating_income",
+        "gross_profit", "net_income", "revenue_q",
+        "revenue", "revenue_yoy", "ytd_revenue", "ytd_yoy",
+        "roe", "roa", "capex",
+    }
+
+    kpi_map: dict[str, _PeerKpi] = {}
     financial: list[_PeerFinancialRow] = []
     for metric in common_metrics:
         ar = a_by_metric[metric]
@@ -769,24 +837,27 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         a_side = _metric_side(ar, req.fiscal_period)
         b_side = _metric_side(br, req.fiscal_period)
         difference, better = _metric_diff(ar, br)
-        label = _PEER_METRIC_LABELS.get(metric, metric)
-        kpis.append(
-            _PeerKpi(
+        label = ar.get("metric_name") or _PEER_METRIC_LABELS.get(metric, metric)
+        if metric in _KPI_PRIORITY:
+            kpi_map[metric] = _PeerKpi(
                 label=label,
                 a=a_side,
                 b=b_side,
                 diff=difference,
                 better=better,
             )
-        )
-        financial.append(
-            _PeerFinancialRow(
-                metric=label,
-                a=a_side,
-                b=b_side,
-                note=f"差異 {difference}",
+        if metric in _FINANCIAL_DISPLAY:
+            financial.append(
+                _PeerFinancialRow(
+                    metric=label,
+                    a=a_side,
+                    b=b_side,
+                    better=better,
+                    note=f"差異 {difference}",
+                )
             )
-        )
+    # 依 _KPI_PRIORITY 順序排列，只保留有資料的項目
+    kpis = [kpi_map[m] for m in _KPI_PRIORITY if m in kpi_map]
 
     # law call RAG for both tickers
     a_cites = _search_peer_calls(req.a_ticker, req.fiscal_period, req.question)
@@ -806,10 +877,21 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         )
 
     # trend: all periods for common metrics in fiscal data (all periods, not just requested)
+    # 只顯示最具代表性的趨勢指標，避免 8 種 revenue 子指標全部展出
+    _TREND_METRICS = {"revenue_yoy", "revenue"}
     a_all = _structured_store.list_financials(ticker=req.a_ticker)
     b_all = _structured_store.list_financials(ticker=req.b_ticker)
-    a_all_idx: dict[tuple[str, str], dict] = {(r["fiscal_period"], r["metric_id"]): r for r in a_all if r["metric_id"] not in _VALUATION_METRICS}
-    b_all_idx: dict[tuple[str, str], dict] = {(r["fiscal_period"], r["metric_id"]): r for r in b_all if r["metric_id"] not in _VALUATION_METRICS}
+    # 用 loop 取第一筆（published_at DESC = 最新），與 a_by_metric 邏輯一致，避免 dict comprehension 取到最舊
+    a_all_idx: dict[tuple[str, str], dict] = {}
+    for r in a_all:
+        key = (r["fiscal_period"], r["metric_id"])
+        if r["metric_id"] not in _VALUATION_METRICS and key not in a_all_idx:
+            a_all_idx[key] = r
+    b_all_idx: dict[tuple[str, str], dict] = {}
+    for r in b_all:
+        key = (r["fiscal_period"], r["metric_id"])
+        if r["metric_id"] not in _VALUATION_METRICS and key not in b_all_idx:
+            b_all_idx[key] = r
 
     # only include metrics with data in more than one period (i.e. actual trend)
     a_metric_periods: dict[str, set[str]] = {}
@@ -820,7 +902,7 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
     for (period, metric) in a_all_idx:
         if (
             (period, metric) in b_all_idx
-            and metric in common_metrics
+            and metric in _TREND_METRICS
             and len(a_metric_periods.get(metric, set())) > 1
         ):
             trend_keys.add((period, metric))
@@ -829,7 +911,7 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         [
             _PeerTrendRow(
                 period=period,
-                metric=metric,
+                metric=a_all_idx[(period, metric)].get("metric_name") or _PEER_METRIC_LABELS.get(metric, metric),
                 a_value=a_all_idx[(period, metric)]["value"],
                 b_value=b_all_idx[(period, metric)]["value"],
             )
@@ -838,14 +920,49 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         key=lambda r: (r.period, r.metric),
     )
 
-    # build summary with source references
+    # build summary：可讀格式，不在句中暴露 source_id
     summary_parts = [f"比較期間：{req.fiscal_period}"]
     for kpi in kpis:
+        better_name = req.a_ticker if kpi.better == "a" else req.b_ticker
         summary_parts.append(
-            f"{kpi.label}：{req.a_ticker} {kpi.a.v}（來源 {kpi.a.citations[0].src}）"
-            f"vs {req.b_ticker} {kpi.b.v}（來源 {kpi.b.citations[0].src}）"
+            f"・{kpi.label}：{req.a_ticker} {kpi.a.v} vs {req.b_ticker} {kpi.b.v}"
+            f"（{better_name} 領先 {kpi.diff}）"
         )
-    raw_summary = "；".join(summary_parts)
+    raw_summary = "\n".join(summary_parts)
+
+    # LLM 生成自然語言摘要（有 GEMINI_API_KEY 才呼叫；否則沿用結構化字串）
+    from polaris.llm.gemini import active_llm
+
+    llm = active_llm()
+    if llm and kpis:
+        kpi_lines = "\n".join(
+            f"  ・{k.label}：{req.a_ticker} {k.a.v} vs {req.b_ticker} {k.b.v}"
+            f"（{req.a_ticker if k.better == 'a' else req.b_ticker} 領先 {k.diff}）"
+            for k in kpis
+        )
+        call_snippets = [
+            f"  ・{req.a_ticker}：{c.a.quote[:120]}"
+            for c in calls[:3]
+            if c.a.quote
+        ] + [
+            f"  ・{req.b_ticker}：{c.b.quote[:120]}"
+            for c in calls[:3]
+            if c.b.quote
+        ]
+        call_lines = "\n".join(call_snippets[:5]) or "（無法說引用）"
+        prompt = (
+            f"你是台股產業研究員。請用繁體中文，根據以下財務指標與法說引用，"
+            f"為「{req.a_ticker} vs {req.b_ticker}」（{req.fiscal_period}）"
+            f"寫一段100-150字的同業比較摘要，直接輸出段落文字，不加標題或條列符號。\n\n"
+            f"財務指標：\n{kpi_lines}\n\n"
+            f"法說引用（節錄）：\n{call_lines}\n\n"
+            f"使用者問題：{req.question}\n\n"
+            f"限制：禁止出現買進、賣出、建議投資等語句。"
+        )
+        try:
+            raw_summary = llm.generate(prompt, flash=True)
+        except Exception:
+            pass  # fallback to machine-generated summary
 
     from polaris.graph.nodes import compliance_agent
 

@@ -81,7 +81,7 @@ class StructuredStore:
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
         params["lim"] = _clamp_limit(limit)
         sql = f"""
-        SELECT ticker, fiscal_period, metric_id, value, unit, source_id, published_at,
+        SELECT ticker, fiscal_period, metric_id, metric_name, value, unit, source_id, published_at,
                year, month
         FROM `{self._dataset()}.v_financial_metrics_semantic`
         {where}
