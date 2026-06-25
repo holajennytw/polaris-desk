@@ -1,6 +1,6 @@
 # R3 需求清單（R7 前端提出）
 
-> 整理日期：2026-06-17｜最後更新：2026-06-25｜撰寫：R7
+> 整理日期：2026-06-17｜最後更新：2026-06-25 晚｜撰寫：R7
 
 ---
 
@@ -35,7 +35,7 @@
 | 3 | `POST /research` citation metadata | 🟡 中 | ✅ **PR #25 已 merge**（三路檢索 + doc_type split） | 兩頁引用追蹤器文件標籤 |
 | 4 | `GET /chunk/{source_id}` | 🔴 高 | ✅ **PR #25 已 merge** | 引用追蹤器點擊展開原文 |
 | 5 | `GET /suggestions`（同業比較版） | 🟡 中 | ⏳ 仍未交付 | 同業比較頁快速提問 chip |
-| 6 | `POST /peer-compare` | ⚪ 排工時 | ✅ **PR #25 已 merge**（前端串接在 PR #27，待 merge） | 同業比較整頁 |
+| 6 | `POST /peer-compare` | ⚪ 排工時 | ✅ **PR #25 + PR #27 已 merge**（前後端全串接完成 2026-06-25） | 同業比較整頁 |
 | 7 | `POST /history` / `GET /history` | 🟡 中 | ✅ **R7 自行實作**（Firestore，PR #11） | 對話紀錄 |
 | 8 | `GET/POST /subscriptions` | 🟡 中 | ✅ **R7 自行實作**（Firestore，PR #11） | 通知中心訂閱設定 |
 | 8b | `GET /tracking-feed` | 🟡 中 | ⏳ 仍未交付 | 追蹤通知顯示 |

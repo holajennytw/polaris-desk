@@ -83,7 +83,7 @@ export interface AskResponse {
 
 // POST /research
 
-export type CitationOrigin = "stub" | "bm25" | "embedding" | "colpali" | "rerank" | "news";
+export type CitationOrigin = "stub" | "bm25" | "embedding" | "colpali" | "rerank" | "news" | "vision";
 
 /** @deprecated 改用 CitationOrigin */
 export type ResearchCitationOrigin = CitationOrigin;
