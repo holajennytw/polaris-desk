@@ -4,9 +4,11 @@
 > **入庫時**用 Gemini vision 把那些頁抽成結構化文字，併入既有 `chunks` → 文字 3 路 → `/ask`。
 > 取代失敗的單向量 ColPali 第 4 路。設計：[`docs/superpowers/specs/2026-06-23-vision-ocr-to-text-ingestion-design.md`](superpowers/specs/2026-06-23-vision-ocr-to-text-ingestion-design.md)。
 >
-> **現況（2026-06-24）**：程式已 merge `jenny/main`（745 測試綠，含 fetch-skill 期別 bug 修補）。
-> dev dataset `polaris_dev_wayne` 已有真資料：**2330 全 4 季 + 1216 + 2412**（2891 持續寫入中），
-> **實測檢索可命中**。各角色**現在就能並行開工**（見下「起跑清單」），不必等全量跑完。
+> **現況（2026-06-25）**：✅ **全量入庫完成** — dev dataset `polaris_dev_wayne.chunks` 已有
+> **全 21 檔**中文法說簡報（清理後 **3816 塊** / 768 維，2025Q1–2026Q1；6505 回溯至 2022Q4）。
+> 已做品質清理：移除 1191 塊純線條雜訊塊（`is_low_information` 源頭修掉，重跑不再生），
+> 重複冗餘 1392→204，embedding 全 768 維非退化、最近鄰一致性 OK。`polaris_core` 未動。
+> 分工 / 各檔塊數 / 清理細節見 [`vision-OCR_入庫分工.md`](vision-OCR_入庫分工.md)。各角色可全面測試。
 >
 > 標記：**🤖 = agent 可自動跑**；**🧑 = human 必做**（金鑰 / gcloud 登入，憲法：金鑰永不 commit）。
 
@@ -19,7 +21,7 @@
 
 | 角色 | 現在可以做 | 章節 | 是否被 gate |
 |------|-----------|------|------------|
-| **R1**（Gate1，關鍵） | 用 `data/vision_chunks/2330_gate1.csv`（49 頁，已產好）抽 20–30 頁/≥4 公司比對數字 **≥95%** 放行 | §1 | ⛔ 是放行者，不被 gate |
+| **R1**（Gate1，關鍵） | 全 21 檔 `data/vision_chunks/<ticker>_gate1.csv` 已產好，抽 20–30 頁 / ≥4 公司比對數字 **≥95%** 放行 | §1 | ⛔ 是放行者，不被 gate |
 | **R5**（Gate2/eval） | 對 dev 跑檢索驗證 + 把 Ragas 指到 dev 跑圖表題集 | §3 | 🟢 現在可做 |
 | **R7**（前端） | 指向 dev 起 API 問圖表題，確認 citation 帶頁碼；**零前端改動** | §4 | 🟢 現在可做 |
 | **R4**（ingestion owner） | 審 code、把 fetch-skill 修補套上游 plugin repo、確認 `financial_statement` 來源 | §2 | 🟡 載 core 等 Gate1 |
