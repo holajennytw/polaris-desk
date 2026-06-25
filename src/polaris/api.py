@@ -234,6 +234,47 @@ def research(req: ResearchRequest) -> ResearchResponse:
     )
 
 
+class SuggestionsResponse(BaseModel):
+    """前端 useSuggestions hook 的契約。``source`` 標示問句來源（目前固定
+    ``rule`` 規則式精選）；``is_generating=False`` 表示沒有待補的 LLM 升級
+    （前端見此即不再 poll），保留欄位供日後接 LLM 動態生成。"""
+
+    suggestions: list[str]
+    source: Literal["rule", "llm"] = "rule"
+    is_generating: bool = False
+
+
+# 規則式精選提示問句。皆為「研究 / 比較」型問句，**不含**任何買賣建議
+# （NFR-031）。前端在 /research（單檔研究）與 /peer（同業比較）顯示為輸入提示晶片。
+_SUGGESTION_PRESETS: dict[str, list[str]] = {
+    "research": [
+        "台積電 2025Q1 毛利率變化與主要原因？",
+        "聯發科最近一季營收年增率表現如何？",
+        "鴻海近兩季營業利益率的趨勢？",
+        "台積電法說會對先進製程的展望重點？",
+        "中華電信最近一季每股盈餘（EPS）變化？",
+    ],
+    "peer": [
+        "比較台積電與聯發科最近兩季毛利率",
+        "台積電與聯電的先進製程營收占比差異",
+        "比較鴻海與和碩的營業利益率",
+        "聯發科與高通的研發費用率比較",
+        "比較台積電與三星的資本支出規模",
+    ],
+}
+
+
+@app.get("/suggestions", response_model=SuggestionsResponse, tags=["research"])
+def suggestions(
+    mode: Literal["research", "peer"] = Query(
+        default="research", description="提示情境：research（單檔研究）/ peer（同業比較）"
+    ),
+) -> SuggestionsResponse:
+    """回傳輸入提示問句晶片（前端 useSuggestions）。規則式精選、token-free，
+    無效 ``mode`` 由 FastAPI 回 422。NFR-031：問句皆為研究型，絕無買賣建議。"""
+    return SuggestionsResponse(suggestions=_SUGGESTION_PRESETS[mode])
+
+
 @app.post("/contradiction", response_model=ContradictionResponse, tags=["research"])
 def contradiction(req: ContradictionRequest) -> ContradictionResponse:
     """保守比對 KPI 與摘要；只回報可由數字或方向措辭證明的矛盾。"""
