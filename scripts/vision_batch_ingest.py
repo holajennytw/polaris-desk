@@ -29,7 +29,8 @@ from pathlib import Path
 
 
 def _meta_from_filename(name: str) -> dict:
-    m = re.match(r"(?P<t>\d+)_(?P<d>\d{8})[ME]\d+_(?P<p>\w+?)_concall_(?P<dt>\w+)\.pdf", name)
+    # [ME] 前允許可選底線：部分 GDrive 策展檔名為 2317_20250514_M002_... 格式。
+    m = re.match(r"(?P<t>\d+)_(?P<d>\d{8})_?[ME]\d+_(?P<p>\w+?)_concall_(?P<dt>\w+)\.pdf", name)
     if not m:
         return {}
     d = m.group("d")
@@ -41,6 +42,7 @@ _VISION_PROMPT = (
     "你是財報投影片『轉錄器』。只轉錄這張投影片上看得到的文字與數字，不要推論、不要計算、"
     "不要補充頁面上沒有的東西。每個圖表的標籤與數值、單位如實抽出；有表格轉成 markdown。"
     "看不清的數值填 null。"
+    "confidence 用 0 到 1 之間的小數表示整體把握度（1=非常確定，不是百分比、不是 1–5 分）。"
 )
 
 

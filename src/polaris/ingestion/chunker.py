@@ -23,7 +23,7 @@ import re
 import sys
 from pathlib import Path
 
-from polaris.ingestion.sanitize import sanitize_text
+from polaris.ingestion.sanitize import is_low_information, sanitize_text
 
 #: 預設切塊參數（理由見模組 docstring）。
 DEFAULT_CHUNK_SIZE = 800
@@ -64,7 +64,9 @@ def chunk_page(text: str, *, chunk_size: int = DEFAULT_CHUNK_SIZE,
             buf = candidate
     if buf:
         chunks.append(buf)
-    return chunks
+    # vision table_markdown 殘留的純分隔列 / 水平線會被硬切成純線條塊，無資訊且稀釋
+    # 檢索——在源頭剔除（與 validate_for_ingestion 同準則，雙層防線）。
+    return [c for c in chunks if not is_low_information(c)]
 
 
 def chunk_pages(

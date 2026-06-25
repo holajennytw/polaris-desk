@@ -11,8 +11,9 @@ import {
 } from "./adapters";
 import { historyStore } from "./historyStore";
 import { getSession } from "next-auth/react";
-import type { ChunkRaw, FinancialRow } from "@/types/api";
+import type { ChunkRaw, FinancialRow, BackendPeerCompareResponse, PeerCompareResult } from "@/types/api";
 import type { DocContent } from "@/components/polaris/DocViewer";
+import { normalizePeerCompare } from "@/lib/peer-result";
 
 // 有登入 → 回 Authorization header；無登入 / 斷網 → 空物件（後端視為匿名）
 async function authHeaders(): Promise<Record<string, string>> {
@@ -237,5 +238,20 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tickers }),
     });
+  },
+
+  async peerCompare(params: {
+    a_ticker: string;
+    b_ticker: string;
+    fiscal_period: string;
+    question: string;
+  }): Promise<PeerCompareResult> {
+    const raw = await realFetch("/peer-compare", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    }) as BackendPeerCompareResponse;
+
+    return normalizePeerCompare(raw);
   },
 };

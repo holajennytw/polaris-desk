@@ -191,6 +191,105 @@ export interface PeerCompareTrendPoint {
   b_value: number | null;
 }
 
+// 後端實際回傳形狀（src/polaris/api.py PeerCompareResponse）
+// 欄位名與 FastAPI Pydantic model 一字不差。
+
+export interface BackendPeerCitationRaw {
+  src: string;
+  page: string;  // fiscal_period 字串，非 snippet
+}
+
+export interface BackendPeerKpiSide {
+  v: string;
+  citations: BackendPeerCitationRaw[];
+}
+
+export interface BackendPeerKpiRaw {
+  label: string;  // 已做 metric_id → 中文 label 轉換
+  a: BackendPeerKpiSide;
+  b: BackendPeerKpiSide;
+  diff: string;
+  better: "a" | "b";
+}
+
+export interface BackendPeerFinancialRow {
+  metric: string;
+  a: BackendPeerKpiSide;
+  b: BackendPeerKpiSide;
+  note: string;
+}
+
+export interface BackendPeerCallSide {
+  stance: string;
+  tone: "pos" | "neu" | "neg";
+  quote: string;
+  cite: string;
+}
+
+export interface BackendPeerCallRaw {
+  dim: string;
+  topic: string;
+  a: BackendPeerCallSide;
+  b: BackendPeerCallSide;
+}
+
+export interface BackendPeerCompareResponse {
+  a_ticker:          string;
+  b_ticker:          string;
+  fiscal_period:     string;
+  kpis:              BackendPeerKpiRaw[];
+  financial:         BackendPeerFinancialRow[];
+  calls:             BackendPeerCallRaw[];
+  trend:             PeerCompareTrendPoint[];
+  valuation:         unknown[];
+  summary:           string;
+  compliance_status: string;
+}
+
+// 前端正規化後形狀（給 peer/page.tsx 使用，與 peer-result.ts PeerResultLike 對齊）
+// 與後端形狀基本一致，normalizePeerCompare 做型別驗證與 pass-through。
+
+export interface PeerCitationNorm {
+  src: string;
+  page: string;
+}
+
+export interface PeerKpiNorm {
+  label: string;
+  a: { v: string; citations: PeerCitationNorm[] };
+  b: { v: string; citations: PeerCitationNorm[] };
+  diff: string;
+  better: string;
+}
+
+export interface PeerCallNorm {
+  dim: string;
+  topic: string;
+  a: { stance: string; tone: string; quote: string; cite: string };
+  b: { stance: string; tone: string; quote: string; cite: string };
+}
+
+export interface PeerFinancialNorm {
+  metric: string;
+  a: { v: string; citations: PeerCitationNorm[] };
+  b: { v: string; citations: PeerCitationNorm[] };
+  note: string;
+}
+
+export interface PeerCompareResult {
+  a_ticker:          string;
+  b_ticker:          string;
+  fiscal_period:     string;
+  kpis:              PeerKpiNorm[];
+  financial:         PeerFinancialNorm[];
+  calls:             PeerCallNorm[];
+  trend:             PeerCompareTrendPoint[];
+  valuation:         unknown[];
+  summary:           string;
+  compliance_status: string;
+}
+
+// 舊版（mock/company endpoint 形狀，保留給 /company/:id 使用）
 export interface PeerCompareResponse {
   a_ticker:         string;
   b_ticker:         string;

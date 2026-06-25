@@ -41,7 +41,7 @@ class TestCitation:
 
     def test_citation_accepts_all_documented_origins(self):
         from polaris.graph.state import Citation
-        for origin in ("stub", "bm25", "embedding", "colpali", "rerank", "news"):
+        for origin in ("stub", "bm25", "embedding", "colpali", "rerank", "news", "vision"):
             c = Citation(source_id="x", snippet="y", origin=origin)
             assert c.origin == origin
 
