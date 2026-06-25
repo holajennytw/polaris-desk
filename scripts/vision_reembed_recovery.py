@@ -1,13 +1,18 @@
-"""Vision 入庫補救：把 data/vision_chunks/*.jsonl 中「尚未進 BQ」的塊批次 re-embed 後補入。
+"""Vision 入庫補救：把 data/vision_chunks/*.jsonl 中「尚未進 BQ」的塊 re-embed 後補入。
 
 背景：線上 pilot 以 concurrency 抽取＋逐塊 embed，會在 AI Studio 免費層
-`embed_content_free_tier_requests`（1000 req/分鐘）上爆量 → 後段塊全被 quarantine。
+`embed_content_free_tier_requests`（**1000 requests/天/專案**）上爆量 → 後段塊全被 quarantine。
 但**視覺抽取結果已落地 JSONL**（昂貴的那步已完成），故補救無需重抽：
 
   1. 掃 data/vision_chunks/<ticker>.jsonl（所有或 --ticker 指定）。
   2. 查 BQ 已存在的 chunk_id（同一 dataset），只挑「缺的」。
-  3. **批次** embed（一個請求帶 contents=[...] 多筆 → 1 request 抵 N 筆，遠低於 1000/分）。
+  3. 逐塊 embed（⚠️ gemini-embedding-2 不支援批次：contents=[多段] 只回 1 個向量、
+     其餘被丟棄 → 1 request = 1 chunk）。多把 key 逗號分隔、狀態式輪替（用罄才換把），
+     全把皆 429（當日耗盡）即優雅停、可續跑。BQ 寫入仍批量（--store-batch）。
   4. sanitize/validate 後組 Document，經 get_vector_store() 補入（idempotent upsert）。
+
+額度規劃：N 塊 ≈ N requests；每個 GCP 專案 1000/天。需要 ⌈N/1000⌉ 把「不同專案」的 key
+（同專案多把共用同一 1000）。當日不夠就分天跑或多專案 key。
 
 憲法：embedding 仍走 AI Studio api_key（gemini-embedding-2 / 768），與 polaris_core 向量空間一致；
 寫入只進 dev dataset（BQ_DATASET，非 polaris_core——store 層另有防呆）。
@@ -27,46 +32,73 @@ import time
 from pathlib import Path
 
 
-def _embed_batch_fn(keys: list[str], *, model: str, dim: int):
-    """回傳 embed_many(texts)->list[vec]；多把 key 輪替、429 換把。"""
+def _make_embed_one(keys: list[str], *, model: str, dim: int):
+    """回傳 embed_one(text)->vec。
+
+    ⚠️ gemini-embedding-2 **一次只 embed 一段**（contents=[多段] 只回 1 個向量、
+    其餘被丟棄）→ 不能批次，1 request = 1 chunk，免費層 1000 requests/天/專案。
+    多把 key（逗號分隔）狀態式輪替：用目前這把直到 429，才換下一把並記住，
+    避免每塊都從用罄的把重試。全把皆 429（當日配額耗盡）→ 拋出 → 上層優雅停。
+    """
     from google import genai
     from google.genai import types
 
     from polaris.retry import call_with_retry, is_quota_error
 
-    clients = [genai.Client(api_key=k) for k in keys]
+    clients: list = [genai.Client(api_key=k) for k in keys]
+    state = {"i": 0}  # 目前使用中的 key index
 
-    def _one_request(texts: list[str]) -> list[list[float]]:
-        last_exc = None
-        for c in clients:  # 逐把試，429 配額爆了換下一把
+    def _embed(idx: int, text: str) -> list[float]:
+        resp = clients[idx].models.embed_content(
+            model=model, contents=text,
+            config=types.EmbedContentConfig(output_dimensionality=dim),
+        )
+        return list(resp.embeddings[0].values)
+
+    def _try_once(text: str) -> list[float]:
+        last_exc: Exception | None = None
+        n = len(clients)
+        for off in range(n):  # 從目前 key 起逐把試
+            idx = (state["i"] + off) % n
             try:
-                resp = c.models.embed_content(
-                    model=model, contents=texts,
-                    config=types.EmbedContentConfig(output_dimensionality=dim),
-                )
-                return [list(e.values) for e in resp.embeddings]
+                vec = _embed(idx, text)
+                state["i"] = idx  # 記住這把還能用
+                return vec
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
+                # google-genai 偶發 "client has been closed"（httpx 連線被關）→ 重建該把再試一次
+                if isinstance(exc, RuntimeError) and "closed" in str(exc).lower():
+                    clients[idx] = genai.Client(api_key=keys[idx])
+                    try:
+                        vec = _embed(idx, text)
+                        state["i"] = idx
+                        return vec
+                    except Exception as exc2:  # noqa: BLE001
+                        last_exc = exc2
+                        if not is_quota_error(exc2):
+                            raise
+                    continue
                 if not is_quota_error(exc):
                     raise
         assert last_exc is not None
         raise last_exc
 
-    def embed_many(texts: list[str]) -> list[list[float]]:
-        # 全把都 429 → call_with_retry 退避重試（免費層分鐘窗，視窗較長）。
-        return call_with_retry(lambda: _one_request(texts),
-                               attempts=8, base_delay=5.0, max_delay=70.0)
+    def embed_one(text: str) -> list[float]:
+        # 瞬時 429（分鐘尖峰）退避重試；當日耗盡則少次數快速放棄 → 上層停。
+        return call_with_retry(lambda: _try_once(text),
+                               attempts=3, base_delay=3.0, max_delay=20.0)
 
-    return embed_many
+    return embed_one
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ticker", action="append", help="只補這些 ticker（預設全部 JSONL）")
     ap.add_argument("--dir", default="data/vision_chunks")
-    ap.add_argument("--batch", type=int, default=48, help="每個 embed 請求帶幾筆（壓在 token/req 上限內）")
-    ap.add_argument("--sleep", type=float, default=3.0,
-                    help="批次之間暫停秒數；batch=48 + sleep=3 ≈ 960 contents/分，壓在免費層分鐘窗下")
+    ap.add_argument("--store-batch", type=int, default=100,
+                    help="每幾塊寫一次 BQ（embed 仍是 1 req/塊；這只是 BQ load 批量）")
+    ap.add_argument("--sleep", type=float, default=0.0,
+                    help="每塊 embed 之間暫停秒數（日配額是硬上限，通常設 0 即可）")
     args = ap.parse_args()
 
     from polaris.config import settings
@@ -93,9 +125,13 @@ def main() -> None:
         if not Path(p).exists():
             print(f"  (跳過不存在) {p}"); continue
         for line in Path(p).read_text(encoding="utf-8").splitlines():
-            if line.strip():
+            if not line.strip():
+                continue
+            try:  # 抽取可能正在寫同一檔 → 容忍尾端半截行，下次重跑會補齊
                 r = json.loads(line)
-                raw_by_id[str(r["id"])] = r
+            except json.JSONDecodeError:
+                continue
+            raw_by_id[str(r["id"])] = r
     print(f"JSONL 共 {len(raw_by_id)} 塊（{len(paths)} 檔）")
 
     # 2) 查 BQ 已存在的 chunk_id（只補缺的）
@@ -121,33 +157,43 @@ def main() -> None:
     if skipped:
         print(f"  ({skipped} 塊未過 validate，略過)")
 
-    # 4) 批次 embed + 補入
-    embed_many = _embed_batch_fn(keys, model=settings.embedding_model,
-                                 dim=settings.embedding_dim)
+    # 4) 逐塊 embed（1 req/塊，模型不支援批次）→ 累積到 store-batch 才寫 BQ
+    embed_one = _make_embed_one(keys, model=settings.embedding_model,
+                                dim=settings.embedding_dim)
     store = get_vector_store()
+    buf: list[Document] = []
     done = 0
-    n_req = 0
-    for s in range(0, len(pending), args.batch):
-        group = pending[s:s + args.batch]
+    stopped = False
+
+    def _flush() -> None:
+        nonlocal done
+        if buf:
+            store.add_documents(buf)
+            done += len(buf)
+            buf.clear()
+            print(f"  補入 {done}/{len(pending)}", flush=True)
+
+    for n, (i, c, raw) in enumerate(pending):
         try:
-            vecs = embed_many([c for _, c, _ in group])
-        except Exception as exc:  # noqa: BLE001 — 配額耗盡等 → 優雅停（不崩、可續跑）
-            print(f"\n⏸ embed 在第 {s} 塊後停止：{type(exc).__name__}: {str(exc)[:160]}")
-            print(f"   已補 {done} 塊；剩 {len(pending) - done} 塊。配額恢復後重跑本腳本即續"
-                  f"（已入庫者自動略過）。")
+            vec = embed_one(c)
+        except Exception as exc:  # noqa: BLE001 — 全把配額耗盡 → 優雅停（先把已 embed 的寫掉）
+            print(f"\n⏸ embed 在第 {n} 塊停止：{type(exc).__name__}: {str(exc)[:160]}")
+            stopped = True
             break
-        n_req += 1
-        docs = [Document(id=i, content=c, embedding=v,
-                         company=raw.get("company"), period=raw.get("period"),
-                         metadata=dict(raw.get("metadata", {})))
-                for (i, c, raw), v in zip(group, vecs)]
-        store.add_documents(docs)
-        done += len(docs)
-        print(f"  補入 {done}/{len(pending)}（req#{n_req}）", flush=True)
-        if args.sleep > 0 and s + args.batch < len(pending):
+        buf.append(Document(id=i, content=c, embedding=vec,
+                            company=raw.get("company"), period=raw.get("period"),
+                            metadata=dict(raw.get("metadata", {}))))
+        if len(buf) >= args.store_batch:
+            _flush()
+        if args.sleep > 0:
             time.sleep(args.sleep)
+    _flush()  # 寫掉尾批（含 stop 前已 embed 的）
+
+    if stopped:
+        print(f"   已補 {done} 塊；剩 {len(pending) - done} 塊。配額恢復後重跑本腳本即續"
+              f"（已入庫者自動略過）。")
     else:
-        print(f"✅ 補救完成：{done} 塊 → {settings.bq_dataset}（{n_req} 個 embed 請求）")
+        print(f"✅ 補救完成：{done} 塊 → {settings.bq_dataset}（{done} 個 embed 請求）")
 
 
 if __name__ == "__main__":
