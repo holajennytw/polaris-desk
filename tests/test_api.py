@@ -528,3 +528,38 @@ class TestAlerts:
         for alert in client.get("/alerts").json():
             for kw in forbidden:
                 assert kw not in alert["summary"]
+
+
+class TestSuggestions:
+    """GET /suggestions — 前端 useSuggestions hook 的提示問句來源（契約：
+    {suggestions: list[str], source: "rule"|"llm", is_generating: bool}）。"""
+
+    def test_suggestions_default_mode_contract_shape(self, client):
+        r = client.get("/suggestions")
+        assert r.status_code == 200
+        body = r.json()
+        assert isinstance(body["suggestions"], list) and body["suggestions"]
+        assert all(isinstance(s, str) and s for s in body["suggestions"])
+        assert body["source"] in {"rule", "llm"}
+        assert isinstance(body["is_generating"], bool)
+
+    def test_suggestions_research_mode(self, client):
+        r = client.get("/suggestions?mode=research")
+        assert r.status_code == 200
+        assert r.json()["suggestions"]
+
+    def test_suggestions_peer_mode_differs(self, client):
+        research = client.get("/suggestions?mode=research").json()["suggestions"]
+        peer = client.get("/suggestions?mode=peer").json()["suggestions"]
+        assert peer and peer != research
+
+    def test_suggestions_invalid_mode_rejected(self, client):
+        assert client.get("/suggestions?mode=nope").status_code == 422
+
+    def test_suggestions_no_buysell(self, client):
+        # NFR-031：提示問句不得含買賣建議關鍵字
+        forbidden = {"建議買進", "建議賣出", "加碼", "減碼", "看多", "看空", "目標價"}
+        for mode in ("research", "peer"):
+            for s in client.get(f"/suggestions?mode={mode}").json()["suggestions"]:
+                for kw in forbidden:
+                    assert kw not in s
