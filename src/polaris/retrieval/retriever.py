@@ -475,6 +475,10 @@ def make_retriever_search_fn(
 
 RESEARCH_DOC_TYPE_QUOTAS: Mapping[str, int] = {
     "transcript": 5,
+    # 法說家族第二來源：台股多數公司不提供逐字稿，但全 20 家都有法說簡報
+    # （presentation，文字版已入 chunks）。少了它，無逐字稿的公司其法說內容會被整個
+    # 漏掉——逐字稿目前僅 4/20 家入庫（2317/2330/2454/3034）。
+    "presentation": 4,
     "major_news": 5,
     "news": 3,
 }

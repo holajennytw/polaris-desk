@@ -407,6 +407,45 @@ class TestPeerCompare:
             "question": "比較毛利率",
         }
 
+    def test_peer_call_prefers_transcript_and_skips_presentation(self, monkeypatch):
+        """有逐字稿時就用逐字稿，不再多查簡報（4 家大型股維持高訊號來源）。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+        from polaris.retrieval import retriever as retriever_module
+
+        seen: list[str] = []
+        transcript = [Citation(source_id="call-2330", snippet="逐字稿原文", origin="embedding")]
+
+        def fake_factory(*, viewer, filters):  # noqa: ARG001
+            seen.append(filters["doc_type"])
+            doc_type = filters["doc_type"]
+            return lambda _q: transcript if doc_type == "transcript" else []
+
+        monkeypatch.setattr(retriever_module, "make_retriever_search_fn", fake_factory)
+
+        assert api._search_peer_calls("2330", "2026Q1", "比較毛利率") == transcript
+        assert seen == ["transcript"]  # 逐字稿非空 → 不查 presentation
+
+    def test_peer_call_falls_back_to_presentation_without_transcript(self, monkeypatch):
+        """多數台股無逐字稿：逐字稿查空時退回法說簡報（全 20 家入庫），不再回空引用。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+        from polaris.retrieval import retriever as retriever_module
+
+        seen: list[str] = []
+        presentation = [Citation(source_id="pres-2891", snippet="法說簡報原文", origin="embedding")]
+
+        def fake_factory(*, viewer, filters):  # noqa: ARG001
+            seen.append(filters["doc_type"])
+            doc_type = filters["doc_type"]
+            return lambda _q: [] if doc_type == "transcript" else presentation
+
+        monkeypatch.setattr(retriever_module, "make_retriever_search_fn", fake_factory)
+
+        result = api._search_peer_calls("2891", "2026Q1", "比較毛利率")
+        assert result == presentation
+        assert seen == ["transcript", "presentation"]  # 先逐字稿、空了才退簡報
+
 
 class TestRouting:
     def test_unknown_path_404(self, client):
