@@ -61,7 +61,7 @@ export interface CompanyRaw {
 export interface AskCitationRaw {
   source_id: string;
   snippet: string;
-  origin: string;
+  origin: CitationOrigin;
   company: string | null;
 }
 
@@ -83,12 +83,15 @@ export interface AskResponse {
 
 // POST /research
 
-export type ResearchCitationOrigin = "stub" | "bm25" | "embedding" | "colpali" | "rerank" | "news";
+export type CitationOrigin = "stub" | "bm25" | "embedding" | "colpali" | "rerank" | "news";
+
+/** @deprecated 改用 CitationOrigin */
+export type ResearchCitationOrigin = CitationOrigin;
 
 export interface ResearchCitationRaw {
   source_id: string;
   snippet: string;
-  origin: ResearchCitationOrigin;
+  origin: CitationOrigin;
   company?: string;
   event_key?: string;
   source_key?: string;
@@ -301,6 +304,20 @@ export interface LibraryResponse {
   stats: LibraryStats[];
   types: { id: string; label: string; count: number }[];
   docs: DocRaw[];
+}
+
+// ── 財務指標 GET /financials ──────────────────────────────────
+
+export interface FinancialRow {
+  ticker: string;
+  fiscal_period: string | null;
+  metric_id: string | null;
+  value: number | null;
+  unit: string | null;
+  source_id: string | null;
+  published_at: string | null;
+  year: number | null;
+  month: number | null;
 }
 
 // ── 歷史 / 通知 / 監看 ───────────────────────────────────────

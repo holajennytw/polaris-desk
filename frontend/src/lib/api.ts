@@ -11,7 +11,7 @@ import {
 } from "./adapters";
 import { historyStore } from "./historyStore";
 import { getSession } from "next-auth/react";
-import type { ChunkRaw } from "@/types/api";
+import type { ChunkRaw, FinancialRow } from "@/types/api";
 import type { DocContent } from "@/components/polaris/DocViewer";
 
 // 有登入 → 回 Authorization header；無登入 / 斷網 → 空物件（後端視為匿名）
@@ -197,6 +197,16 @@ export const api = {
       };
     } catch {
       return null;
+    }
+  },
+
+  async financials(ticker: string, limit = 30): Promise<FinancialRow[]> {
+    try {
+      const path = `/financials?ticker=${encodeURIComponent(ticker)}&limit=${limit}`;
+      const raw = await get(`financials.${ticker}`, path) as FinancialRow[];
+      return Array.isArray(raw) ? raw : [];
+    } catch {
+      return [];
     }
   },
 

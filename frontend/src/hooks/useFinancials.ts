@@ -1,44 +1,27 @@
 "use client";
 import useSWR from "swr";
-import { API_BASE } from "@/lib/config";
+import { api } from "@/lib/api";
+import { fmtPeriodLabel, fmtRevenue, fmtYoy } from "@/lib/formatters";
+import type { FinancialRow } from "@/types/api";
 
-export interface FinancialRow {
-  ticker: string;
-  fiscal_period: string | null;
-  metric_id: string | null;
-  value: number | null;
-  unit: string | null;
-  source_id: string | null;
-  published_at: string | null;
-  year: number | null;
-  month: number | null;
-}
-
-async function fetchFinancials(ticker: string): Promise<FinancialRow[]> {
-  const res = await fetch(`${API_BASE}/financials?ticker=${ticker}&limit=30`);
-  if (!res.ok) return [];
-  return res.json();
-}
+export type { FinancialRow };
 
 export function useFinancials(ticker: string | null) {
   const key = ticker ? `financials-${ticker}` : null;
-  const { data, isLoading } = useSWR<FinancialRow[]>(key, () => fetchFinancials(ticker!), {
-    revalidateOnFocus: false,
-  });
+  const { data, isLoading } = useSWR<FinancialRow[]>(
+    key,
+    () => api.financials(ticker!),
+    { revalidateOnFocus: false },
+  );
   return { rows: data ?? [], isLoading: !!ticker && isLoading };
 }
 
-// 從 query 文字 + 已知公司清單推斷 ticker
+// 從 query 文字 + 已知公司清單推斷 ticker（前端版；完整版在後端 detect_tickers）
 export function inferTickerFromQuery(
   query: string,
-  companies: Array<{ id: string; name: string }>
+  companies: Array<{ id: string; name: string }>,
 ): string | null {
-  // 先試直接 4 碼數字（非年份）
-  const found = companies.find(c => {
-    if (query.includes(c.id)) return true;
-    if (c.name && query.includes(c.name)) return true;
-    return false;
-  });
+  const found = companies.find(c => query.includes(c.id) || (c.name && query.includes(c.name)));
   return found?.id ?? null;
 }
 
@@ -48,26 +31,20 @@ export function financialsToKpis(rows: FinancialRow[]): Array<{
 }> {
   if (!rows.length) return [];
 
-  // 取最新期別
   const periods = [...new Set(rows.map(r => r.fiscal_period).filter(Boolean))].sort();
   const latestPeriod = periods.at(-1);
   const periodRows = rows.filter(r => r.fiscal_period === latestPeriod);
   const get = (id: string) => periodRows.find(r => r.metric_id === id) ?? null;
 
-  // 優先用 v_financial_metrics_semantic 的 year + month，沒有時 fallback 到 fiscal_period
   const firstRow = periodRows[0];
-  const periodLabel =
-    firstRow?.year != null && firstRow?.month != null
-      ? `${firstRow.year}年${firstRow.month}月`
-      : (latestPeriod ?? "");
+  const periodLabel = fmtPeriodLabel(latestPeriod, firstRow?.year, firstRow?.month);
 
   const result = [];
   const revRow = get("revenue");
   if (revRow?.value != null) {
-    const yi = revRow.value / 100_000; // 千元 → 億元
     result.push({
       label: `月營收 ${periodLabel}`,
-      value: yi >= 100 ? yi.toFixed(0) : yi.toFixed(1),
+      value: fmtRevenue(revRow.value),
       unit: "億元",
       delta: "",
       trend: "up" as const,

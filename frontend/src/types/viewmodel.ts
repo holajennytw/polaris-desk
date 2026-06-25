@@ -64,6 +64,8 @@ export interface CitationTrackerVM {
 export interface AskVM {
   query: string;
   compliance_status: string;
+  /** true = vector search 失敗，引用來自 BM25 stub，結果可能不完整 */
+  retrieval_degraded: boolean;
   kpis: KpiVM[];
   summary: SummaryItemVM[];
   chart: ChartPointVM[];

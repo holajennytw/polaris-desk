@@ -90,9 +90,13 @@ export function normalizeAsk(raw: AskResponse, query: string): AskVM {
     cite: raw.citations[i]?.source_id ?? raw.citations[0]?.source_id ?? "",
     page: "",
   }));
+  const retrieval_degraded =
+    raw.citations.length === 0 ||
+    raw.citations.every((c) => c.origin === "bm25" || c.origin === "stub");
   return {
     query,
     compliance_status: raw.compliance_status,
+    retrieval_degraded,
     kpis: [],
     summary,
     chart: [],
@@ -264,7 +268,7 @@ function expandReActStep(step: ResearchReActStepRaw): ReActStepVM[] {
   const items: ReActStepVM[] = [];
   if (step.thought)
     items.push({ type: "THINK", text: step.thought, tool: false });
-  if (step.action) {
+  if (step.action && step.action !== "finish") {
     const call = step.action_input
       ? `${step.action}("${step.action_input}")`
       : step.action;
@@ -283,7 +287,10 @@ function splitAnswer(text: string): string[] {
 }
 
 export function normalizeResearch(raw: ResearchResponse, query: string): AskVM {
-  const bullets = splitAnswer(raw.final_answer);
+  const finishInput = raw.react_steps.slice().reverse()
+    .find((s) => s.action === "finish" && s.action_input)?.action_input;
+  const answerText = finishInput || raw.final_answer || "";
+  const bullets = splitAnswer(answerText);
   const summary: SummaryItemVM[] = bullets.map((text, i) => {
     const ev = raw.evidence[i] ?? raw.evidence[0];
     return {
@@ -308,6 +315,9 @@ export function normalizeResearch(raw: ResearchResponse, query: string): AskVM {
   }));
 
   const react: ReActStepVM[] = raw.react_steps.flatMap(expandReActStep);
+  const retrieval_degraded =
+    raw.evidence.length === 0 ||
+    raw.evidence.every((ev) => ev.origin === "bm25" || ev.origin === "stub");
 
-  return { query, compliance_status: raw.compliance_status, kpis: [], summary, chart: [], react, citations };
+  return { query, compliance_status: raw.compliance_status, retrieval_degraded, kpis: [], summary, chart: [], react, citations };
 }
