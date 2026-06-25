@@ -233,6 +233,7 @@ const _ORIGIN_LABEL: Record<ResearchCitationRaw["origin"], string> = {
   embedding: "文件",
   rerank:    "文件",
   colpali:   "法說簡報",
+  vision:    "法說簡報",
   news:      "新聞",
 };
 
