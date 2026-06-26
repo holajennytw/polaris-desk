@@ -95,18 +95,35 @@ BM25_CORPUS_PERIODS = 2
 
 
 def _load_real_corpus() -> list[SearchResult]:
-    """從 VECTOR_BACKEND 後端載入真實 BM25 語料；失敗或後端不支援 → 回 []。"""
+    """從 VECTOR_BACKEND 後端載入真實 BM25 語料；失敗或後端不支援 → 回 []。
+
+    同時載入 financial_metrics 合成語料（讓財務指標查詢可溯源），兩路合併。
+    """
     store = get_vector_store()
+    results: list[SearchResult] = []
+
     loader = getattr(store, "load_bm25_corpus", None)
     if loader is None:  # pgvector fallback 後端未實作 → 用 stub
         return []
     try:
-        return list(loader(periods=BM25_CORPUS_PERIODS))
+        results.extend(loader(periods=BM25_CORPUS_PERIODS))
     except Exception:  # noqa: BLE001 — 載入失敗不可中斷檢索，退回 stub（記 warning）
         logger.warning(
             "BM25 real corpus load failed; falling back to stub corpus", exc_info=True
         )
         return []
+
+    fin_loader = getattr(store, "load_financial_corpus", None)
+    if fin_loader is not None:
+        try:
+            results.extend(fin_loader())
+        except Exception:  # noqa: BLE001 — 財務語料失敗不中斷，僅記 warning
+            logger.warning(
+                "Financial metrics corpus load failed; BM25 will lack structured metrics",
+                exc_info=True,
+            )
+
+    return results
 
 
 @functools.lru_cache(maxsize=1)
