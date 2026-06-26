@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from polaris.api import app
+from polaris.config import settings
 
 client = TestClient(app)
 
@@ -100,3 +101,44 @@ def test_demo_page_served():
     assert "text/html" in r.headers["content-type"]
     assert "通知中心" in r.text
     assert "/notifications/events" in r.text  # 頁面打的是同源真實端點
+
+
+# ── security review #2：生產者端點守門（密鑰 + payload 上限 + cloud fail-closed）──
+class TestProducerAuth:
+    def test_no_token_local_is_open(self):
+        """預設 local + 未設密鑰 → token-free 放行（保 CI / demo）。"""
+        assert client.post("/notifications/events", json=EVENT).status_code == 200
+
+    def test_no_token_cloud_fails_closed(self, monkeypatch):
+        """app_env=cloud 但未設密鑰 → 503，絕不在雲端默默接受匿名事件。"""
+        monkeypatch.setattr(settings, "app_env", "cloud")
+        monkeypatch.setattr(settings, "notifications_producer_token", "")
+        assert client.post("/notifications/events", json=EVENT).status_code == 503
+        assert client.post("/notifications/reset").status_code == 503
+
+    def test_token_set_requires_matching_header(self, monkeypatch):
+        monkeypatch.setattr(settings, "notifications_producer_token", "s3cret")
+        # 無 header → 401
+        assert client.post("/notifications/events", json=EVENT).status_code == 401
+        # 錯 header → 401
+        assert client.post(
+            "/notifications/events", json=EVENT,
+            headers={"X-Polaris-Notify-Token": "wrong"},
+        ).status_code == 401
+        # 對的 header → 放行
+        assert client.post(
+            "/notifications/events", json=EVENT,
+            headers={"X-Polaris-Notify-Token": "s3cret"},
+        ).status_code == 200
+
+    def test_reset_requires_token_when_set(self, monkeypatch):
+        monkeypatch.setattr(settings, "notifications_producer_token", "s3cret")
+        assert client.post("/notifications/reset").status_code == 401
+        assert client.post(
+            "/notifications/reset", headers={"X-Polaris-Notify-Token": "s3cret"}
+        ).status_code == 200
+
+    def test_oversized_event_is_413(self):
+        """超大 payload → 413（擋灌爆收件匣 / 外送）。"""
+        huge = {**EVENT, "body": "x" * (70 * 1024)}
+        assert client.post("/notifications/events", json=huge).status_code == 413

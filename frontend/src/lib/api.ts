@@ -140,12 +140,12 @@ export const api = {
   },
 
   async deleteHistory(id: string): Promise<void> {
-    try {
-      const session = await getSession();
-      if (session) {
-        await realFetch(`/history/${encodeURIComponent(id)}`, { method: "DELETE" });
-      }
-    } catch { /* 後端尚無 DELETE 端點時靜默，localStorage 仍執行 */ }
+    // 登入者：先讓後端真的刪除（Firestore），失敗則拋出 → 呼叫端可顯示錯誤、
+    // 不再「靜默成功」（後端原本缺 DELETE 端點，資料其實沒刪掉）。匿名只刪 localStorage。
+    const session = await getSession();
+    if (session) {
+      await realFetch(`/history/${encodeURIComponent(id)}`, { method: "DELETE" });
+    }
     historyStore.remove(id);
   },
 

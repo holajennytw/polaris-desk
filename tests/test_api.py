@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from polaris.api import app
+from polaris.retrieval.retriever import PUBLIC_VIEWER
 
 VALID_COMPLIANCE = {"passed", "blocked", "unknown"}
 
@@ -71,16 +72,50 @@ class TestAsk:
     def test_ask_missing_query_is_422(self, client):
         assert client.post("/ask", json={}).status_code == 422
 
-    def test_ask_viewer_accepted_and_forwarded(self, client):
-        """viewer field (issue #32) is accepted and forwarded to the workflow."""
+    def test_ask_ignores_client_supplied_viewer(self, client, monkeypatch):
+        """security review #1: a client-supplied ``viewer`` must NOT become the ACL
+        principal. Anonymous request → workflow sees the public sentinel, never the
+        attacker-chosen owner id."""
+        from polaris import api
+
+        captured: dict = {}
+
+        class _FakeWorkflow:
+            def invoke(self, state):
+                captured["viewer"] = state.get("viewer")
+                return {"answer": "ok", "compliance_status": "unknown"}
+
+        monkeypatch.setattr(api, "build_workflow", lambda: _FakeWorkflow())
         r = client.post("/ask", json={"query": "台積電毛利率", "viewer": "analyst_A"})
         assert r.status_code == 200
-        assert r.json()["compliance_status"] in VALID_COMPLIANCE
+        assert captured["viewer"] == PUBLIC_VIEWER  # 外部 viewer 被忽略
 
-    def test_ask_viewer_defaults_to_public_sentinel(self, client):
-        """Omitting viewer still succeeds (default = public sentinel principal)."""
-        r = client.post("/ask", json={"query": "台積電"})
+    def test_ask_viewer_derived_from_logged_in_identity(self, client, monkeypatch):
+        """Logged-in request → viewer is the verified Google ``sub`` (server-derived)."""
+        from polaris import api
+        from polaris.auth import current_user
+
+        captured: dict = {}
+
+        class _FakeWorkflow:
+            def invoke(self, state):
+                captured["viewer"] = state.get("viewer")
+                return {"answer": "ok", "compliance_status": "unknown"}
+
+        monkeypatch.setattr(api, "build_workflow", lambda: _FakeWorkflow())
+        api.app.dependency_overrides[current_user] = lambda: {"sub": "u1"}
+        try:
+            # body still attacker-controls viewer; must be ignored in favour of sub
+            r = client.post("/ask", json={"query": "台積電", "viewer": "analyst_A"})
+        finally:
+            api.app.dependency_overrides.pop(current_user, None)
         assert r.status_code == 200
+        assert captured["viewer"] == "u1"
+
+    def test_ask_query_over_max_length_is_422(self, client):
+        """security review #3: 超長 query → 422，不餵進 LLM / retrieval。"""
+        r = client.post("/ask", json={"query": "台" * 3000})
+        assert r.status_code == 422
 
 
 class TestResearch:
@@ -111,16 +146,53 @@ class TestResearch:
     def test_research_missing_question_is_422(self, client):
         assert client.post("/research", json={}).status_code == 422
 
-    def test_research_viewer_accepted(self, client):
-        """viewer field (issue #32) is accepted and forwarded to run_deep_research."""
+    def test_research_ignores_client_supplied_viewer(self, client, monkeypatch):
+        """security review #1: client-supplied viewer is ignored; anonymous → public."""
+        from polaris import api
+
+        captured: dict = {}
+
+        class _R:
+            final_answer, evidence, react_steps = "ok", [], []
+            status, compliance_status = "answered", "unknown"
+
+        def fake_run(question, *, viewer):
+            captured["viewer"] = viewer
+            return _R()
+
+        monkeypatch.setattr(api, "run_deep_research", fake_run)
         r = client.post("/research", json={"question": "台積電毛利率", "viewer": "analyst_A"})
         assert r.status_code == 200
-        assert r.json()["compliance_status"] in VALID_COMPLIANCE
+        assert captured["viewer"] == PUBLIC_VIEWER
 
-    def test_research_viewer_defaults_to_public_sentinel(self, client):
-        """Omitting viewer still succeeds (default = public sentinel principal)."""
-        r = client.post("/research", json={"question": "台積電"})
+    def test_research_viewer_derived_from_logged_in_identity(self, client, monkeypatch):
+        """Logged-in request → viewer is the verified Google ``sub``."""
+        from polaris import api
+        from polaris.auth import current_user
+
+        captured: dict = {}
+
+        class _R:
+            final_answer, evidence, react_steps = "ok", [], []
+            status, compliance_status = "answered", "unknown"
+
+        def fake_run(question, *, viewer):
+            captured["viewer"] = viewer
+            return _R()
+
+        monkeypatch.setattr(api, "run_deep_research", fake_run)
+        api.app.dependency_overrides[current_user] = lambda: {"sub": "u1"}
+        try:
+            r = client.post("/research", json={"question": "台積電", "viewer": "analyst_A"})
+        finally:
+            api.app.dependency_overrides.pop(current_user, None)
         assert r.status_code == 200
+        assert captured["viewer"] == "u1"
+
+    def test_research_question_over_max_length_is_422(self, client):
+        """security review #3: 超長 question → 422。"""
+        r = client.post("/research", json={"question": "台" * 3000})
+        assert r.status_code == 422
 
 
 class _StubStructuredStore:
@@ -217,7 +289,7 @@ class TestEvents:
 
 class TestChunk:
     def test_returns_doc_viewer_contract(self, client, stub_store):
-        r = client.get("/chunk/chunk-2330-q1?viewer=analyst_A")
+        r = client.get("/chunk/chunk-2330-q1")
 
         assert r.status_code == 200
         body = r.json()
@@ -235,7 +307,24 @@ class TestChunk:
             "highlight": "台積電法說會原文內容。",
             "hl_tokens": [],
         }
-        assert stub_store.calls[-1] == ("chunk", "chunk-2330-q1", "analyst_A")
+        # security review #1: anonymous caller is the public sentinel, NOT any owner
+        assert stub_store.calls[-1] == ("chunk", "chunk-2330-q1", PUBLIC_VIEWER)
+
+    def test_ignores_client_supplied_viewer_query(self, client, stub_store):
+        """security review #1: ``?viewer=`` 不再是 ACL principal——被忽略，仍走公開身分。"""
+        client.get("/chunk/chunk-2330-q1?viewer=analyst_A")
+        assert stub_store.calls[-1] == ("chunk", "chunk-2330-q1", PUBLIC_VIEWER)
+
+    def test_viewer_derived_from_logged_in_identity(self, client, stub_store):
+        from polaris import api
+        from polaris.auth import current_user
+
+        api.app.dependency_overrides[current_user] = lambda: {"sub": "u1"}
+        try:
+            client.get("/chunk/chunk-2330-q1?viewer=analyst_A")
+        finally:
+            api.app.dependency_overrides.pop(current_user, None)
+        assert stub_store.calls[-1] == ("chunk", "chunk-2330-q1", "u1")
 
     def test_missing_or_inaccessible_chunk_is_404(self, client, stub_store):
         assert client.get("/chunk/missing").status_code == 404

@@ -57,6 +57,15 @@ class Settings(BaseSettings):
     # 只放 .env / Secret Manager，永不 commit；留空 = channel 自動停用（0 外呼）。
     slack_webhook_url: str = ""
 
+    # 通知事件「生產者」端點（POST /notifications/events、/notifications/reset）的內部
+    # 共享密鑰（security review #2）。生產者帶 `X-Polaris-Notify-Token` header，後端常數
+    # 時間比對。金鑰規則同憲法 III（只放 .env / Secret Manager，永不 commit）。
+    #   • 有設密鑰 → 一律要求相符，否則 401。
+    #   • 沒設密鑰 + app_env=="cloud" → fail closed（503）：prod 生產者端點未設定即拒收，
+    #     絕不在雲端默默接受匿名事件。
+    #   • 沒設密鑰 + 非 cloud（local / CI / demo）→ 放行，保 token-free 開發與互動 demo。
+    notifications_producer_token: str = ""
+
     # 應用
     app_env: str = "local"                    # local | cloud
     log_level: str = "INFO"
