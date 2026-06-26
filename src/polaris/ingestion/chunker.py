@@ -32,12 +32,48 @@ DEFAULT_OVERLAP = 100
 _PARA_SPLIT = re.compile(r"\n\s*\n")
 
 
+def _is_word_char(ch: str) -> bool:
+    """ASCII 英數 = 視為單字內字元。CJK / 標點 / 空白皆為 False，
+    故中文（無空格）的詞界回退自然不觸發、行為等同純字元硬切。"""
+    return ch.isascii() and ch.isalnum()
+
+
 def _split_long(text: str, chunk_size: int, overlap: int) -> list[str]:
-    """超長段落硬切（帶重疊）。"""
+    """超長段落硬切（帶重疊）。
+
+    切點與「重疊接縫」兩處都避免落在 Latin 單字中間（issue #50：英文逐字稿
+    'turnover' 被腰斬成 'tu'+'rnover'，碎字洩進 embedding/檢索/答案）。
+    回退只在塊內找得到詞界時發生；整塊為單一巨型 token 則仍硬切以保進度。
+    CJK 無 word char → 不觸發回退，與舊版純字元硬切逐字相同（確定性與重疊語意不變）。
+    """
     if len(text) <= chunk_size:
         return [text]
-    step = max(chunk_size - overlap, 1)
-    return [text[i : i + chunk_size] for i in range(0, len(text), step)]
+    n = len(text)
+    chunks: list[str] = []
+    start = 0
+    while start < n:
+        # 接縫對齊：start 落在 Latin 單字中間時前移到詞界（上一塊已含完整字，半截不重複）。
+        # 只跳「短的」接縫殘字（≤ overlap）；若這段 Latin run 本身超長（巨型 token，
+        # 跨多塊），不可跳過否則會遺字 → 留給下方硬切。
+        if start > 0 and _is_word_char(text[start]) and _is_word_char(text[start - 1]):
+            nxt = start
+            while nxt < n and _is_word_char(text[nxt]) and nxt - start <= overlap:
+                nxt += 1
+            if nxt < n and not _is_word_char(text[nxt]) and nxt - start <= overlap:
+                start = nxt
+        end = min(start + chunk_size, n)
+        # 切點回退：end 落在 Latin 單字中間時後退到詞界（半截字留給下一塊）。
+        if end < n and _is_word_char(text[end]) and _is_word_char(text[end - 1]):
+            back = end
+            while back > start and _is_word_char(text[back - 1]):
+                back -= 1
+            if back > start:  # 塊內找得到詞界才回退；否則硬切（單一巨型 token）
+                end = back
+        chunks.append(text[start:end])
+        if end >= n:
+            break
+        start = max(end - overlap, start + 1)
+    return chunks
 
 
 def chunk_page(text: str, *, chunk_size: int = DEFAULT_CHUNK_SIZE,
