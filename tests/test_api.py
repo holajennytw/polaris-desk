@@ -352,23 +352,22 @@ class TestPeerCompare:
         assert body["b_ticker"] == "2454"
         assert body["fiscal_period"] == "2026Q1"
         assert body["kpis"][0]["label"] == "毛利率"
-        assert body["kpis"][0]["a"]["v"] == "57.8%"
+        assert body["kpis"][0]["a"]["v"] == "57.80%"
         assert body["kpis"][0]["a"]["citations"][0]["src"] == "fin-a-q1"
         assert body["kpis"][0]["a"]["citations"][0]["page"] == "2026Q1"
-        assert body["kpis"][0]["diff"] == "19.5pp"
+        assert body["kpis"][0]["diff"] == "19.50pp"
         assert body["kpis"][0]["better"] == "a"
         assert body["financial"][0]["metric"] == "毛利率"
-        assert body["financial"][0]["note"] == "差異 19.5pp"
+        assert body["financial"][0]["note"] == "差異 19.50pp"
         assert body["calls"][0]["dim"] == "法說會"
         assert body["calls"][0]["topic"] == "比較毛利率與法說重點"
         assert body["calls"][0]["a"]["cite"] == "call-2330"
         assert body["calls"][0]["a"]["quote"] == "2330 法說原文"
         assert body["calls"][0]["a"]["tone"] == "neu"
         assert body["calls"][0]["b"]["cite"] == "call-2454"
-        assert body["trend"] == [
-            {"period": "2025Q4", "metric": "gross_margin", "a_value": 56.1, "b_value": 37.9},
-            {"period": "2026Q1", "metric": "gross_margin", "a_value": 57.8, "b_value": 38.3},
-        ]
+        # trend 現只取 revenue/revenue_yoy（_TREND_METRICS），毛利率不再進 trend；
+        # 此 fixture 無營收指標 → trend 為空。
+        assert body["trend"] == []
         assert body["valuation"] == []  # PE/PB 不在目前 canonical metric 清單，不造假
         assert body["compliance_status"] == "passed"
         assert search_calls == [
