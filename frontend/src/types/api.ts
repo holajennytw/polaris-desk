@@ -216,6 +216,7 @@ export interface BackendPeerFinancialRow {
   metric: string;
   a: BackendPeerKpiSide;
   b: BackendPeerKpiSide;
+  better: "a" | "b";
   note: string;
 }
 
@@ -273,6 +274,7 @@ export interface PeerFinancialNorm {
   metric: string;
   a: { v: string; citations: PeerCitationNorm[] };
   b: { v: string; citations: PeerCitationNorm[] };
+  better: "a" | "b";
   note: string;
 }
 
@@ -343,6 +345,10 @@ export interface AlertRaw {
     origin: string;
     company: string | null;
   }>;
+  title?: string;
+  time?: string;
+  source?: string;
+  origin?: string;
 }
 
 // ── 新聞 GET /news ────────────────────────────────────────────
@@ -411,6 +417,7 @@ export interface FinancialRow {
   ticker: string;
   fiscal_period: string | null;
   metric_id: string | null;
+  metric_name: string | null;
   value: number | null;
   unit: string | null;
   source_id: string | null;

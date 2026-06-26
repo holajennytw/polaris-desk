@@ -3,7 +3,6 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { mutate } from "swr";
 import { Icon } from "@/components/ui/Icon";
-import { KpiCard } from "@/components/polaris/KpiCard";
 import { AlertItem } from "@/components/polaris/AlertItem";
 import { CitationList } from "@/components/polaris/CitationList";
 import { ReActTrace } from "@/components/polaris/ReActTrace";
@@ -12,12 +11,14 @@ import { TextGenerate } from "@/components/ui/TextGenerate";
 import { DocViewer, type DocContent } from "@/components/polaris/DocViewer";
 import { ReportModal } from "@/components/polaris/ReportModal";
 import { KpiSkeleton, PanelSkeleton } from "@/components/polaris/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useResearch } from "@/hooks/useResearch";
 import { useReadStore } from "@/hooks/useReadStore";
 import { useSuggestions } from "@/hooks/useSuggestions";
 import { useContraAlerts } from "@/hooks/useContraAlerts";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useFinancials, inferTickerFromQuery, financialsToKpis } from "@/hooks/useFinancials";
+import { isFinancialQuery } from "@/lib/queryRelevance";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import type { KpiVM } from "@/types/viewmodel";
 import { historyStore, extractTickers } from "@/lib/historyStore";
@@ -29,50 +30,6 @@ import { ResearchTour } from "@/components/polaris/ResearchTour";
 const PHASES = ["理解查詢意圖","檢索文件庫","重排序候選","計算 + 交叉驗證","生成摘要","合規檢查"];
 const PRESETS = ["台積電 2026Q1 法說會營運重點","聯發科 AI 邊緣運算佈局","台股半導體庫存週期"];
 
-// Client-side mock: cross-check KPI values against summary text for discrepancies.
-// Real detection is delegated to the backend /contradiction endpoint.
-function buildMockContradictions(
-  k: KpiVM[],
-  s: Array<{ text: string; cite: string; page: string }>
-): ContraAlert[] {
-  const now = new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
-  const found: ContraAlert[] = [];
-
-  const revKpi = k.find(kpi => kpi.label.includes("全年") && kpi.label.includes("指引"));
-  const revSum = s.find(item => /25%|25 %/.test(item.text) && item.text.includes("全年"));
-  if (revKpi && revSum) {
-    found.push({
-      id: `contra-rev-${Date.now()}`,
-      origin: "contradiction",
-      level: "mid",
-      cite_key: revSum.cite,
-      title: `${revKpi.label}：KPI 與摘要數字落差`,
-      summary: `KPI 卡顯示「${revKpi.value}${revKpi.unit}」，摘要（${revSum.cite} ${revSum.page}）引述「中段 25% 以上」。同份法說來源但表述不一致，建議核對 ${revSum.cite} 原文。`,
-      source: `矛盾偵測 · ${revSum.cite} vs KPI`,
-      time: now,
-    });
-  }
-
-  if (found.length === 0) {
-    found.push({
-      id: `contra-pass-${Date.now()}`,
-      origin: "contradiction",
-      level: "info",
-      title: "交叉比對通過",
-      summary: "本次研究各引用來源數字交叉比對完成，未發現明顯矛盾。",
-      source: "矛盾偵測引擎",
-      time: now,
-    });
-  }
-  return found;
-}
-
-const DOC_CONTENTS: Record<string, DocContent> = {
-  fin: { key:"fin", title:"台積電_2026Q1_合併財報.pdf", kind:"財務報表", source_id:"stub-2330-2026Q1-fin", page:"p.11", trust:"high", hlTokens:["57.8","439,105","47.5"], highlight:"毛利率 57.8%，營業利益率 47.5%，本期淨利 3,253 億元。", body:["單位：新台幣百萬元","營業毛利　　　　　439,105　毛利率 57.8%","營業利益　　　　　361,064　營益率 47.5%","本期淨利　　　　　325,260　EPS 12.54 元"] },
-  call: { key:"call", title:"台積電_2026Q1_法說會簡報.pdf", kind:"法說會簡報", source_id:"stub-2330-2026Q1-call", page:"p.7", trust:"high", hlTokens:["CoWoS","double"], highlight:"CoWoS 先進封裝產能持續擴充，Q4 預估翻倍；全年美元營收指引上調。", body:["Q1 2026 Business Highlights","• CoWoS advanced packaging capacity expanding —","  Q4 capacity expected to double"] },
-  transcript: { key:"transcript", title:"台積電_2026Q1_法說會逐字稿.pdf", kind:"法說會逐字稿", source_id:"stub-2330-2026Q1-transcript", page:"p.3", trust:"high", hlTokens:["CoWoS","mid-20s"], highlight:"我們預期第四季 CoWoS 產能將較第三季顯著提升，全年美元營收成長上看中段 20%。", body:["C.C. Wei (CEO):","full-year USD revenue growth in the mid-20s percent."] },
-  perf: { key:"perf", title:"台積電_2026Q1_營運績效報告.pdf", kind:"營運績效報告", source_id:"stub-2330-2026Q1-perf", page:"p.5", trust:"mid", hlTokens:["6.2%","3,210","69%"], highlight:"晶圓出貨量季增 6.2%，先進製程營收占比達 69%。", body:["晶圓出貨量　　　3,210　QoQ +6.2%","先進製程營收占比　69%（7nm 及以下）"] },
-};
 
 
 function Chart({ data }: { data: Array<{label:string;value:number}> }) {
@@ -221,7 +178,6 @@ function ResearchPageInner() {
           ok = true;
         }
       } catch { /* backend not ready, fall through */ }
-      if (!ok) contraAlertStore.set(buildMockContradictions(k, s), "research");
     } finally {
       setIsCheckingContra(false);
     }
@@ -333,8 +289,6 @@ function ResearchPageInner() {
     // 先打真實 API（R3 實作後自動生效）
     const chunk = await api.chunk(cite);
     if (chunk) { setOpenDoc(chunk); return; }
-    // fallback：hardcoded demo mock
-    if (DOC_CONTENTS[cite]) { setOpenDoc(DOC_CONTENTS[cite]); return; }
     // fallback：從引用 VM 自行組裝
     const vm = citations.find(c => c.cite === cite);
     if (!vm) return;
@@ -398,14 +352,23 @@ function ResearchPageInner() {
                   </div>
                 )}
                 {(isMutating || isLoadingFinancials) ? <KpiSkeleton/> : (
-                  (kpis.length > 0 || financialKpis.length > 0) && (
-                    <div className="kpi-grid">
-                      {kpis.length > 0
-                        ? kpis.map((k,i)=><KpiCard key={i} k={k} onCite={handleOpenDoc}/>)
-                        : financialKpis.map((k,i)=>(
-                            <KpiCard key={i} k={k} onCite={handleOpenDoc}/>
-                          ))
-                      }
+                  (kpis.length > 0 || (financialKpis.length > 0 && isFinancialQuery(query))) && (
+                    <div className="kpi-list">
+                      {(kpis.length > 0 ? kpis : (isFinancialQuery(query) ? financialKpis : [])).map((k, i) => (
+                        <button key={i} className="kpi-row" onClick={() => handleOpenDoc(k.cite)}>
+                          <span className="kr-label">{k.label}</span>
+                          <span className="kr-value">
+                            {k.value !== "" && k.value != null ? k.value : <span style={{color:"rgb(var(--muted))",fontSize:16}}>不知道</span>}
+                            {k.unit && <span className="kr-unit">{k.unit}</span>}
+                          </span>
+                          {k.delta && (
+                            <span className={"kr-delta " + k.trend}>
+                              <Icon name={k.trend === "up" ? "arrowUp" : "arrowDown"} size={12}/>
+                              {k.delta}
+                            </span>
+                          )}
+                        </button>
+                      ))}
                     </div>
                   )
                 )}
@@ -418,14 +381,30 @@ function ResearchPageInner() {
                     <div className="panel-body">
                       {isMutating ? <PanelSkeleton/> : (
                         summary.length > 0 ? (
-                          <ul className="summary">
-                            {summary.map((s,i)=>{
-                              const hasContra = contraAlerts.some(a => a.level !== "info" && (a as any).cite_key === s.cite);
-                              return (
-                                <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} />{hasContra && <span className="tag mid" style={{marginLeft:5,padding:"1px 7px",fontSize:12,verticalAlign:"middle"}} title="矛盾偵測警告，建議核對引用原文"><span className="tdot"/>矛盾</span>}{s.cite && <span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.doc_type_label ?? "文件"} {s.page}</span>}</span></li>
-                              );
-                            })}
-                          </ul>
+                          summary.length === 1 ? (
+                            // 單段落：LLM 直接輸出的整段摘要，以 <p> 顯示保留可讀性
+                            <p style={{ lineHeight: 1.8, margin: 0 }}>
+                              <TextGenerate key={summary[0].text} text={summary[0].text} />
+                              {summary[0].cite && (
+                                <span className="cchip" role="button" tabIndex={0}
+                                  onClick={()=>handleOpenDoc(summary[0].cite)}
+                                  onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(summary[0].cite)}
+                                  style={{ marginLeft: 6 }}>
+                                  {summary[0].doc_type_label ?? "文件"} {summary[0].page}
+                                </span>
+                              )}
+                            </p>
+                          ) : (
+                            // 多條列：每行一個 <li>
+                            <ul className="summary">
+                              {summary.map((s,i)=>{
+                                const hasContra = contraAlerts.some(a => a.level !== "info" && (a as any).cite_key === s.cite);
+                                return (
+                                  <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} />{hasContra && <span className="tag mid" style={{marginLeft:5,padding:"1px 7px",fontSize:12,verticalAlign:"middle"}} title="矛盾偵測警告，建議核對引用原文"><span className="tdot"/>矛盾</span>}{s.cite && <span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.doc_type_label ?? "文件"} {s.page}</span>}</span></li>
+                                );
+                              })}
+                            </ul>
+                          )
                         ) : (
                           <div className="chart-empty">
                             <Icon name={loadError ? "alert" : "layers"} size={20} style={{color:"rgb(var(--muted))",marginBottom:8}}/>
@@ -494,10 +473,7 @@ function ResearchPageInner() {
                           onClick={()=>{setSelectedAlertIdx(selectedAlertIdx===i?null:i);rs.markRead(a.id);}}
                           onDoubleClick={()=>{setModalAlert(a);rs.markRead(a.id);}}/>
                       ))
-                    : <div className="chart-empty" style={{padding:"20px 16px"}}>
-                        <Icon name="shield" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
-                        <span>{hasQueried ? "本次研究未發現異常訊號" : "執行研究後顯示相關警示"}</span>
-                      </div>
+                    : <EmptyState icon="shield" message={hasQueried ? "本次研究未發現異常訊號" : "執行研究後顯示相關警示"} style={{padding:"20px 16px"}} />
                 }
               </div>
             </div>

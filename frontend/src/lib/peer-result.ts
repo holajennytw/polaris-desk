@@ -78,6 +78,7 @@ export function normalizePeerCompare(raw: BackendPeerCompareResponse): PeerCompa
       metric: f.metric,
       a: { v: f.a.v, citations: f.a.citations.map((c) => ({ src: c.src, page: c.page })) },
       b: { v: f.b.v, citations: f.b.citations.map((c) => ({ src: c.src, page: c.page })) },
+      better: f.better,
       note: f.note,
     })),
     calls: raw.calls.map((c) => ({

@@ -6,23 +6,20 @@ import { Icon } from "@/components/ui/Icon";
 import { AlertItem } from "@/components/polaris/AlertItem";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAlerts } from "@/hooks/useAlerts";
-import { useContraAlerts } from "@/hooks/useContraAlerts";
 import { useReadStore } from "@/hooks/useReadStore";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { api } from "@/lib/api";
+import { logError } from "@/lib/logger";
 
 const TABS = ["feed","tracking","rules"] as const;
-const TAB_LABELS: Record<string, string> = { feed:"風險動態", tracking:"追蹤通知", rules:"訂閱設定" };
+const TAB_LABELS: Record<string, string> = { feed:"訊息通知", tracking:"追蹤通知", rules:"訂閱設定" };
 
 export default function NotificationsPage() {
   const { data: notifs } = useNotifications();
   const { data: alerts } = useAlerts();
-  const contraAlertsR = useContraAlerts("research");
-  const contraAlertsP = useContraAlerts("peer");
   const rs = useReadStore();
-  const contraAlerts = [...contraAlertsR, ...contraAlertsP].filter(a => a.level !== "info");
-  const allAlerts = [...(alerts ?? []), ...contraAlerts];
+  const allAlerts = alerts ?? [];
   const [tab, setTab] = useState<typeof TABS[number]>("feed");
   const { mutate } = useSWRConfig();
   const { data: session } = useSession();
@@ -57,7 +54,8 @@ export default function NotificationsPage() {
     try {
       await api.setSubscriptions(next);
       mutate("subscriptions");
-    } catch {
+    } catch (e) {
+      logError("toggleSub", e);
       setSaveError(true);
     } finally {
       setIsSaving(false);
@@ -73,7 +71,7 @@ export default function NotificationsPage() {
         <div className="page-head">
           <div className="page-eyebrow">通知 · notifications</div>
           <h1 className="page-title">通知中心</h1>
-          <p className="page-desc">風險監控、追蹤動態與訂閱設定。</p>
+          <p className="page-desc">訊息通知、追蹤動態與訂閱設定。</p>
         </div>
         <div className="news-tabs">
           {TABS.map(t=>(
@@ -83,7 +81,7 @@ export default function NotificationsPage() {
         {tab==="feed" && (
           <div className="panel" style={{marginTop:16}}>
             <div className="panel-head">
-              <span className="panel-title"><Icon name="alert" size={15} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>風險監控警示</span>
+              <span className="panel-title"><Icon name="alert" size={15} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>訊息通知</span>
               <span className="panel-meta">{allAlerts.length} 條</span>
             </div>
             <div className="alert-list">

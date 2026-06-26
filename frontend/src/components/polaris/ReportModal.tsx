@@ -130,7 +130,7 @@ export function ReportModal({ query, kpis, summary, react, citations, onClose }:
               <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠</span>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14, color: "rgb(192 64 54)", marginBottom: 5 }}>
-                  合規聲明 — NFR-031
+                  合規聲明
                 </div>
                 <div style={{ fontSize: 13, lineHeight: 1.7, color: "rgb(23 25 31 / 0.75)" }}>
                   本報告為事實性資料摘要，每項結論均附有可溯源之原始文件引用（法說會逐字稿、財務報表或新聞公告）。
@@ -205,7 +205,7 @@ export function ReportModal({ query, kpis, summary, react, citations, onClose }:
         <div className="report-footer">
           <span>本報告由 Polaris Desk AI 生成，每筆結論皆有原始文件引用。</span>
           <div className="report-footer-actions">
-            <span className="report-nfr-tag">⚠ 本內容不構成投資建議（NFR-031）</span>
+            <span className="report-nfr-tag">⚠ 本內容不構成投資建議</span>
             <button className="btn report-export-btn" onClick={handleExportPDF} disabled={exporting}>
               <Icon name="download" size={15}/>
               {exporting ? "生成中…" : "匯出 PDF"}

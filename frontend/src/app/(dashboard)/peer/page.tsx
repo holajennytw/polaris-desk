@@ -17,7 +17,10 @@ import { toast } from "sonner";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import { parseQuery } from "@/lib/peer";
 import { useFinancials, type FinancialRow } from "@/hooks/useFinancials";
-import { fmtPeriodOption } from "@/lib/formatters";
+import { usePeriods } from "@/hooks/usePeriods";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { fmtYoy } from "@/lib/formatters";
+import { scoreLabel, sortByRelevance, sortFinancialByRelevance, detectQueryTab } from "@/lib/queryRelevance";
 import { peerCitations } from "@/lib/peer-result";
 import type { PeerCompareResult, PeerCompareTrendPoint } from "@/types/api";
 import type { ReActStepVM, CompanyVM, KpiVM, SummaryItemVM } from "@/types/viewmodel";
@@ -32,22 +35,17 @@ const PRESETS = [
   "聯發科與聯詠估值比較",
 ];
 const PHASES = ["解析查詢意圖","檢索 A 公司文件","檢索 B 公司文件","交叉比對指標","生成比較摘要","合規檢查"];
-const PERIOD_OPTIONS = ["2026Q2","2026Q1","2025Q4","2025Q3","2025Q2","2025Q1","2024Q4"];
-
-function buildMockPeerContradictions(aName: string, bName: string): ContraAlert[] {
-  const now = new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
-  return [{
-    id: `peer-contra-pass-${Date.now()}`,
-    origin: "contradiction",
-    level: "info",
-    title: "同業交叉比對通過",
-    summary: `${aName} 與 ${bName} 各引用來源數字交叉比對完成，未發現明顯矛盾。`,
-    source: "矛盾偵測引擎 · 同業比較",
-    time: now,
-  }];
-}
 
 // ── Trend Panel ──────────────────────────────────────────────
+
+function fmtTrendValue(v: number | null, metricLabel: string): string {
+  if (v === null) return "—";
+  if (metricLabel.includes("率") || metricLabel.includes("YoY") || metricLabel.includes("%")) {
+    return `${v.toFixed(2)}%`;
+  }
+  const yi = v / 100_000;
+  return `${yi >= 100 ? yi.toFixed(0) : yi.toFixed(1)} 億`;
+}
 
 function TrendPanel({ aName, bName, trend }: { aName: string; bName: string; trend: PeerCompareTrendPoint[] }) {
   if (!trend.length) {
@@ -56,7 +54,7 @@ function TrendPanel({ aName, bName, trend }: { aName: string; bName: string; tre
         <div className="panel-head">
           <span className="panel-title">
             <Icon name="arrowUp" size={15} style={{ color: "rgb(var(--primary))", verticalAlign: "-3px", marginRight: 6 }}/>
-            毛利率趨勢對比
+            跨期趨勢
           </span>
           <span className="panel-meta">無跨期資料</span>
         </div>
@@ -72,7 +70,7 @@ function TrendPanel({ aName, bName, trend }: { aName: string; bName: string; tre
       <div className="panel-head">
         <span className="panel-title">
           <Icon name="arrowUp" size={15} style={{ color: "rgb(var(--primary))", verticalAlign: "-3px", marginRight: 6 }}/>
-          趨勢對比
+          跨期趨勢
         </span>
         <span className="panel-meta">{metrics.join(" / ")}</span>
       </div>
@@ -88,8 +86,8 @@ function TrendPanel({ aName, bName, trend }: { aName: string; bName: string; tre
                   {pts.map(pt => (
                     <tr key={pt.period}>
                       <td className="font-mono">{pt.period}</td>
-                      <td><b>{pt.a_value ?? "—"}</b></td>
-                      <td>{pt.b_value ?? "—"}</td>
+                      <td><b>{fmtTrendValue(pt.a_value, metric)}</b></td>
+                      <td>{fmtTrendValue(pt.b_value, metric)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -105,6 +103,7 @@ function TrendPanel({ aName, bName, trend }: { aName: string; bName: string; tre
 // ── Peer Summary Panel ────────────────────────────────────────
 
 function PeerSummaryPanel({ summary }: { summary: string }) {
+  const lines = summary.split(/\n+/).map(s => s.trim()).filter(Boolean);
   return (
     <div className="panel">
       <div className="panel-head">
@@ -112,9 +111,20 @@ function PeerSummaryPanel({ summary }: { summary: string }) {
           <Icon name="layers" size={15} style={{ color: "rgb(var(--primary))", verticalAlign: "-3px", marginRight: 6 }}/>
           比較摘要
         </span>
+        {lines.length > 1 && <span className="panel-meta">{lines.length - 1} 項指標</span>}
       </div>
       <div className="panel-body">
-        <p style={{ lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{summary}</p>
+        {lines.length > 1 ? (
+          <ul className="summary">
+            {lines.map((line, i) =>
+              i === 0
+                ? <li key={i} style={{ listStyle: "none", color: "rgb(var(--muted))", fontSize: 13, marginBottom: 6 }}>{line}</li>
+                : <li key={i}><span className="sum-marker"/><span>{line}</span></li>
+            )}
+          </ul>
+        ) : (
+          <p style={{ lineHeight: 1.7 }}>{summary}</p>
+        )}
       </div>
     </div>
   );
@@ -122,127 +132,145 @@ function PeerSummaryPanel({ summary }: { summary: string }) {
 
 // ── Live KPI Grid (from /peer-compare response) ──────────────
 
-function PeerKpiGridLive({ result, aName, bName }: {
+function PeerKpiGridLive({ result, aName, bName, queryHint = "" }: {
   result: PeerCompareResult;
   aName: string;
   bName: string;
+  queryHint?: string;
 }) {
+  const [showAll, setShowAll] = useState(false);
+
   if (!result.kpis.length) {
-    return (
-      <div className="peer-kpi-grid">
-        <div className="peer-kpi card" style={{ gridColumn: "1/-1" }}>
-          <div className="pk-label" style={{ color: "rgb(var(--muted))" }}>
-            所選季度無財務指標資料（{result.fiscal_period}）
-          </div>
-        </div>
-      </div>
-    );
+    return <EmptyState message={`所選季度無財務指標資料（${result.fiscal_period}）`} style={{padding:"20px 16px"}}/>;
   }
+
+  const sorted = queryHint ? sortByRelevance(result.kpis, queryHint) : result.kpis;
+  const top = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) > 0) : sorted;
+  const rest = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) === 0) : [];
+  const showSplit = top.length > 0 && rest.length > 0;
+  const displayKpis = showSplit && !showAll ? top : sorted;
+
+  const renderRow = (kpi: typeof result.kpis[0], i: number) => (
+    <tr key={i}>
+      <td className="pt-metric">{kpi.label}</td>
+      <td className={`num${kpi.better === "a" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}>{kpi.a.v}</td>
+      <td className={`num${kpi.better === "b" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}>{kpi.b.v}</td>
+      <td className="num pt-note">{kpi.diff && kpi.diff !== "—" ? `${kpi.better === "a" ? aName : bName} +${kpi.diff}` : "—"}</td>
+    </tr>
+  );
+
   return (
-    <div className="peer-kpi-grid">
-      {result.kpis.map((kpi, i) => (
-        <div className="peer-kpi card" key={i}>
-          <div className="pk-label">{kpi.label}</div>
-          <div className="pk-row">
-            <div className="pk-side">
-              <div className="pk-name">{aName}</div>
-              <div className="pk-val font-display">{kpi.a.v}</div>
-            </div>
-            <div className="pk-side">
-              <div className="pk-name">{bName}</div>
-              <div className="pk-val font-display">{kpi.b.v}</div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
+    <>
+      <table className="ptable" style={{marginBottom: 4}}>
+        <thead>
+          <tr>
+            <th>指標</th>
+            <th className="num">{aName}</th>
+            <th className="num">{bName}</th>
+            <th className="num">領先</th>
+          </tr>
+        </thead>
+        <tbody>
+          {displayKpis.map((kpi, i) => renderRow(kpi, i))}
+        </tbody>
+      </table>
+      {showSplit && (
+        <button
+          className="btn ghost"
+          style={{ fontSize: 13, padding: "3px 12px", marginTop: 2 }}
+          onClick={() => setShowAll(v => !v)}
+        >
+          {showAll ? `收起 · 顯示相關 ${top.length} 項` : `其他 ${rest.length} 項指標`}
+        </button>
+      )}
+    </>
   );
 }
 
 // ── Fallback KPI Grid (uses /financials, period-aware) ────────
 
-function getMetricForPeriod(rows: FinancialRow[], metricId: string, period: string): number | null {
+function getMetricForPeriod(rows: FinancialRow[], metricId: string, period: string, month?: number | null): number | null {
+  if (month != null) {
+    const hit = rows.find(r => r.fiscal_period === period && r.metric_id === metricId && r.month === month);
+    if (hit != null) return hit.value;
+  }
   return rows.find(r => r.fiscal_period === period && r.metric_id === metricId)?.value ?? null;
 }
 
-function fmtYoy(v: number | null): string {
-  if (v === null) return "—";
-  return `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
-}
 
-function fmtRevenue(v: number | null): string {
-  if (v === null) return "—";
-  const yi = v / 100_000;
-  return `${yi >= 100 ? yi.toFixed(0) : yi.toFixed(1)}億`;
-}
 
-function PeerKpiGridFallback({ aName, bName, aTicker, bTicker, fiscalPeriod }: {
-  aName: string; bName: string; aTicker: string; bTicker: string; fiscalPeriod: string;
+function PeerKpiGridFallback({ aName, bName }: {
+  aName: string; bName: string; aTicker: string; bTicker: string; fiscalPeriod: string; selectedMonth: number | null;
 }) {
-  const { rows: aRows } = useFinancials(aTicker || null);
-  const { rows: bRows } = useFinancials(bTicker || null);
-
-  const aRevenue = getMetricForPeriod(aRows, "revenue", fiscalPeriod);
-  const bRevenue = getMetricForPeriod(bRows, "revenue", fiscalPeriod);
-  const aYoy     = getMetricForPeriod(aRows, "revenue_yoy", fiscalPeriod);
-  const bYoy     = getMetricForPeriod(bRows, "revenue_yoy", fiscalPeriod);
-
-  const revDiff = (aRevenue !== null && bRevenue !== null)
-    ? `${(aRevenue - bRevenue) >= 0 ? "+" : ""}${((aRevenue - bRevenue) / 100_000).toFixed(0)}億`
-    : "—";
-  const revBetter  = (aRevenue !== null && bRevenue !== null) ? (aRevenue >= bRevenue ? "a" : "b") : "";
-  const yoyDiff    = (aYoy !== null && bYoy !== null)
-    ? `${(aYoy - bYoy) >= 0 ? "+" : ""}${(aYoy - bYoy).toFixed(1)}pp`
-    : "—";
-  const yoyBetter  = (aYoy !== null && bYoy !== null) ? (aYoy >= bYoy ? "a" : "b") : "";
-
-  const kpis = [
-    { label:"月營收",     a:fmtRevenue(aRevenue), b:fmtRevenue(bRevenue), diff:revDiff,  better:revBetter },
-    { label:"月營收 YoY", a:fmtYoy(aYoy),         b:fmtYoy(bYoy),         diff:yoyDiff,  better:yoyBetter },
-  ];
   return (
-    <div className="peer-kpi-grid">
-      {kpis.map((k,i) => (
-        <div className="peer-kpi card" key={i}>
-          <div className="pk-label">{k.label}</div>
-          <div className="pk-row">
-            <div className="pk-side"><div className="pk-name">{aName}</div><div className={"pk-val font-display"+(k.better==="a"?" win":"")}>{k.a}</div></div>
-            <div className="pk-side"><div className="pk-name">{bName}</div><div className={"pk-val font-display"+(k.better==="b"?" win":"")}>{k.b}</div></div>
-          </div>
-          <div className="pk-diff"><Icon name="arrowUp" size={13}/>{k.better==="a"?aName:bName}領先 {k.diff}</div>
-        </div>
-      ))}
-    </div>
+    <table className="ptable" style={{ marginBottom: 4 }}>
+      <thead>
+        <tr>
+          <th>指標</th>
+          <th className="num">{aName || "—"}</th>
+          <th className="num">{bName || "—"}</th>
+          <th className="num">領先</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[1, 2, 3].map(i => (
+          <tr key={i}>
+            <td className="pt-metric"><span className="skeleton" style={{ display:"inline-block", width:60, height:14, borderRadius:4, background:"rgb(var(--muted)/.15)" }}/></td>
+            <td className="num"><span className="skeleton" style={{ display:"inline-block", width:48, height:14, borderRadius:4, background:"rgb(var(--muted)/.15)" }}/></td>
+            <td className="num"><span className="skeleton" style={{ display:"inline-block", width:48, height:14, borderRadius:4, background:"rgb(var(--muted)/.15)" }}/></td>
+            <td className="num"/>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
 // ── Financial Block (from /peer-compare kpis) ─────────────────
 
-function FinancialBlock({ result, aName, bName }: { result: PeerCompareResult; aName: string; bName: string }) {
-  if (!result.kpis.length) {
+function FinancialBlock({ result, aName, bName, queryHint = "" }: {
+  result: PeerCompareResult; aName: string; bName: string; queryHint?: string;
+}) {
+  const [showAll, setShowAll] = useState(false);
+
+  if (!result.financial.length) {
     return (
       <div className="panel">
         <div className="panel-head"><span className="panel-title">損益指標對比</span><span className="panel-meta">{result.fiscal_period}</span></div>
-        <div className="panel-body"><div className="chart-empty" style={{padding:"20px 16px"}}><span>所選季度無財務指標資料</span></div></div>
+        <div className="panel-body"><EmptyState message="所選季度無財務指標資料" style={{padding:"20px 16px"}} /></div>
       </div>
     );
   }
+
+  const sorted = queryHint ? sortFinancialByRelevance(result.financial, queryHint) : result.financial;
+  const top = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) > 0) : sorted;
+  const rest = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) === 0) : [];
+  const showSplit = top.length > 0 && rest.length > 0;
+  const display = showSplit && !showAll ? top : sorted;
+
   return (
     <div className="panel">
       <div className="panel-head"><span className="panel-title">損益指標對比</span><span className="panel-meta">{result.fiscal_period}</span></div>
       <div className="panel-body">
         <table className="ptable">
-          <thead><tr><th>指標</th><th>{aName}</th><th>{bName}</th></tr></thead>
+          <thead><tr><th>指標</th><th>{aName}</th><th>{bName}</th><th>差異</th></tr></thead>
           <tbody>
-            {result.kpis.map((k, i) => (
+            {display.map((f, i) => (
               <tr key={i}>
-                <td>{k.label}</td>
-                <td><b>{k.a.v}</b></td>
-                <td>{k.b.v}</td>
+                <td>{f.metric}</td>
+                <td className={f.better === "a" ? "text-[rgb(var(--primary-bright))] font-bold" : ""}>{f.a.v}</td>
+                <td className={f.better === "b" ? "text-[rgb(var(--primary-bright))] font-bold" : ""}>{f.b.v}</td>
+                <td className="opacity-60 text-sm">{f.note.replace("差異 ", "")}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        {showSplit && (
+          <button className="btn ghost" style={{ fontSize: 13, padding: "3px 12px", marginTop: 6 }}
+            onClick={() => setShowAll(v => !v)}>
+            {showAll ? `收起 · 顯示相關 ${top.length} 項` : `其他 ${rest.length} 項指標`}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -264,7 +292,7 @@ function CallsBlock({ result, aName, bName, onOpen }: {
     return (
       <div className="panel">
         <div className="panel-head"><span className="panel-title">法說會</span><span className="panel-meta">{result.fiscal_period}</span></div>
-        <div className="panel-body"><div className="chart-empty" style={{padding:"20px 16px"}}><span>所選季度無法說會引用資料</span></div></div>
+        <div className="panel-body"><EmptyState message="所選季度無法說會引用資料" style={{padding:"20px 16px"}} /></div>
       </div>
     );
   }
@@ -392,33 +420,49 @@ export default function PeerPage() {
   const { suggestions: dynamicSuggestions, fading: chipsFading } = useSuggestions({ mode: "peer" });
   const chips = dynamicSuggestions ?? PRESETS;
 
+  const dbPeriods = usePeriods();
+
   const [aId, setAId] = useState("");
   const [bId, setBId] = useState("");
   const [tab, setTab] = useState("financial");
-  const [fiscalPeriod, setFiscalPeriod] = useState("2026Q2");
+  const [fiscalPeriod, setFiscalPeriod] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
   const { rows: aFinRows } = useFinancials(aId || null);
   const { rows: bFinRows } = useFinancials(bId || null);
   const availablePeriods = (() => {
-    const allPeriods = [...aFinRows, ...bFinRows]
-      .map(r => r.fiscal_period)
-      .filter((p): p is string => !!p);
-    const unique = [...new Set(allPeriods)].sort().reverse();
-    return unique.length > 0 ? unique : PERIOD_OPTIONS;
+    const aPeriods = new Set(aFinRows.map(r => r.fiscal_period).filter((p): p is string => !!p));
+    const bPeriods = new Set(bFinRows.map(r => r.fiscal_period).filter((p): p is string => !!p));
+    let result: string[];
+    if (aPeriods.size > 0 && bPeriods.size > 0) {
+      // 兩家都有資料：只顯示雙方都有的期別（交集），避免選到一邊是空的
+      result = [...aPeriods].filter(p => bPeriods.has(p)).sort().reverse();
+    } else {
+      // 只有一家或都沒有：顯示有資料的期別（聯集）
+      result = [...new Set([...aPeriods, ...bPeriods])].sort().reverse();
+    }
+    return result.length > 0 ? result : dbPeriods;
   })();
 
-  // fiscal_period → latest month in that quarter (for display label only)
-  const periodMeta = (() => {
-    const map: Record<string, number> = {};
-    [...aFinRows, ...bFinRows].forEach(r => {
-      if (r.fiscal_period && r.month != null) {
-        if (!(r.fiscal_period in map) || r.month > map[r.fiscal_period]) {
-          map[r.fiscal_period] = r.month;
-        }
-      }
-    });
-    return map;
+  // 年/季/月拆分 derived values
+  const fiscalYear = fiscalPeriod.slice(0, 4);
+  const fiscalQuarter = fiscalPeriod.slice(4); // "Q1" ~ "Q4"
+  const availableYears = [...new Set(availablePeriods.map(p => p.slice(0, 4)))].sort().reverse();
+  const availableQuartersForYear = [...new Set(
+    availablePeriods.filter(p => p.startsWith(fiscalYear)).map(p => p.slice(4))
+  )].sort().reverse();
+  // 月份從 BQ 實際資料推導（只顯示有資料的月份），不 hardcode
+  const availableMonthsForPeriod = (() => {
+    const aMonths = new Set(
+      aFinRows.filter(r => r.fiscal_period === fiscalPeriod && r.month != null).map(r => r.month as number)
+    );
+    const bMonths = new Set(
+      bFinRows.filter(r => r.fiscal_period === fiscalPeriod && r.month != null).map(r => r.month as number)
+    );
+    const allMonths = new Set([...aMonths, ...bMonths]);
+    return [...allMonths].sort((a, b) => a - b);
   })();
+
 
   const [query, setQuery] = useState("");
   const [hasQueried, setHasQueried] = useState(false);
@@ -431,7 +475,6 @@ export default function PeerPage() {
   const [slotSearch, setSlotSearch] = useState("");
   const [phase, setPhase] = useState("idle");
   const [progress, setProgress] = useState(0);
-  const [isCheckingContra, setIsCheckingContra] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(true);
   const [isListening, setIsListening] = useState(false);
@@ -441,7 +484,7 @@ export default function PeerPage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const slotRef = useRef<HTMLDivElement>(null);
   // Stable ref for current query/ticker/period to avoid stale closures
-  const runParamsRef = useRef({ aId: "", bId: "", fiscalPeriod: "2026Q2", query: "" });
+  const runParamsRef = useRef({ aId: "", bId: "", fiscalPeriod: "", query: "" });
 
   useEffect(() => () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -464,10 +507,19 @@ export default function PeerPage() {
     return () => document.removeEventListener("mousedown", handle);
   }, [openSlot]);
 
+  // 初始化：dbPeriods 從 BQ 載入後，若 fiscalPeriod 還是空（未選過）就設成最新期別
+  useEffect(() => {
+    if (dbPeriods.length > 0 && !fiscalPeriod) {
+      setFiscalPeriod(dbPeriods[0]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbPeriods]);
+
   // Auto-select latest period when BQ financials load and current selection is stale
   useEffect(() => {
     if (availablePeriods.length > 0 && !availablePeriods.includes(fiscalPeriod)) {
       setFiscalPeriod(availablePeriods[0]);
+      setSelectedMonth(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availablePeriods]);
@@ -500,15 +552,8 @@ export default function PeerPage() {
     setOpenSlot(null); setSlotSearch("");
   };
 
-  const runContraCheck = async (aName: string, bName: string) => {
-    if (isCheckingContra) return;
-    setIsCheckingContra(true);
+  const runContraCheck = async (_aName: string, _bName: string) => {
     contraAlertStore.clear("peer");
-    try {
-      contraAlertStore.set(buildMockPeerContradictions(aName, bName), "peer");
-    } finally {
-      setIsCheckingContra(false);
-    }
   };
 
   const runQueryWith = useCallback(async (
@@ -518,6 +563,7 @@ export default function PeerPage() {
     period: string,
     nextA: CompanyVM | undefined,
     nextB: CompanyVM | undefined,
+    month: number | null = null,
   ) => {
     if (running) return;
     if (!nextAId || !nextBId) return;
@@ -542,6 +588,7 @@ export default function PeerPage() {
         b_ticker: nextBId,
         fiscal_period: period,
         question: q || `比較 ${nextA?.name ?? nextAId} 與 ${nextB?.name ?? nextBId}`,
+        ...(month != null ? { month } : {}),
       });
 
       clearInterval(intervalRef.current!); intervalRef.current = null;
@@ -565,42 +612,89 @@ export default function PeerPage() {
   }, [running]);
 
   const runQuery = async (q?: string) => {
-    const res = parseQuery(q ?? query);
+    const text = q ?? query;
+    // parseQuery 只取 period / tab / year
+    const res = parseQuery(text);
+
+    // 動態公司辨識：比對 BQ company_dim 的 ticker、company_name、aliases（涵蓋全部 20 家）
+    const dynMatches = companies.filter(c =>
+      text.includes(c.id) ||
+      (c.name && text.includes(c.name)) ||
+      c.aliases.some(alias => alias && text.includes(alias))
+    );
+
+    // 優先序：動態辨識 > parseQuery alias > 選擇框
     const ok = res.ordered.filter(o => o.status === "ok");
-    const nextAId = ok[0]?.id ?? aId;
-    const nextBId = ok[1]?.id ?? bId;
+    const nextAId = dynMatches[0]?.id ?? ok[0]?.id ?? aId;
+    const nextBId = dynMatches[1]?.id ?? ok[1]?.id ?? bId;
     if (!nextAId || !nextBId) return;
 
-    if (ok[0]) setAId(ok[0].id);
-    if (ok[1]) setBId(ok[1].id);
+    if (dynMatches[0]) setAId(dynMatches[0].id);
+    else if (ok[0]) setAId(ok[0].id);
+    if (dynMatches[1]) setBId(dynMatches[1].id);
+    else if (ok[1]) setBId(ok[1].id);
+
+    const autoTab = detectQueryTab(text);
     if (res.tab) switchTab(res.tab);
+    else if (autoTab) switchTab(autoTab);
+
     const normPeriod = res.period.replace(/\s+/g, "");
-    const period = availablePeriods.includes(normPeriod) ? normPeriod : fiscalPeriod;
+    // 若只解析到年份（無季別），從 availablePeriods 取該年最新一季
+    const yearFallback = res.year
+      ? (availablePeriods.find(p => p.startsWith(String(res.year))) ?? fiscalPeriod)
+      : null;
+    const period = availablePeriods.includes(normPeriod)
+      ? normPeriod
+      : (yearFallback ?? fiscalPeriod);
     if (availablePeriods.includes(normPeriod)) setFiscalPeriod(normPeriod);
+    else if (yearFallback) setFiscalPeriod(yearFallback);
     setParseMsg({
-      ignored: ok.slice(2).map(o => o.name),
+      ignored: dynMatches.slice(2).map(o => o.name),
       unknown: res.ordered.filter(o => o.status === "nodata").map(o => o.name),
     });
 
     const nextA = companies.find(c => c.id === nextAId);
     const nextB = companies.find(c => c.id === nextBId);
 
-    await runQueryWith(q ?? query, nextAId, nextBId, period, nextA, nextB);
+    await runQueryWith(text, nextAId, nextBId, period, nextA, nextB, selectedMonth);
   };
 
   // Re-query when period changes (only if already queried and tickers are set)
-  const changePeriod = async (p: string) => {
+  // period 切換一律重置月份為全季（null），由呼叫端的 setSelectedMonth(null) + 傳 null 保持一致
+  const changePeriod = async (p: string, month: number | null = null) => {
     setFiscalPeriod(p);
     if (!hasQueried || !aId || !bId || running) return;
     const nextA = companies.find(c => c.id === aId);
     const nextB = companies.find(c => c.id === bId);
-    await runQueryWith(query, aId, bId, p, nextA, nextB);
+    await runQueryWith(query, aId, bId, p, nextA, nextB, month);
+  };
+
+  const changeYear = async (year: string) => {
+    const samePeriod = `${year}${fiscalQuarter}`;
+    const valid = availablePeriods.includes(samePeriod)
+      ? samePeriod
+      : (availablePeriods.find(p => p.startsWith(year)) ?? availablePeriods[0]);
+    setSelectedMonth(null);
+    await changePeriod(valid, null);
+  };
+
+  const changeQuarter = async (q: string) => {
+    setSelectedMonth(null);
+    await changePeriod(`${fiscalYear}${q}`, null);
+  };
+
+  const changeMonth = async (m: number | null) => {
+    setSelectedMonth(m);
+    if (!hasQueried || !aId || !bId || running) return;
+    const nextA = companies.find(c => c.id === aId);
+    const nextB = companies.find(c => c.id === bId);
+    await runQueryWith(query, aId, bId, fiscalPeriod, nextA, nextB, m);
   };
 
   const renderBlock = () => {
     const aName = A?.name ?? ""; const bName = B?.name ?? "";
     if (tab === "financial") return peerResult
-      ? <FinancialBlock result={peerResult} aName={aName} bName={bName}/>
+      ? <FinancialBlock result={peerResult} aName={aName} bName={bName} queryHint={query}/>
       : <div className="panel"><div className="panel-body"><div className="chart-empty" style={{padding:"20px 16px"}}><span>送出查詢後顯示財務資料</span></div></div></div>;
     if (tab === "calls")     return peerResult
       ? <CallsBlock result={peerResult} aName={aName} bName={bName} onOpen={(doc) => setOpenDoc(doc)}/>
@@ -661,13 +755,6 @@ export default function PeerPage() {
                   <span key={i} className="parse-chip warn"><Icon name="alert" size={12}/>未識別：{n}</span>
                 ))}
               </div>
-              <div className="ptb-period">
-                <select value={fiscalPeriod} onChange={e => changePeriod(e.target.value)}>
-                  {availablePeriods.map(p => (
-                    <option key={p} value={p}>{fmtPeriodOption(p, periodMeta[p])}</option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             {/* Comparison content */}
@@ -681,8 +768,8 @@ export default function PeerPage() {
                 )}
                 <div className="peer-l2">
                   {peerResult
-                    ? <PeerKpiGridLive result={peerResult} aName={A?.name ?? ""} bName={B?.name ?? ""}/>
-                    : <PeerKpiGridFallback aName={A?.name??""} bName={B?.name??""} aTicker={aId} bTicker={bId} fiscalPeriod={fiscalPeriod}/>
+                    ? <PeerKpiGridLive result={peerResult} aName={A?.name ?? ""} bName={B?.name ?? ""} queryHint={query}/>
+                    : <PeerKpiGridFallback aName={A?.name??""} bName={B?.name??""} aTicker={aId} bTicker={bId} fiscalPeriod={fiscalPeriod} selectedMonth={selectedMonth}/>
                   }
                 </div>
                 {peerResult && <TrendPanel aName={A?.name??""} bName={B?.name??""} trend={peerResult.trend}/>}
