@@ -37,6 +37,29 @@ class TestChunkPage:
         # 重疊：前塊尾 100 字 = 後塊頭 100 字
         assert chunks[0][-100:] == chunks[1][:100]
 
+    def test_long_english_paragraph_not_split_mid_word(self):
+        # issue #50：英文逐字稿長段硬切時不得把單字從中間腰斬
+        # （bug 重現：'turnover' 被切成 'tu' + 'rnover'，碎字洩進檢索/答案）。
+        # 切點與「重疊接縫」兩處都不可落在 Latin 單字中間。
+        words = ("turnover " * 200).strip()  # ≈1800 字，強制多塊
+        chunks = chunk_page(words, chunk_size=800, overlap=100)
+        assert len(chunks) > 1
+        for c in chunks:
+            fragments = [t for t in c.split() if t != "turnover"]
+            assert not fragments, f"單字被腰斬：{fragments}"
+        assert all(len(c) <= 800 for c in chunks)
+
+    def test_giant_unbreakable_token_hard_cuts_and_terminates(self):
+        # 防呆：單一超長 token（無詞界，如黏死的網址/編碼）塊內找不到詞界 → 仍硬切，
+        # 不可無限迴圈、不可整段吞成 0 塊、不可遺字。
+        text = "A" * 2000  # ASCII 但無空白 → 無處回退
+        chunks = chunk_page(text, chunk_size=800, overlap=100)
+        assert len(chunks) > 1
+        assert all(0 < len(c) <= 800 for c in chunks)
+        assert all(set(c) == {"A"} for c in chunks)  # 無腐損
+        # 視窗連續無間隙（start 永不超過上一塊 end）→ 總長 ≥ 原文長即全覆蓋。
+        assert sum(len(c) for c in chunks) >= len(text)
+
     def test_empty_or_whitespace_page_zero_chunks(self):
         assert chunk_page("") == []
         assert chunk_page("   \n\n  ") == []

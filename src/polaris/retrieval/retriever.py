@@ -250,6 +250,40 @@ def _ensure_citation_metadata(result: SearchResult) -> SearchResult:
     )
 
 
+def _strip_leading_fragment(text: str) -> str:
+    """讀取時止血（issue #50 存量）：去掉 chunk 開頭的半截英文字。
+
+    舊切塊器 / 逐字稿 ingester 以固定字元數硬切，chunk 常起於單字中間（如
+    'rnover days...'，原為 'turnover'），碎字會洩進 LLM 答案與 citation
+    snippet。chunk 起頭若是 **小寫 ASCII 字母** 視為被切斷的殘字 → 丟掉第一個
+    以空白分隔的 token。大寫（真句首）、CJK、數字開頭皆視為正常邊界、不動。
+    只有一個 token（切了會清空）時保留原文，避免 content 變空。
+
+    注意：只清理「呈現給使用者 / LLM 的文字」，不改 store；既有 embedding 仍是
+    用碎字算的（向量層雜訊需 re-embed 才會根治，見 issue #50）。
+    """
+    stripped = text.lstrip()
+    if not stripped or not (stripped[0].isascii() and stripped[0].islower()):
+        return text
+    parts = stripped.split(None, 1)
+    return parts[1] if len(parts) == 2 else text
+
+
+def _trim_result_content(result: SearchResult) -> SearchResult:
+    """回傳 content 經 :func:`_strip_leading_fragment` 修剪後的新 SearchResult。"""
+    trimmed = _strip_leading_fragment(result.content)
+    if trimmed == result.content:
+        return result
+    return SearchResult(
+        id=result.id,
+        content=trimmed,
+        score=result.score,
+        company=result.company,
+        period=result.period,
+        metadata=result.metadata,
+    )
+
+
 def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[SearchResult]:
     """Default Cohere rerank implementation using ``COHERE_API_KEY`` from env.
 
@@ -524,7 +558,9 @@ class HybridRetriever:
         # Every result must carry the citation-facing metadata keys so downstream
         # adapters (api.py /research, Deep Research) can read metadata["doc_type"/
         # "published_at"] safely regardless of channel (incl. BM25/stub fallback).
-        return [_ensure_citation_metadata(r) for r in candidates]
+        # _trim_result_content 去掉既有 chunk 開頭的半截英文字（issue #50 存量止血，
+        # 不改 store）。
+        return [_ensure_citation_metadata(_trim_result_content(r)) for r in candidates]
 
 
 # ---------------------------------------------------------------------------

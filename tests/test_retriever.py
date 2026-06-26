@@ -696,3 +696,49 @@ def test_without_recency_intent_preserves_base_score_order():
     results = retriever.retrieve("聯發科 營收 成長", filters={"company": "2454"})
     # 無時間意圖 → 維持原 base score 排序（舊但分數高者在前），不加 recency 偏好
     assert results[0].period == "2023Q1", [r.period for r in results]
+
+
+# ---------------------------------------------------------------------------
+# 讀取時邊緣修剪（issue #50 存量止血）：既有 chunk 開頭的半截英文字（如逐字稿
+# 'rnover days...'）不該洩進 LLM 答案 / citation snippet。重灌前的零寫入 mitigation。
+# ---------------------------------------------------------------------------
+
+def test_strip_leading_fragment_removes_cutoff_word():
+    from polaris.retrieval.retriever import _strip_leading_fragment
+
+    assert _strip_leading_fragment("rnover days increased") == "days increased"
+    assert _strip_leading_fragment("rm, more output. Actually") == "more output. Actually"
+    assert _strip_leading_fragment("  and also passing") == "also passing"
+
+
+def test_strip_leading_fragment_leaves_clean_starts_untouched():
+    from polaris.retrieval.retriever import _strip_leading_fragment
+
+    # 大寫開頭（真句首）、CJK、數字開頭 → 不是半截字，原樣保留
+    assert _strip_leading_fragment("Revenue grew 20%") == "Revenue grew 20%"
+    assert _strip_leading_fragment("台積電營收成長強勁") == "台積電營收成長強勁"
+    assert _strip_leading_fragment("2024 was a strong year") == "2024 was a strong year"
+    # 單一 token、無法安全切 → 不清空（避免 content 變空）
+    assert _strip_leading_fragment("rnover") == "rnover"
+
+
+def test_retrieve_trims_leading_fragment_in_returned_content():
+    frag = type("R", (), {})()
+    frag.id = "t-2330-frag"
+    frag.content = "rnover days increased 1 day to 28 days."
+    frag.score = 0.9
+    frag.company = "2330"
+    frag.period = "2024Q3"
+    frag.metadata = {"source_id": "t-2330-frag"}
+
+    class FakeStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):
+            return [frag]
+
+    retriever = HybridRetriever(
+        top_k=3, store=FakeStore(), embedding_fn=lambda _q: [1.0]
+    )
+    results = retriever.retrieve("台積電 turnover", filters={"company": "2330"})
+    top = next(r for r in results if r.id == "t-2330-frag")
+    assert top.content.startswith("days increased")
+    assert "rnover" not in top.content

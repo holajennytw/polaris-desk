@@ -27,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from polaris.config import settings  # noqa: E402
+from polaris.ingestion.chunker import _split_long  # noqa: E402  共用詞界回退切塊（issue #50）
 from polaris.ingestion.sanitize import sanitize_text, validate_for_ingestion  # noqa: E402
 from polaris.llm.gemini import active_llm  # noqa: E402
 from polaris.vectorstore.base import Document  # noqa: E402
@@ -42,12 +43,19 @@ def pdf_text(pdf: str) -> str:
 
 
 def chunk_text(text: str, size: int = CHUNK_CHARS, overlap: int = OVERLAP_CHARS) -> list[str]:
-    """字元切塊 + 重疊（中文無空白分詞，先用字元切；正式版可換語意切塊）。"""
+    """切塊 + 重疊，重用 chunker 的詞界回退硬切（issue #50）。
+
+    這條路徑把法說逐字稿灌進 ``polaris_core.chunks``；舊版自帶一份純字元硬切
+    （``text[i:i+size]``）會把英文單字從中間腰斬（'turnover' → 'tu'+'rnover'），
+    碎字洩進 embedding / 檢索 / 答案。改成委派給 ``polaris.ingestion.chunker``
+    的單一事實來源 ``_split_long``：中文（無空格）行為等同舊純字元切，英文切點
+    與重疊接縫都對齊詞界。本檔先壓掉換行 / 多餘空白成單行（無頁錨），故用扁平的
+    ``_split_long`` 而非頁錨定的 ``chunk_pages``。
+    """
     text = " ".join(text.split())  # 壓掉多餘換行/空白
     if not text:
         return []
-    step = max(1, size - overlap)
-    return [text[i : i + size] for i in range(0, len(text), step) if text[i : i + size].strip()]
+    return [c for c in _split_long(text, size, overlap) if c.strip()]
 
 
 def embed(text: str, client) -> tuple[list[float], bool]:
