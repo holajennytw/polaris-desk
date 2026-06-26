@@ -43,6 +43,9 @@ class _DocRef:
     def get(self):
         return _Snap(self.id, self._n.fields)
 
+    def delete(self):
+        self._n.fields = None
+
     def collection(self, name):
         return self._n.subcols.setdefault(name, _Col())
 
@@ -111,6 +114,10 @@ class TestHistoryAuth:
         assert client.get("/subscriptions").status_code == 401
         assert client.post("/subscriptions", json={"tickers": ["2330"]}).status_code == 401
 
+    def test_delete_history_anonymous_is_401(self, client, store):
+        """security review #4：匿名不得刪除個人紀錄。"""
+        assert client.delete("/history/whatever").status_code == 401
+
 
 class TestHistoryFlow:
     def test_post_then_list_and_restore(self, client, store, authed):
@@ -130,6 +137,26 @@ class TestHistoryFlow:
         client.post("/history", json=HIST)
         # 直接用另一使用者查 store → 看不到 u1 的紀錄
         assert store.list_sessions("someone-else") == []
+
+    def test_delete_removes_record_server_side(self, client, store, authed):
+        """security review #4：DELETE 後 Firestore 真的刪掉，重新整理不會回來。"""
+        rid = client.post("/history", json=HIST).json()["record_id"]
+        assert client.delete(f"/history/{rid}").json() == {"status": "deleted"}
+        assert client.get(f"/history/{rid}").status_code == 404
+        assert store.list_sessions("u1") == []
+
+    def test_delete_unknown_record_is_404(self, client, store, authed):
+        assert client.delete("/history/does-not-exist").status_code == 404
+
+    def test_oversized_result_is_422(self, client, store, authed):
+        """security review #3：整包 result 過大 → 422，不灌進 Firestore。"""
+        huge = {**HIST, "result": {"blob": "x" * (300 * 1024)}}
+        assert client.post("/history", json=huge).status_code == 422
+
+    def test_too_many_tickers_is_422(self, client, store, authed):
+        """security review #3：tickers 筆數上限。"""
+        many = {**HIST, "tickers": [str(i) for i in range(100)]}
+        assert client.post("/history", json=many).status_code == 422
 
 
 class TestSubscriptionsFlow:

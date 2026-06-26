@@ -33,12 +33,14 @@ Watchdog（specs/003，R7 Alert Inbox 消費端）：
 from __future__ import annotations
 
 import hashlib
+import hmac
+import json
 import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator
@@ -86,6 +88,18 @@ app.add_middleware(
 )
 
 
+# --- 輸入上限（security review #3：成本型 DoS / 儲存濫用防護）---
+# LLM / 檢索入口的 query / question 字數上限——擋超長輸入觸發 LLM / retrieval 成本。
+# 自然語言研究問句 2000 字綽綽有餘；超過由 FastAPI 回 422。
+_MAX_QUERY_LEN = 2000
+# 歷史紀錄寫入 Firestore 的上限：tickers 筆數、整包 result 的序列化位元組數。
+_MAX_TICKERS = 50
+_MAX_RESULT_BYTES = 256 * 1024  # 256 KiB：整包 result 還原所需，遠大於正常回應
+# 通知事件 payload 序列化上限——擋超大事件灌爆收件匣 / 外送管道（security review #2/#3）。
+_MAX_EVENT_BYTES = 64 * 1024  # 64 KiB：真實事件遠小於此（標題 + 證據數筆）
+_NOTIFY_TOKEN_HEADER = "X-Polaris-Notify-Token"
+
+
 # --- 請求 / 回應模型（回應重用引擎既有 pydantic 型別 → 序列化不會與引擎漂移）---
 def _reject_blank(value: str) -> str:
     """空白（含全形空白）視同未輸入 → 422，不把垃圾餵進引擎。"""
@@ -94,11 +108,45 @@ def _reject_blank(value: str) -> str:
     return value
 
 
+def _viewer_for(user: dict | None) -> str:
+    """ACL principal 由**已驗證**的 Google 身分（``sub``）推導；匿名 → public sentinel。
+
+    security review #1：``viewer`` 絕不可由 client 提供——否則任何呼叫者只要把
+    身分改成 ``owner`` 就能讀他人 owner-scoped 文件（store SQL 以 ``owner == viewer``
+    放行）。匿名請求固定看公開文件（owner IS NULL）。
+    """
+    if user and user.get("sub"):
+        return user["sub"]
+    return PUBLIC_VIEWER
+
+
+def require_producer(
+    token: str | None = Header(default=None, alias=_NOTIFY_TOKEN_HEADER),
+) -> None:
+    """通知「生產者」端點守門（security review #2）。
+
+    - 設了 ``notifications_producer_token`` → 一律要求 header 常數時間相符，否則 401。
+    - 沒設 + ``app_env=="cloud"`` → fail closed 503：prod 未設定即拒收，絕不接受匿名事件。
+    - 沒設 + 非 cloud（local / CI / demo）→ 放行，保 token-free 開發與互動 demo。
+    """
+    expected = settings.notifications_producer_token
+    if not expected:
+        if settings.app_env == "cloud":
+            raise HTTPException(
+                status_code=503,
+                detail="通知生產者端點未設定密鑰（NOTIFICATIONS_PRODUCER_TOKEN）",
+            )
+        return  # 本地 / CI / demo：token-free 放行
+    if not token or not hmac.compare_digest(token, expected):
+        raise HTTPException(status_code=401, detail="需要有效的通知生產者密鑰")
+
+
 class AskRequest(BaseModel):
-    query: str = Field(min_length=1, description="自然語言問題")
-    # issue #32: viewer identity for owner-based document access control.
-    # Omit to use the public sentinel principal (public docs only).
-    viewer: str = Field(default=PUBLIC_VIEWER, description="存取控制身分（issue #32）")
+    query: str = Field(min_length=1, max_length=_MAX_QUERY_LEN, description="自然語言問題")
+    # issue #32 的 ``viewer`` ACL principal **不再由 client 提供**——改由後端從
+    # 已驗證的 Google id_token（``sub``）推導（見 :func:`_viewer_for`）。請求帶入的
+    # ``viewer`` 一律被 pydantic 當 extra field 忽略，杜絕「改 body 讀他人 owner-scoped
+    # 文件」的授權邊界錯置（security review #1）。
 
     _not_blank = field_validator("query")(_reject_blank)
 
@@ -111,9 +159,8 @@ class AskResponse(BaseModel):
 
 
 class ResearchRequest(BaseModel):
-    question: str = Field(min_length=1, description="開放式研究問題")
-    # issue #32: viewer identity forwarded to Deep Research search fn.
-    viewer: str = Field(default=PUBLIC_VIEWER, description="存取控制身分（issue #32）")
+    question: str = Field(min_length=1, max_length=_MAX_QUERY_LEN, description="開放式研究問題")
+    # ``viewer`` 同 :class:`AskRequest`：後端從登入身分推導，client 帶入一律忽略。
 
     _not_blank = field_validator("question")(_reject_blank)
 
@@ -203,12 +250,14 @@ def healthz() -> dict[str, str]:
 
 
 @app.post("/ask", response_model=AskResponse, tags=["research"])
-def ask(req: AskRequest) -> AskResponse:
+def ask(req: AskRequest, user=Depends(current_user)) -> AskResponse:
     """跑 5 節點 workflow，回帶引用 + 合規狀態 + 每節點 trace 的答案。
 
-    ``viewer`` 透傳進 workflow state（issue #32）：retriever 依此做 owner-scoped 過濾。
+    ``viewer`` 由登入身分（Google ``sub``）推導後透傳進 workflow state（issue #32 /
+    security review #1）：retriever 依此做 owner-scoped 過濾。匿名 → 只看公開文件。
     """
-    result = build_workflow().invoke({"query": req.query, "viewer": req.viewer})
+    viewer = _viewer_for(user)
+    result = build_workflow().invoke({"query": req.query, "viewer": viewer})
     return AskResponse(
         answer=result.get("answer", ""),
         compliance_status=result.get("compliance_status", "unknown"),
@@ -218,13 +267,14 @@ def ask(req: AskRequest) -> AskResponse:
 
 
 @app.post("/research", response_model=ResearchResponse, tags=["research"])
-def research(req: ResearchRequest) -> ResearchResponse:
+def research(req: ResearchRequest, user=Depends(current_user)) -> ResearchResponse:
     """跑 Deep Research ReAct loop（≤6 迴圈 / ≥3 引用 / 過合規），回結論 + 證據 + 步驟。
 
-    ``viewer`` 透傳進 run_deep_research（issue #32）：R4 真實 search fn 接入後
-    可依此做 owner-scoped 過濾；stub_search 無 owner 欄位，目前為 no-op。
+    ``viewer`` 由登入身分推導後透傳進 run_deep_research（issue #32 / security review #1）：
+    R4 真實 search fn 接入後依此做 owner-scoped 過濾；stub_search 無 owner 欄位，目前為 no-op。
     """
-    r = run_deep_research(req.question, viewer=req.viewer)
+    viewer = _viewer_for(user)
+    r = run_deep_research(req.question, viewer=viewer)
     return ResearchResponse(
         final_answer=r.final_answer,
         evidence=r.evidence,
@@ -355,12 +405,18 @@ def list_notifications(
 
 
 @app.post("/notifications/events", response_model=PublishOutcome, tags=["notifications"])
-def publish_event(event: dict) -> PublishOutcome:
+def publish_event(event: dict, _=Depends(require_producer)) -> PublishOutcome:
     """發布事件進**真實管線**（去重→接地→合規閘門→訂閱→digest/派送）。
 
-    壞事件回 ``status=rejected``（HTTP 200——拒收是管線的正常 outcome，
-    不是傳輸層錯誤；生產者依 ``status`` 分支）。
+    需內部生產者密鑰（security review #2，見 :func:`require_producer`）。超大 payload
+    → 413（擋灌爆收件匣 / 外送）。壞事件回 ``status=rejected``（HTTP 200——拒收是管線
+    的正常 outcome，不是傳輸層錯誤；生產者依 ``status`` 分支）。
     """
+    size = len(json.dumps(event, ensure_ascii=False, default=str).encode("utf-8"))
+    if size > _MAX_EVENT_BYTES:
+        raise HTTPException(
+            status_code=413, detail=f"事件過大（{size} > {_MAX_EVENT_BYTES} bytes）"
+        )
     return _notification_service.publish(event)
 
 
@@ -376,8 +432,12 @@ def mark_notification_read(notification_id: str) -> Notification:
 
 
 @app.post("/notifications/reset", tags=["notifications"])
-def reset_notifications() -> dict[str, str]:
-    """重置為全新收件匣（in-memory 單例換新；demo / 測試隔離用）。"""
+def reset_notifications(_=Depends(require_producer)) -> dict[str, str]:
+    """重置為全新收件匣（in-memory 單例換新；demo / 測試隔離用）。
+
+    與 ``/events`` 同守門（security review #2）：未授權者不得清空收件匣。cloud 未設密鑰
+    時一律 503（prod 本就不該對外開放 reset）。
+    """
     global _notification_service
     _notification_service = _new_notification_service()
     return {"status": "reset"}
@@ -991,9 +1051,14 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
 @app.get("/chunk/{source_id}", response_model=ChunkResponse, tags=["research"])
 def chunk(
     source_id: str,
-    viewer: str = Query(default=PUBLIC_VIEWER, description="存取控制身分"),
+    user=Depends(current_user),
 ) -> ChunkResponse:
-    """展開單一引用原文；不存在與無權限皆回 404，避免洩漏文件是否存在。"""
+    """展開單一引用原文；不存在與無權限皆回 404，避免洩漏文件是否存在。
+
+    ``viewer`` 由登入身分推導（security review #1）：匿名只看公開原文，登入者另可
+    看自己 owner-scoped 的原文——絕不接受 client 指定 viewer。
+    """
+    viewer = _viewer_for(user)
     row = _structured_store.get_chunk(source_id, viewer=viewer)
     if row is None:
         raise HTTPException(status_code=404, detail="查無此引用")
@@ -1036,14 +1101,31 @@ def _require_uid(user: dict | None) -> str:
 
 
 class HistoryIn(BaseModel):
-    """一筆活動紀錄（B 級：``result`` 存整包 → 日後完整還原）。"""
+    """一筆活動紀錄（B 級：``result`` 存整包 → 日後完整還原）。
 
-    origin: str = Field(description='來源頁面："research" | "peer"')
-    query: str = Field(min_length=1, description="使用者查詢文字")
-    tickers: list[str] = Field(default_factory=list, description="涉及股票代號")
+    security review #3：登入後寫入 Firestore，需設上限擋儲存濫用——``query`` 字數、
+    ``tickers`` 筆數、整包 ``result`` 的序列化大小皆有界。
+    """
+
+    origin: str = Field(max_length=32, description='來源頁面："research" | "peer"')
+    query: str = Field(min_length=1, max_length=_MAX_QUERY_LEN, description="使用者查詢文字")
+    tickers: list[str] = Field(
+        default_factory=list, max_length=_MAX_TICKERS, description="涉及股票代號"
+    )
     result: dict | None = Field(default=None, description="整包回應，供完整還原（B 級）")
 
     _not_blank = field_validator("query")(_reject_blank)
+
+    @field_validator("result")
+    @classmethod
+    def _result_within_limit(cls, value: dict | None) -> dict | None:
+        """整包 ``result`` 序列化後不得超過上限——擋大型 JSON 灌進 Firestore。"""
+        if value is None:
+            return value
+        size = len(json.dumps(value, ensure_ascii=False).encode("utf-8"))
+        if size > _MAX_RESULT_BYTES:
+            raise ValueError(f"result 過大（{size} > {_MAX_RESULT_BYTES} bytes）")
+        return value
 
 
 class HistoryRecordResponse(BaseModel):
@@ -1080,6 +1162,18 @@ def get_history_one(session_id: str, user=Depends(current_user)) -> dict:
     if s is None:
         raise HTTPException(status_code=404, detail="查無此紀錄")
     return s
+
+
+@app.delete("/history/{session_id}", tags=["user"])
+def delete_history_one(session_id: str, user=Depends(current_user)) -> dict[str, str]:
+    """刪除登入使用者一筆活動紀錄（security review #4）；查無 → 404。
+
+    需登入：以 Google ``sub`` 收斂只能刪自己的紀錄。前端原本因後端缺此端點而「靜默
+    成功」，導致 Firestore 仍留資料——補上後刪除才真的落地。
+    """
+    if not _user_store.delete_session(_require_uid(user), session_id):
+        raise HTTPException(status_code=404, detail="查無此紀錄")
+    return {"status": "deleted"}
 
 
 @app.get("/subscriptions", response_model=SubsResponse, tags=["user"])
