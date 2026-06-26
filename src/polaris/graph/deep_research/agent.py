@@ -11,6 +11,8 @@
 """
 from __future__ import annotations
 
+import logging
+import os
 import re
 from collections.abc import Callable, Sequence
 
@@ -26,18 +28,32 @@ from polaris.graph.deep_research.state import (
     ReActStep,
     dedup_evidence,
     is_fully_traceable,
+    is_traceable_prose,
+    numbers_grounded,
     should_continue,
 )
 from polaris.graph.nodes import compliance_agent
+from polaris.graph.prompts import SYNTHESIS_SYSTEM_PROMPT
 from polaris.graph.state import Citation
 from polaris.llm.gemini import active_llm
 from polaris.retrieval.retriever import PUBLIC_VIEWER
 from polaris.retry import call_with_retry
 
+log = logging.getLogger(__name__)
+
 SearchFn = Callable[[str], list[Citation]]
 
 #: 確定性 fallback 政策輪流檢索的面向。
 _FACETS = ("營收", "毛利率", "風險與展望")
+
+# Outcome constants for deep_research synthesis logging (R6 risk mitigation).
+OUTCOME_POLISHED = "polished"
+OUTCOME_GATE_TRACEABLE = "gate_traceable"
+OUTCOME_GATE_NUMBERS = "gate_numbers"
+OUTCOME_LLM_ERROR = "llm_error"
+OUTCOME_NO_KEY = "no_key"
+OUTCOME_COMPLIANCE_REJECTED = "compliance_rejected"
+OUTCOME_FALLBACK = "fallback"
 
 
 def stub_search(query: str) -> list[Citation]:
@@ -96,6 +112,45 @@ def _synthesize(question: str, evidence: Sequence[Citation], *, exhausted: bool 
     if exhausted and len(evidence) < 3:
         text += "\n（註：引用不足 3 條，結論暫定、待補證據。）"
     return text
+
+
+def _polish_synthesize(
+    question: str,
+    base: str,
+    evidence: Sequence[Citation],
+    *,
+    client,
+) -> tuple[str, str]:
+    """嘗試用 Gemini Flash 把確定性條列 ``base`` 潤飾成流暢散文（P0 接地觸點）。
+
+    Returns ``(output_text, outcome)``。不過閘門 / 例外 / 無金鑰 → 回 ``(base, outcome)``。
+    Flag ``DEEP_RESEARCH_LLM_SYNTHESIS`` 必須為 ``"1"`` 才啟動；預設關（token=0）。
+    """
+    if os.getenv("DEEP_RESEARCH_LLM_SYNTHESIS", "0") != "1":
+        return base, OUTCOME_FALLBACK
+
+    if client is None:
+        log.info("deep_research.synthesis outcome=%s", OUTCOME_NO_KEY)
+        return base, OUTCOME_NO_KEY
+
+    try:
+        prose = call_with_retry(
+            lambda: client.generate(base, flash=True, system_instruction=SYNTHESIS_SYSTEM_PROMPT)
+        )
+    except Exception:  # noqa: BLE001
+        log.info("deep_research.synthesis outcome=%s", OUTCOME_LLM_ERROR)
+        return base, OUTCOME_LLM_ERROR
+
+    if not is_traceable_prose(prose, evidence):
+        log.info("deep_research.synthesis outcome=%s", OUTCOME_GATE_TRACEABLE)
+        return base, OUTCOME_GATE_TRACEABLE
+
+    if not numbers_grounded(prose, evidence):
+        log.info("deep_research.synthesis outcome=%s", OUTCOME_GATE_NUMBERS)
+        return base, OUTCOME_GATE_NUMBERS
+
+    log.info("deep_research.synthesis outcome=%s", OUTCOME_POLISHED)
+    return prose, OUTCOME_POLISHED
 
 
 def _act(question: str, state: dict, action: ReActAction, search: SearchFn) -> None:
@@ -178,6 +233,11 @@ def run_deep_research(
     if state["evidence"] and not is_fully_traceable(state["final_answer"], state["evidence"]):
         state["final_answer"] = _synthesize(question, state["evidence"])
 
+    # P0 接地觸點：flag 開時嘗試 Gemini 潤飾（確定性 fallback 維持現狀）。
+    state["final_answer"], _ = _polish_synthesize(
+        question, state["final_answer"], state["evidence"], client=client
+    )
+
     # NFR-031：最終結論一律過 D9 Compliance Agent。
     answer, compliance_status = compliance_agent.review(state["final_answer"], client)
 
@@ -192,4 +252,16 @@ def run_deep_research(
     )
 
 
-__all__ = ["stub_search", "run_deep_research", "SearchFn"]
+__all__ = [
+    "stub_search",
+    "run_deep_research",
+    "SearchFn",
+    "_polish_synthesize",
+    "OUTCOME_POLISHED",
+    "OUTCOME_GATE_TRACEABLE",
+    "OUTCOME_GATE_NUMBERS",
+    "OUTCOME_LLM_ERROR",
+    "OUTCOME_NO_KEY",
+    "OUTCOME_COMPLIANCE_REJECTED",
+    "OUTCOME_FALLBACK",
+]
