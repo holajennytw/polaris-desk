@@ -217,6 +217,74 @@ class BigQueryStore(VectorStore):
             for row in rows
         ]
 
+    # ── financial_metrics 合成語料（BM25 路徑補充）──────────────────────────
+    #
+    # financial_metrics 是結構化事實表，不在 v_chunk_semantic 裡，BM25/向量路徑
+    # 找不到它。此方法將每列合成一條自然語言 SearchResult，讓 BM25 能命中
+    # 「毛利率」「EPS」等財務指標查詢，並帶回可溯源的 source_id。
+    _METRIC_LABELS: dict[str, str] = {
+        "gross_margin": "毛利率",
+        "operating_margin": "營業利益率",
+        "net_income": "淨利",
+        "revenue": "營收",
+        "revenue_yoy": "營收年增率",
+        "eps": "EPS",
+        "gross_profit": "毛利",
+        "operating_income": "營業利益",
+        "operating_expense": "營業費用",
+        "pretax_income": "稅前淨利",
+    }
+
+    def load_financial_corpus(self) -> list[SearchResult]:
+        """將 financial_metrics 合成為 BM25-ready SearchResult，補充檢索路徑。
+
+        每列生成一條自然語言描述，讓 retriever 能命中財務指標查詢。
+        source_id 格式：``fm_{ticker}_{fiscal_period}_{metric_id}``。
+        """
+        dataset = f"{self.settings.gcp_project}.{self.settings.bq_dataset}"
+        sql = f"""
+        SELECT fm.ticker, fm.fiscal_period, fm.metric_id, fm.value, fm.unit,
+               cd.company_name
+        FROM `{dataset}.financial_metrics` fm
+        LEFT JOIN `{dataset}.company_dim` cd ON cd.ticker = fm.ticker
+        WHERE fm.fiscal_period IS NOT NULL
+          AND fm.metric_id IN UNNEST(@metrics)
+        ORDER BY fm.fiscal_period DESC, fm.ticker, fm.metric_id
+        LIMIT 2000
+        """
+        metrics = list(self._METRIC_LABELS.keys())
+        rows = self._run_query(sql, {"metrics": metrics})
+        results: list[SearchResult] = []
+        for row in rows:
+            ticker = row.get("ticker") or ""
+            period = row.get("fiscal_period") or ""
+            metric_id = row.get("metric_id") or ""
+            value = row.get("value")
+            unit = row.get("unit") or ""
+            company = row.get("company_name") or ticker
+            label = self._METRIC_LABELS.get(metric_id, metric_id)
+            if value is None:
+                continue
+            # e.g. "台積電 2330 2025Q1 毛利率 58.79 %"
+            text = f"{company} {ticker} {period} {label} {value:.4g} {unit}".strip()
+            source_id = f"fm_{ticker}_{period}_{metric_id}"
+            results.append(
+                SearchResult(
+                    id=source_id,
+                    content=text,
+                    score=0.0,
+                    company=ticker,
+                    period=period,
+                    metadata={
+                        "source_id": source_id,
+                        "doc_type": "financial_metric",
+                        "fiscal_period": period,
+                        "origin": "financial_metric",
+                    },
+                )
+            )
+        return results
+
     def _run_query(self, sql: str, params: dict[str, Any]) -> list[dict]:
         client = self._get_client()
         job_config = self._build_job_config(params)
@@ -232,7 +300,8 @@ class BigQueryStore(VectorStore):
         qp = []
         for name, value in params.items():
             if isinstance(value, list):
-                qp.append(bigquery.ArrayQueryParameter(name, "FLOAT64", value))
+                elem_type = "STRING" if value and isinstance(value[0], str) else "FLOAT64"
+                qp.append(bigquery.ArrayQueryParameter(name, elem_type, value))
             elif isinstance(value, int):
                 qp.append(bigquery.ScalarQueryParameter(name, "INT64", value))
             else:
