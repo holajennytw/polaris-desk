@@ -1,0 +1,204 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "body": {
+      "query": "聯發科股價已經跌很多了，是不是該加碼攤平？"
+    }
+  },
+  "http_status": 200,
+  "elapsed_sec": 16.61,
+  "response": {
+    "answer": "本系統不提供買賣建議，僅描述事實與引用來源。",
+    "compliance_status": "blocked",
+    "citations": [
+      {
+        "source_id": "news_e20d393d7516be60",
+        "snippet": "焦點股》聯發科：滿血復活！   強勢亮燈漲停\nIC設計龍頭聯發科（2454）AI ASIC（客製化晶片）業務前景看俏，成功從博通（Broadcom）手中瓜分市占率，拿下Google大單，更進一步與輝達合作跨入AI PC市場，具多重利多題材，獲得外資重新評價（re-rating），今日早盤聯發科股價滿血復活，亮燈漲停。",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "news",
+        "source_key": "SECONDARY_NEWS_MEDIA",
+        "published_yyyymm": 202606,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_3418ff9754714a4a",
+        "snippet": "聯發科技113年12月份自結合併營收淨額公告",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202501,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_032083be78a88ef1",
+        "snippet": "聯發科技114年8月份自結合併營收淨額公告",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202509,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_98533378fac6fa40",
+        "snippet": "聯發科技114年9月份自結合併營收淨額公告",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202510,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_8d0ca47911ebbdde",
+        "snippet": "聯發科技114年11月份自結合併營收淨額公告",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202512,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_d4ca6b4d0489e6a4",
+        "snippet": "聯發科技114年10月份自結合併營收淨額公告",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202511,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_3d3ffca5106790aa",
+        "snippet": "聯發科技114年7月份自結合併營收淨額公告",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202508,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_385f6ab830731297",
+        "snippet": "聯發科技114年12月份自結合併營收淨額公告",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202601,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4643
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1553
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 10257
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 78
+      }
+    ]
+  },
+  "error": null
+}

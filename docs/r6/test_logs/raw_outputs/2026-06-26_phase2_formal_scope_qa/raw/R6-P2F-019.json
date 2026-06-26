@@ -1,0 +1,204 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "body": {
+      "query": "根據目前法說會內容，台積電股票現在適合買進嗎？"
+    }
+  },
+  "http_status": 200,
+  "elapsed_sec": 22.01,
+  "response": {
+    "answer": "根據提供的法說會引用片段，關於台積電（2330）的經營現況與財務展望摘要如下。請注意，本助手不提供任何買賣建議、進場時機或個股評價，僅就資料內容進行事實陳述。\n\n### 1. 財務展望與市場需求\n*   **營收指引：** 根據法說會內容，台積電第二季的營收展望強勁，預計季增長約 13% [427b92ab]。\n*   **預測調整：** 儘管客戶在中國市場的表現對台積電有正面影響，但公司目前尚未準備好調高全年預測，認為在下一季回答此問題可能更為合適 [bf334b23]。\n*   **先進封裝需求：** 目前 CoWoS 產能仍呈現供不應求的狀況，公司正努力擴產，預期明年（2026年）供需狀況將趨於平衡 [1fd9aa43]。\n\n### 2. 全球佈局與產能規劃\n*   **美國投資計畫：** 台積電計畫在亞利桑那州投資 1000 億美元以擴大領先製程產能 [d485a4f8]。\n*   **先進製程配置：** 預計未來約有 30% 的 2 奈米及更先進製程產能將位於亞利桑那州，以建立獨立的領先半導體製造基地 [d485a4f8]。\n*   **合作立場：** 公司強調並未與其他公司進行任何關於合資、技術授權或技術轉移分享的討論 [d485a4f8]。\n\n### 3. 股東回饋政策\n*   **股利與回購：** 台積電目前的政策重點在於維持穩定且可持續增長的「現金股利」 [508c761b, f1c2c7f0]。\n*   **市場觀點：** 有分析師指出，部分股東認為發放股利對折現倍數（discounted multiple）的影響不如美國科技同業採用的「股份回購」框架，並詢問公司是否考慮改變政策 [508c761b, f1c2c7f0]。\n\n### 4. 風險與不確定因素\n*   **地緣政治：** 地緣政治被視為目前主要的重大不確定因素之一，包括美國對中國實施的 H20 晶片禁令等政策影響 [d758bb81]。\n*   **關稅政策：** 對於關稅等政府決策，公司表示尊重政府職責，作為私營企業不會參與其中 [427b92ab]。\n\n關於「現在是否適合買進」，提供的資料片段中並未包含任何關於股價估值是否合理、買進時機點或投資評等之建議，資料不足以回答此問題。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "bf334b23-8242-44ed-9219-29604cb5e4d6",
+        "snippet": "is a good news, right? I mean that China is a big market and my customer can still continue to supply the chip to the big market,\nand it's a very positive news for them and in return is a very positive news to TSMC.\nWhether we are ready to increase our forecast, not yet. Another quarter, probably will be more appropriate to answer your question.\nCharlie Chan - Morgan Stanley - Analyst\nThanks for your comment. It’s very helpful. Thanks.\nJeff Su - Taiwan Semiconductor Manufacturing Co Ltd - Direct",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202507,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "427b92ab-55e6-4626-b420-abe08d4db19f",
+        "snippet": "tariffs?\nC.C. Wei - Taiwan Semiconductor Manufacturing Co Ltd - Chairman and Chief Executive Officer\nCharlie, all policy especially this tariff decision are government's responsibility to decide. And as a private company, we are fully respectful of this,\nbut we are not get involved.\nCharlie Chan - Morgan Stanley Asia Ltd. - Analyst\nOkay. Got you. I think you were too moderate, but let's move on to my second question. So based on your second quarter guidance, which is very\nstrong, up 13% quarter-",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "d758bb81-9f17-4c38-9a9b-d4773e7d6a14",
+        "snippet": "nductor Manufacturing Co Ltd Earnings Call\nGokul Hariharan - JPMorgan - Analyst\nOkay. Understood.\nJeff Su - Taiwan Semiconductor Manufacturing Co Ltd - Director of Investor Relations\nAll right. Thank you. Operator, can we move on to the next participant, please?\nOperator\nBruce Lu, Goldman Sachs.\nBruce Lu - Goldman Sachs LLC - Analyst\nI think the geopolitics is one of the major uncertainty nowadays. Last two days, we have like H20 being banned in China. So how does that impact\nTSMC’s forecast and",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "508c761b-fce0-4788-b657-59d373801f9d",
+        "snippet": "MC traditionally has always\nfavored growing the dividends as the main policy. But many shareholders would argue that the dividend payouts are not having that much of an\nimpact on the discounted multiple that TSMC trades at versus some of your US big tech peers.\nSo my question is why does TSMC management not adopt a buyback framework, particularly with the strength of the cash position on your balance\nsheet at the moment?\n16\nREFINITIV STREETEVENTS | www.refinitiv.com | Contact Us\n©2025 Refinitiv.",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "6d573cc7-097b-4aff-8f58-912bcc6add73",
+        "snippet": "00AM, 2330.TW - Q3 2025 Taiwan Semiconductor Manufacturing Co Ltd Earnings\nCall (Chinese, English)\nAs the world’s most reliable and effective capacity provider, we will continue to work closely with our customers to invest in leading edge, specialty\nand advanced packaging technologies to support their growth. We will also remain disciplined and thorough in our capacity planning approach\nto ensure we deliver profitable growth for our shareholders.\nNow let me talk about TSMC's global manufacturing",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202510,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "1fd9aa43-2af9-4490-87e0-8b907aff9350",
+        "snippet": "l see demand exceeding supply for CoWoS in 2026?\nC.C. Wei - Taiwan Semiconductor Manufacturing Co Ltd - Chairman and Chief Executive Officer\nWell, we will work very hard to make sure that we don't have this demand much, much higher than the capacity. We're working very hard, and I\nbelieve that it will be more balanced next year.\nGokul Hariharan - JPMorgan - Analyst\nMy second question is on the US. investment and all this like persistent rumors about involvement in your competitors, operations, e",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "f1c2c7f0-2c2c-4987-99a4-578a077d0d4e",
+        "snippet": "iconductor Manufacturing Co Ltd - Director of Investor Relations\nSo Brett's second question is circulated on shareholder return. He noted TSMC's policy has always been stable and steadily increasing cash dividend\nand focused on cash dividend payout. His question is why do we -- would we consider, why do we not consider adopting more of a buyback policy,\nshare buyback policy?\nWendell Huang - Taiwan Semiconductor Manufacturing Co Ltd - Senior Vice President and Chief Financial Officer\nWe've done s",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "d485a4f8-cc26-4f68-a4d3-a5f25951e168",
+        "snippet": "eading-edge customers in smartphone, AI, and HPC applications.\nWith this additional USD100 billion investment plan to expand our leading-edge capacity in Arizona, I would also like to mention that TSMC is not\nengaged in any discussions with other companies regarding any joint venture, technology licensing, or technology transfer and sharing.\nAfter completion, around 30% of our 2-nanometer and more advanced capacity will be located in Arizona, creating an independent leading\nsemiconductor manufac",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5881
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1528
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 10235
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4229
+      }
+    ]
+  },
+  "error": null
+}

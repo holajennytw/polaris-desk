@@ -1,0 +1,300 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "body": {
+      "query": "請比較 2382 廣達與 2317 鴻海在 2025Q1 對 AI server 或雲端業務的說法。"
+    }
+  },
+  "http_status": 200,
+  "elapsed_sec": 29.33,
+  "response": {
+    "answer": "根據提供的引用片段，鴻海（2317）與廣達（2382）在 2025 年第一季針對 AI 伺服器與雲端業務的相關說明與財務表現整理如下：\n\n### 1. 鴻海（2317）的說法與表現\n鴻海在 2025Q1 法說會中對 AI 伺服器業務有較詳盡的質性與量化說明：\n*   **2025Q1 表現：** 受惠於算力需求成長與新平台推動，AI 伺服器與通用型伺服器營收年增率（YoY）均超過 50% [2317-2025Q1-p014-c001, 41bf5a15-e89c-4174-95dd-482081e63cb1]。雲端網路產品佔比顯著提升，較去年同期增加 6%，達到 34% [7554a530-b24f-4364-b2d9-06048097d0c8]。\n*   **產品進度：** GB 系列產品於第一季底進入大量生產階段，大部分產品預計在第二季交貨 [41bf5a15-e89c-4174-95dd-482081e63cb1]。\n*   **客戶與技術：** 北美 CSP（雲端服務供應商）客戶持續擴大 AI 伺服器部署並增加通用型伺服器採購 [41bf5a15-e89c-4174-95dd-482081e63cb1]。公司已與數家 CSP 客戶共同開發 ASIC 架構 AI 伺服器並陸續出貨 [41bf5a15-e89c-4174-95dd-482081e63cb1]。\n*   **未來展望：** 預期 2025Q2 AI 伺服器出貨量將加速，預計會有將近倍數的成長 [41bf5a15-e89c-4174-95dd-482081e63cb1]。全年來看，雲端網路產品仍是主要成長動能，AI 伺服器產品能見度非常好 [f2f2ef33-7d56-4906-9c7b-8d0775bfb62f]。\n\n### 2. 廣達（2382）的表現\n提供的引用片段中，廣達部分主要為財務報表數據，缺乏管理階層對 AI 伺服器業務的具體質性評論或展望說明：\n*   **2025Q1 財務數據：** 營業收入淨額為 4,856.72 億元，較去年同期（1Q24）成長 87.6%，較上一季（4Q24）成長 16.4% [2382-2025Q1-p003-c001]。\n*   **獲利表現：** 2025Q1 營業毛利為 384.83 億元，年增 75.3%；營業淨利為 246.00 億元，年增 110.3% [2382-2025Q1-p003-c001]。\n*   **資料不足說明：** 引用片段未包含廣達針對 AI 伺服器或雲端業務的具體展望、產品佔比或客戶動態之文字說明。\n\n### 3. 綜合比較\n| 比較項目 | 鴻海 (2317) | 廣達 (2382) |\n| :--- | :--- | :--- |\n| **2025Q1 營收成長** | AI 與通用伺服器 YoY > 50% [2317-2025Q1-p014-c001] | 整體營收 YoY +87.6% [2382-2025Q1-p003-c001] |\n| **雲端/AI 業務佔比** | 雲端網路產品佔 34% [7554a530-b24f-4364-b2d9-06048097d0c8] | 資料不足 |\n| **2025Q2 展望** | AI 伺服器出貨預計將近倍數成長 [41bf5a15-e89c-4174-95dd-482081e63cb1] | 資料不足 |\n| **產品進度** | GB 系列 Q1 底量產，Q2 大量交貨 [41bf5a15-e89c-4174-95dd-482081e63cb1] | 資料不足 |\n\n**結論：** 鴻海明確指出 AI 伺服器為其 2025Q1 成長主因，並預期 Q2 出貨量將有倍數成長；廣達雖在 2025Q1 展現強勁的營收年增率（87.6%），但現有資料未提供其對 AI 伺服器業務的具體說法。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "f2f2ef33-7d56-4906-9c7b-8d0775bfb62f",
+        "snippet": "以及近期匯率的因素，我們預期季對季會有略為衰退的情況，相較於去年同期則大\n致持平。在雲端網路產品，隨著 AI 伺服器機櫃量產情況越來越成熟，以及通用伺服器的強勁\n需求持續，預計這個產品可以達到強勁成長。電腦終端產品在第二季、第一季、以及去年同期，\n都有新產品上市，預期這一季的表現將大致持平。在元件及其他，主要業務相關的零組件出貨\n增加，所以這個產品類別在季對季、年對年也都會顯著成長。\n3\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n在全年展望的部分，我們看到的變數，比上次法說會時又更多了。除了剛提到的關稅、地緣政\n治、以及全球貨幣政策的變動，可能影響全球景氣表現之外，即使目前的銷量預估並沒有太大\n的變化，但是因為匯率的關係，可能會影響到轉換成台幣後的營收金額的表現。因此相較於三\n月份來看，我們對今年展望會比較審慎一些，所以我們略為調整今年的展望到顯著成長。\n至於四個主要產品的展望，方向大致維持不變，雲端網路產品仍是主要的成長動能，尤其 AI\n伺服器的產品能見度非常好。\n下一個部分，我將說明，近期的重要事業發展。\n最近",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "e5504627-8f4e-4035-a2b0-64209bddca2e",
+        "snippet": "現金周轉天數51天，與去年持平。負債比例則為百分\n之 60，較去年同期增加，主要原因為營收成長，為了因應營運資金的週轉需求，故增加借款\n所致。\n2\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n最後，簡報第 7頁，現金流量表。2025年截至3月底，營業活動現金流出為511億元。較去\n年同期流入182億元相比，主要為存貨增加所致。存貨變動主因為客戶對新品拉貨動能提升，\n故配合客戶備料所致，但我們仍會秉持存貨穩健管理的原則進行管控。自由現金流為淨流出\n949億元，與去年同期相比，現金流出增加 800億元，主要係因營業活動現金流出增加，及資\n本支出增加所致。\n以上為2025年第一季財務報表的簡要報告，接下來我們把時間交給劉董事長。\n劉揚偉 Young Liu 鴻海精密工業股份有限公司—董事長\n謝謝David。大家好，總結第一季的表現，營收創下歷年同期新高，季節性表現優於過去五年\n平均水準，相較於去年同期，則達到強勁成長，表現與上次法說會的預期大致相當。\n從產品組合的角度來看，在 AI 伺服器的強勁成長帶動下，雲端網路產品的佔",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2317-2025Q1-p014-c001",
+        "snippet": "AI伺服器業務\n2025年 第一季 AI 伺服器與通用伺服器 營收 YoY 成長 >: 50%",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "5d4dc251-cb99-4a89-b139-c81090f15b12",
+        "snippet": "會影響到我們帳上台幣營收\n的表現。至於在獲利方面，主要可能影響到業內的存貨成本，以及業外損益的部分。舉例來說，\n台幣兌美元，年平均匯率升值一元時，會影響到鴻海的營收約百分之三，毛利率也會減少約百\n分之0.1。以目前來看，我們會持續透過存貨管理的機制，讓美元貶值對於毛利率的影響降到\n最低。\n業外的部分，確實會受到匯率波動的影響，但是我們已進行必要的避險，將風險降至可控的範\n圍。此外，我們公司有一套因應匯率波動的政策指引，例如跟客戶的合約中有訂定匯率的調整\n條款，以及增加報價的頻率，並以合適的金融避險工具，對沖營業投資以及融資活動匯率風險\n等多種舉措，來降低匯率波動的相關風險。\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n謝謝財務長。接下來是最後一個問題，線上若想要提問的朋友，現在可以點選舉手符號等候。\n我們在下一題問答結束之後，將會開放給線上的法人與媒體自由提問。\n第三題：AI 伺服器：請公司說明AI 伺服器在第一季整體表現和原先預期的差異？對於第二季\n的看法？以及今年整體AI 伺服器營收展望是否改變？\n劉揚偉 Young Liu 鴻海精密工業股份有限",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "41bf5a15-e89c-4174-95dd-482081e63cb1",
+        "snippet": "的看法？以及今年整體AI 伺服器營收展望是否改變？\n劉揚偉 Young Liu 鴻海精密工業股份有限公司—董事長\n我們第一季受惠於算力需求持續成長，以及新平台推動，AI 伺服器與通用型伺服器出貨表現\n皆顯著提升，營收年增都超過 50%、但沒有達到一倍。主要是因為 GB 系列第一季底進入大量\n生產的階段，所以大部分產品都是在第二季交貨。以市場來看，主要北美 CSP 客戶除了持續\n擴大AI 伺服器部署外，也同步增加通用型伺服器採購，支撐整體出貨成長。\n展望第二季，我們預期整體伺服器業務將持續成長，營收季增及年增都可望達到高雙位數增長。\n在AI 伺服器方面，GB 系列量產能力持續改善；另外，我們已經跟幾家CSP 客戶共同開發ASIC\n架構 AI 伺服器，並也陸續出貨；再加上 HGX 需求進一步擴張，所以 AI 伺服器的出貨量已經\n在加速當中，預計會有將近倍數的成長。\n8\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n在大語言模型持續更迭優化的帶動下，市場對 AI 基礎設施，以及本地部署解決方案的需求明\n顯提升。基於目前訂單能",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "7554a530-b24f-4364-b2d9-06048097d0c8",
+        "snippet": "上次法說會的預期大致相當。\n從產品組合的角度來看，在 AI 伺服器的強勁成長帶動下，雲端網路產品的佔比顯著提升，相\n較去年第一季增加了6%，達到了34%的水準。同樣期間，消費智能產品的營收相較於去年也\n有一些成長，但是佔比降低到40%，顯示我們的產品組合持續朝向更均衡的方向發展。\n如同我在上次法說會提到的，今年全年雲端網路產品的占比將會接近消費智能產品。以四大產\n品來看，電腦終端的表現比預期還要好，但是消費智能和雲端網路都稍微的落後預期。不過整\n體上都還是維持平穩的表現。從整體獲利性來看，我們在毛利、營業利益及稅後淨利，都創下\n了歷史同期新高的表現。\n接下來，我來說明今年第二季的展望。\n過去一個多月來，美國關稅政策變化快速，對於全球供應鏈產生不小的影響。最近又加上匯率\n變動的因素，所以我們對於接下來的展望，會先抱持比較審慎的看法。整體來看，預期第二季\n相較於第一季，以及去年同期都將有顯著成長。\n從四個產品來看，在消費智能產品方面，主要的產品進入新舊產品交換期，再加上第一季有新\n產品推出，以及近期匯率的因素，我們預期季對季會有略為衰退的情況，相較於去年同期則大\n致持平。在雲端網路產品，隨",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "e2f78903-32b9-4624-a4e9-a5b92d350ef4",
+        "snippet": "\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n簡報\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n各位投資以及媒體先進大家好，我是 Kristen，歡迎參加鴻海公司法人說明會。今天我們再次\n邀請到董事長劉揚偉先生、財務長黃德才先生、以及發言人James為各位說明。\n法說會的時間預計是一個小時，第一階段是簡報，第二階段是問答時間。在會議正式進行前，\n請大家先詳細閱讀簡報中的免責聲明。\n接下來就進入法說會的第一個階段簡報，這次有四個議題: 分別是2025年第一季回顧、2025\n年第二季暨全年的展望、重要事業進展、以及近期重大事件。現在先邀請財務長 David向大家\n說明2025年第一季的財務表現。\n黃德才 David Huang 鴻海精密工業股份有限公司—財務長\n謝謝 Kristen。各位在線上的投資先進，還有媒體朋友們，大家好。我是黃德才。接下來，由\n我向大家報告鴻海2025年第一季營運狀況。\n請大家看到第 5 頁 2025 年第",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "93767102-64d8-4b45-b084-ba681cb59a84",
+        "snippet": "法說會逐字稿\n鴻海精密工業股份有限公司 2025 年第一季法人說明會\n會議日期及時間 ：2025 年 5 月14 日 台北時間下午3 點\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n鴻海精密工業股份有限公司\n2025 年第一季法人說明會\n公司與會者\n劉揚偉 Young Liu 鴻海精密工業股份有限公司 董事長\n黃德才 David Huang 鴻海精密工業股份有限公司 財務長\n巫俊毅 James Wu 鴻海精密工業股份有限公司 發言人\n方文妍 Kristen Fang 鴻海精密工業股份有限公司 投資人關係資深經理\n法說會提問者\nSharon Shih Morgan Stanley-分析師\nAngela Hsiang 凱基投顧-分析師\nCarrie Liu Citi-分析師\n方昱翔 三立財經-記者\n謝佩穎 TVBS新聞網-記者\nAlbert Hong J.P. Morgan-分析師\nArthur Liao 富邦投顧-分析師\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com |",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2382-2025Q1-p001-c001",
+        "snippet": "廣達電腦 Quanta Computer Inc. (2382.TW/2382.TT) 114年第一季財務暨營運報告，發布日期為 May 14, 2025。",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2382-2025Q1-p004-c001",
+        "snippet": "合併資產負債表\n資產總計 (2025.03.31): 1043896百萬元\n資產總計 (2024.12.31): 932446百萬元\n負債總計 (2025.03.31): 843200百萬元\n負債總計 (2024.12.31): 702141百萬元\n歸屬於母公司業主權益 (2025.03.31): 192864百萬元\n歸屬於母公司業主權益 (2024.12.31): 222286百萬元\n| 新台幣百萬元 | 2025.03.31 | 2024.12.31 |\n| :----------- | :--------- | :--------- |\n| 現金及短期投資 | 214604     | 201099     |\n| 應收帳款淨額 | 451142     | 371246     |\n| 存貨         | 277148     | 261886     |\n| 資產總計     | 1043896    | 932446     |\n| 應付帳款     | 302105     | 282782     |\n| 流動負債     | 787469     | 638699     |\n| 負債總計     | 843200     | 702141     |\n| 歸屬於母公司業主權益 | 192864     | 222286     |",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_5470c32d1caaa80b",
+        "snippet": "本公司受邀參加BofA Securities所舉辦之\"2025 Asia Tech Conference \"投資論壇",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2382-2025Q1-p005-c001",
+        "snippet": "股東會及股利分派\n| 年度 | 每股盈餘 | 現金股利 | 股票股利 | 配發比率 |\n|---|---|---|---|---|\n| 2024 | 15.49 | 13.00 | 0 | 84% |\n| 2023 | 10.29 | 9.00 | 0 | 87% |\n| 2022 | 7.51 | 6.00 | 0 | 80% |\n| 2021 | 8.73 | 6.60 | 0 | 76% |\n| 2020 | 6.57 | 5.20 | 0 | 79% |",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2382-2025Q1-p003-c001",
+        "snippet": "Quanta Computer Inc. 1Q25 合併綜合損益表。以上財務數字均以台灣 IFRSs為編製基礎。基本每股盈餘之設算以加權平均在外流通股數3,854,519仟股計算之。\n| 項目 (新台幣百萬元) | 1Q25 | % | 4Q24 | % | QoQ | 1Q24 | % | YoY |\n|---|---|---|---|---|---|---|---|---|\n| 營業收入淨額 | 485672 | | 417313 | | 16.4% | 258939 | | 87.6% |\n| 營業毛利 | 38483 | 7.92 | 31077 | 7.45 | 23.8% | 21950 | 8.48 | 75.3% |\n| 營業淨利 | 24600 | 5.07 | 15159 | 3.63 | 62.3% | 11698 | 4.52 | 110.3% |\n| 營業外收入及支出 | 669 | | 2598 | | | 2833 | | |\n| 利息淨額 | -1001 | | 290 | | | 1008 | | |\n| 匯兌淨額 | 2075 | | 1766 | | | 1286 | | |\n| 其它 | -406 | | 542 | | | 539 | | |\n| 稅前淨利 | 25269 | 5.20 | 17757 | 4.26 | 42.3% | 14531 | 5.61 | 73.9% |\n| 所得稅費用 | -5572 | | -1711 | | | -2301 | | |\n| 本期淨利 (歸屬於母公司業主) | 19498 | 4.01 | 15873 | 3.80 | 22.8% | 12068 | 4.66 | 61.6% |\n| 基本每股盈餘 (新台幣元) | 5.06 | | 4.12 | | | 3.13 | | |",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_135e213be0207ef0",
+        "snippet": "公告本公司董事會通過113年度財務報告",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_3fbc7735a502af32",
+        "snippet": "本公司代子公司Quanta Manufacturing Nashville,\nLLC公告取得租賃使用權資產",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_bf1d01e706a9560c",
+        "snippet": "113年度財務報告董事會預計召開日期為114年02月27日",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5790
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4338
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 14561
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4537
+      }
+    ]
+  },
+  "error": null
+}

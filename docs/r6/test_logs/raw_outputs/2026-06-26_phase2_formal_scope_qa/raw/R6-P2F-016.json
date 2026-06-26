@@ -1,0 +1,204 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "body": {
+      "query": "2308 台達電 2025Q1 簡報中，有哪些圖表或數字可以支撐資料中心需求成長？"
+    }
+  },
+  "http_status": 200,
+  "elapsed_sec": 26.96,
+  "response": {
+    "answer": "根據提供的引用片段，台達電（2308）2025Q1 簡報中可用於支撐資料中心相關需求成長（主要反映於電源及零組件、基礎設施部門）的圖表與數字如下：\n\n### 1. 整體營收與毛利成長\n*   **營收表現**：2025Q1 合併營收為 1,189 億新台幣，較去年同期（1Q24）成長 30%，較上季（4Q24）成長 4% [2308-2025Q1-p004-c001]。\n*   **毛利表現**：2025Q1 毛利為 378 億新台幣，年增率（Y/Y）達 40%，季增率（Q/Q）為 8% [2308-2025Q1-p004-c001]。\n\n### 2. 主要部門（Segment）表現\n資料中心需求通常反映於「電源及零組件」與「基礎設施」兩大部門：\n*   **電源及零組件 (Power Electronics)**：\n    *   **營收規模**：2025Q1 營收為 597.77 億新台幣，年增 28%，季增 1% [2308-2025Q1-p006-c001]。\n    *   **獲利能力**：該部門利潤為 101.94 億新台幣，年增達 39%，季增 14% [2308-2025Q1-p006-c001]。\n    *   **營收佔比**：該部門為台達電最大營收來源，2025Q1 佔比達 50% [2308-2025Q1-p006-c001]。\n*   **基礎設施 (Infrastructure)**：\n    *   **營收規模**：2025Q1 營收為 347.04 億新台幣 [2308-2025Q1-p006-c001]。\n    *   **營收佔比**：2025Q1 佔比為 12% [2308-2025Q1-p006-c001]。\n\n### 3. 產能與實驗室擴展\n*   **海外佈局**：子公司 Delta Electronics (USA) Inc. 已決議建置 FWT 實驗室、興建 F2 廠及辦公大樓 [mops_168f2cd9584667f3]。此外，亦公告擬取得預售不動產 [mops_bdf149a5f2c1faf8]。\n\n**資料不足說明**：\n引用片段中關於「基礎設施 (Infrastructure)」部門的年增率（Y/Y）與季增率（Q/Q）數據因文字截斷而未顯示完整數值 [2308-2025Q1-p006-c001]。此外，片段中未直接提供「資料中心」單一品項的具體營收數字，僅能從相關部門（如電源及零組件）的成長推論。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "mops_e3e6c5b9aea602ce",
+        "snippet": "本公司代子公司Delta Electronics (Thailand) Public\nCompany Limited公告決議召集2025年股東常會",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2308-2025Q1-p006-c001",
+        "snippet": "Performance by Segment 主要部門表現\nSales% 營收佔比（stacked_bar_chart）: Others (1Q24): 24%、Infrastructure (1Q24): 13%、Automation (1Q24): 12%、Mobility (1Q24): 12%、Power Electronics (1Q24): 51%、Others (4Q24): 27%、Infrastructure (4Q24): 12%、Automation (4Q24): 9%、Mobility (4Q24): 9%、Power Electronics (4Q24): 52%、Others (1Q25): 29%、Infrastructure (1Q25): 12%、Automation (1Q25): 9%、Mobility (1Q25): 9%、Power Electronics (1Q25): 50%\n| NT$ million 新台幣百萬元 | Sales | Y/Y | Q/Q | Profits | Y/Y | Q/Q |\n| :----------------------- | :---- | :-- | :-- | :------ | :-- | :-- |\n| Power Electronics 電源及零組件 | 59,777 | +28% | +1% | 10,194 | +39% | +14% |\n| Mobility 交通 | 10,623 | +1% | +1% | -266 | n.m. (turned to loss) | +59% |\n| Automation 自動化 | 13,697 | +16% | +1% | 462 | +984% | +507% |\n| Infrastructure 基礎設施 | 34,704 | +",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_a0f6687e673b6ffd",
+        "snippet": "本公司代子公司Delta Electronics (Thailand) Public Company\nLimited公告董事會決議擬增資DETH",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_168f2cd9584667f3",
+        "snippet": "補充公告本公司代子公司Delta Electronics (USA) Inc.公告\n決議建置FWT實驗室、興建F2廠及辦公大樓相關事宜",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_9513b7b3fcc36fe2",
+        "snippet": "補充公告本公司代子公司Delta Electronics (USA) Inc.公告\n決議建置FWT實驗室、興建F2廠及辦公大樓相關事宜",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2308-2025Q1-p004-c001",
+        "snippet": "Sales Revenues & Gross Profits 合併營收及毛利\nSales Y/Y: 30%\nSales Q/Q: 4%\nGP Y/Y: 40%\nGP Q/Q: 8%\nSales 營收（bar）: 1Q24 Sales: 91.3NT$ billion、2Q24 Sales: 103.4NT$ billion、3Q24 Sales: 112.2NT$ billion、4Q24 Sales: 114.2NT$ billion、1Q25 Sales: 118.9NT$ billion\nGP 毛利 & GPM 毛利率（bar_line）: 1Q24 GP: 26.9NT$ billion、2Q24 GP: 35.3NT$ billion、3Q24 GP: 39.2NT$ billion、4Q24 GP: 35.2NT$ billion、1Q25 GP: 37.8NT$ billion、1Q24 GPM: 29.5%、2Q24 GPM: 34.1%、3Q24 GPM: 34.9%、4Q24 GPM: 30.8%、1Q25 GPM: 31.8%\n| | Y/Y 年對年 | Q/Q 季對季 |\n|---|---|---|\n| Sales 營收 | +30% | +4% |\n| GP 毛利 | +40% | +8% |",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_bdf149a5f2c1faf8",
+        "snippet": "本公司代子公司Delta Electronics (USA) Inc.公告擬取得預售\n不動產",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_ffba51fa0574a526",
+        "snippet": "本公司代子公司DETH公告董事會決議擬增資Delta Electronics\n(Slovakia), s.r.o.",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 6034
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 2210
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 14091
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4431
+      }
+    ]
+  },
+  "error": null
+}
