@@ -643,6 +643,62 @@ def test_vector_search_failure_logs_warning_and_falls_back_to_bm25(caplog):
 
 
 # ---------------------------------------------------------------------------
+# Recency-aware reorder (issue #49): 「最新一季」類查詢不該被舊期別強相關塊壓過
+# ---------------------------------------------------------------------------
+
+def _wants_recency_import():
+    from polaris.retrieval.retriever import _wants_recency
+    return _wants_recency
+
+
+def test_wants_recency_detects_temporal_intent():
+    _wants_recency = _wants_recency_import()
+    assert _wants_recency("台積電最新一季營收表現如何？")
+    assert _wants_recency("聯發科近期毛利率")
+    assert _wants_recency("most recent revenue")
+    # 無時間意圖 → False（不可誤觸發，否則所有查詢都被 recency 重排）
+    assert not _wants_recency("台積電 2023 毛利率結構")
+    assert not _wants_recency("營收組成與產品線")
+
+
+def _two_period_store():
+    """同主題、不同期別的兩筆向量結果：舊期別 base score 略高（重現 #49）。"""
+    def mk(id_, period, pub, score):
+        r = type("R", (), {})()
+        r.id, r.content, r.score = id_, f"聯發科 {period} 營收成長與展望", score
+        r.company, r.period = "2454", period
+        r.metadata = {"source_id": id_, "published_at": pub}
+        return r
+
+    class FakeStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):
+            return [
+                mk("v-2454-2023Q1", "2023Q1", "2023-04-28", 0.80),  # 舊、分數高
+                mk("v-2454-2024Q3", "2024Q3", "2024-10-31", 0.70),  # 新、分數低
+            ]
+
+    return FakeStore()
+
+
+def test_recency_intent_promotes_latest_period_over_higher_scored_old():
+    retriever = HybridRetriever(
+        top_k=5, store=_two_period_store(), embedding_fn=lambda _q: [1.0]
+    )
+    results = retriever.retrieve("聯發科最新一季營收表現", filters={"company": "2454"})
+    # 「最新」意圖 → 最新期別排第一，即使 base score 較低
+    assert results[0].period == "2024Q3", [r.period for r in results]
+
+
+def test_without_recency_intent_preserves_base_score_order():
+    retriever = HybridRetriever(
+        top_k=5, store=_two_period_store(), embedding_fn=lambda _q: [1.0]
+    )
+    results = retriever.retrieve("聯發科 營收 成長", filters={"company": "2454"})
+    # 無時間意圖 → 維持原 base score 排序（舊但分數高者在前），不加 recency 偏好
+    assert results[0].period == "2023Q1", [r.period for r in results]
+
+
+# ---------------------------------------------------------------------------
 # 讀取時邊緣修剪（issue #50 存量止血）：既有 chunk 開頭的半截英文字（如逐字稿
 # 'rnover days...'）不該洩進 LLM 答案 / citation snippet。重灌前的零寫入 mitigation。
 # ---------------------------------------------------------------------------
