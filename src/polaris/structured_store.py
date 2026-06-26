@@ -64,31 +64,77 @@ class StructuredStore:
         ticker: str | None = None,
         period: str | None = None,
         metric: str | None = None,
+        granularity: str | None = None,  # "quarter" | "annual" | "month" | None(全部)
         limit: int | None = None,
     ) -> list[dict]:
-        """財務指標列（可依 ticker / fiscal_period / metric_id 過濾）。"""
+        """財務指標列（可依 ticker / fiscal_period / metric_id / granularity 過濾）。
+
+        granularity 語意：
+        - "quarter" : 季度資料（month IS NULL，fiscal_period 含 Q）
+        - "annual"  : 年度資料（month IS NULL，year = period 前 4 碼）；
+                      回傳當年四個季度列，年度值由呼叫端加總
+        - "month"   : 月營收資料（month IS NOT NULL）
+        - None      : 全部（預設，維持原有行為）
+        """
         clauses: list[str] = []
         params: dict[str, Any] = {}
+
         if ticker is not None:
             clauses.append("ticker = @ticker")
             params["ticker"] = ticker
-        if period is not None:
+
+        # annual 改用 year 欄位篩選，不做 fiscal_period 精確比對
+        # （目的是抓當年全部四季度列，由呼叫端加總得年度值）
+        if granularity == "annual" and period is not None:
+            year_str = period[:4]
+            if year_str.isdigit():
+                clauses.append("year = @year")
+                params["year"] = int(year_str)
+            # 不再 append fiscal_period = @period
+        elif period is not None:
             clauses.append("fiscal_period = @period")
             params["period"] = period
+
         if metric is not None:
             clauses.append("metric_id = @metric")
             params["metric"] = metric
+
+        # 季度資料：month IS NULL 且 fiscal_period 含 Q
+        if granularity == "quarter":
+            clauses.append("month IS NULL")
+            clauses.append("fiscal_period LIKE '%Q%'")
+        # 年度資料：month IS NULL + year = 搜尋年份 → 取出當年四季度列（加總 = 年度值）
+        elif granularity == "annual":
+            clauses.append("month IS NULL")
+            clauses.append("fiscal_period LIKE '%Q%'")  # 確保只取季度列，排除月營收
+        # 月資料：month IS NOT NULL
+        elif granularity == "month":
+            clauses.append("month IS NOT NULL")
+        # None = 全部（預設現況）
+
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
         params["lim"] = _clamp_limit(limit)
         sql = f"""
-        SELECT ticker, fiscal_period, metric_id, metric_name, value, unit, source_id, published_at,
-               year, month
+        SELECT ticker, fiscal_period, metric_id, metric_name, value, unit,
+               source_id, published_at, year, month, event_key
         FROM `{self._dataset()}.v_financial_metrics_semantic`
         {where}
         ORDER BY published_at DESC, ticker, fiscal_period, metric_id
         LIMIT @lim
         """
         return self._run_query(sql, params)
+
+    def list_periods(self) -> list[str]:
+        """回傳 v_financial_metrics_semantic 中所有不重複的 fiscal_period，倒序排列。"""
+        sql = f"""
+        SELECT DISTINCT fiscal_period
+        FROM `{self._dataset()}.v_financial_metrics_semantic`
+        WHERE fiscal_period IS NOT NULL
+        ORDER BY fiscal_period DESC
+        LIMIT 20
+        """
+        rows = self._run_query(sql, {})
+        return [r["fiscal_period"] for r in rows if r.get("fiscal_period")]
 
     # ── events（events 事實表 — 事件流 / 時間軸）───────────────────────────
 

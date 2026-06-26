@@ -55,7 +55,7 @@ const FEATURES = [
   { icon: "quote" as const, t: "100% 可溯源引用", d: "每個數字、每句摘要都掛載引用 chip，點擊即開原始財報並逐字高亮。" },
   { icon: "scale" as const, t: "同業 Calc Grounding", d: "跨公司財務對比逐欄交叉驗證，並以 GICS 拆解解釋毛利率差異來源。" },
   { icon: "alert" as const, t: "Watchdog 監控", d: "即時擷取 MOPS／法說／新聞，合規初篩標記風險，異動自動觸發重新索引。" },
-  { icon: "shield" as const, t: "NFR-031 合規", d: "所有 AI 輸出皆經合規引擎檢查，標示「事實摘要，非投資建議」。" },
+  { icon: "shield" as const, t: "合規保障", d: "所有 AI 輸出皆經合規引擎檢查，標示「事實摘要，非投資建議」。" },
   { icon: "database" as const, t: "可切換資料源", d: "Mock 與真實 API 一鍵切換，前端契約穩定，後端就緒即可上線。" },
 ];
 
@@ -164,7 +164,7 @@ export default function LandingPage() {
                 毛利率 57.8%，季增 0.8pp<span className="cchip">財報 p.11</span>
               </div>
               <div className="lp-mini-row" style={{ color: "rgb(var(--success))", background: "rgb(var(--success) / .08)" }}>
-                <Icon name="check" size={14} /> NFR-031 合規檢查通過
+                <Icon name="check" size={14} /> 合規檢查通過
               </div>
             </div>
           </div>

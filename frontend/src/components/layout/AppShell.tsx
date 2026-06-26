@@ -27,7 +27,6 @@ const NAV_PRIMARY: NavItem[] = [
   { href: "/research", label: "研究助理", icon: "brain" },
   { href: "/peer", label: "同業比較", icon: "scale" },
   { href: "/news", label: "新聞", icon: "news" },
-  { href: "/library", label: "資料庫", icon: "database" },
 ];
 const NAV_SECONDARY: NavItem[] = [
   { href: "/history", label: "對話紀錄", icon: "clock" },
@@ -43,7 +42,6 @@ const MOB_NAV: NavItem[] = [
 
 const MOB_MORE: NavItem[] = [
   { href: "/news", label: "新聞", icon: "news" },
-  { href: "/library", label: "資料庫", icon: "database" },
   { href: "/history", label: "對話紀錄", icon: "clock" },
   { href: "/settings", label: "設定", icon: "settings" },
 ];
@@ -52,7 +50,6 @@ const CRUMB: Record<string, string> = {
   "/research": "研究助理",
   "/peer": "同業比較",
   "/news": "新聞",
-  "/library": "資料庫",
   "/notifications": "通知",
   "/history": "對話紀錄",
   "/help": "說明中心",

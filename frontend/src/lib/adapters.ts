@@ -109,6 +109,7 @@ export function normalizeCompany(raw: CompanyRaw): CompanyVM {
   return {
     id: raw.ticker,
     name: raw.company_name ?? raw.ticker,
+    aliases: raw.aliases ? raw.aliases.split(",").map(a => a.trim()).filter(Boolean) : [],
     provenance: "real",
   };
 }

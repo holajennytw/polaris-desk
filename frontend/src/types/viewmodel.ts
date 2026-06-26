@@ -76,6 +76,7 @@ export interface AskVM {
 export interface CompanyVM {
   id: string;
   name: string;
+  aliases: string[];
   provenance: "real" | "mock";
 }
 

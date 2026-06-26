@@ -13,7 +13,7 @@ const SECTIONS = [
   },
   {
     icon: "shield" as const,
-    title: "NFR-031 合規說明",
+    title: "合規說明",
     body: "本系統所有 AI 輸出均為事實摘要，不構成任何投資建議。每個數字與結論皆可溯源至原始文件。合規橫幅出現在輸出頁面，確保使用者知悉。",
   },
   {

@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import { parseQuery } from "@/lib/peer";
 import { useFinancials, type FinancialRow } from "@/hooks/useFinancials";
+import { usePeriods } from "@/hooks/usePeriods";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { fmtYoy } from "@/lib/formatters";
 import { scoreLabel, sortByRelevance, sortFinancialByRelevance, detectQueryTab } from "@/lib/queryRelevance";
@@ -34,7 +35,6 @@ const PRESETS = [
   "聯發科與聯詠估值比較",
 ];
 const PHASES = ["解析查詢意圖","檢索 A 公司文件","檢索 B 公司文件","交叉比對指標","生成比較摘要","合規檢查"];
-const PERIOD_OPTIONS = ["2026Q2","2026Q1","2025Q4","2025Q3","2025Q2","2025Q1","2024Q4"];
 
 // ── Trend Panel ──────────────────────────────────────────────
 
@@ -198,53 +198,27 @@ function getMetricForPeriod(rows: FinancialRow[], metricId: string, period: stri
 }
 
 
-function fmtRevenue(v: number | null): string {
-  if (v === null) return "—";
-  const yi = v / 100_000;
-  return `${yi >= 100 ? yi.toFixed(0) : yi.toFixed(1)}億`;
-}
 
-function PeerKpiGridFallback({ aName, bName, aTicker, bTicker, fiscalPeriod, selectedMonth }: {
+function PeerKpiGridFallback({ aName, bName }: {
   aName: string; bName: string; aTicker: string; bTicker: string; fiscalPeriod: string; selectedMonth: number | null;
 }) {
-  const { rows: aRows } = useFinancials(aTicker || null);
-  const { rows: bRows } = useFinancials(bTicker || null);
-
-  const aRevenue = getMetricForPeriod(aRows, "revenue", fiscalPeriod, selectedMonth);
-  const bRevenue = getMetricForPeriod(bRows, "revenue", fiscalPeriod, selectedMonth);
-  const aYoy     = getMetricForPeriod(aRows, "revenue_yoy", fiscalPeriod, selectedMonth);
-  const bYoy     = getMetricForPeriod(bRows, "revenue_yoy", fiscalPeriod, selectedMonth);
-
-  const revDiff = (aRevenue !== null && bRevenue !== null)
-    ? `${(aRevenue - bRevenue) >= 0 ? "+" : ""}${((aRevenue - bRevenue) / 100_000).toFixed(0)}億`
-    : "—";
-  const revBetter  = (aRevenue !== null && bRevenue !== null) ? (aRevenue >= bRevenue ? "a" : "b") : "";
-  const yoyDiff    = (aYoy !== null && bYoy !== null)
-    ? `${(aYoy - bYoy) >= 0 ? "+" : ""}${(aYoy - bYoy).toFixed(1)}pp`
-    : "—";
-  const yoyBetter  = (aYoy !== null && bYoy !== null) ? (aYoy >= bYoy ? "a" : "b") : "";
-
-  const kpis = [
-    { label:"月營收",     a:fmtRevenue(aRevenue), b:fmtRevenue(bRevenue), diff:revDiff,  better:revBetter },
-    { label:"月營收 YoY", a:fmtYoy(aYoy),         b:fmtYoy(bYoy),         diff:yoyDiff,  better:yoyBetter },
-  ];
   return (
-    <table className="ptable" style={{marginBottom: 4}}>
+    <table className="ptable" style={{ marginBottom: 4 }}>
       <thead>
         <tr>
           <th>指標</th>
-          <th className="num">{aName}</th>
-          <th className="num">{bName}</th>
+          <th className="num">{aName || "—"}</th>
+          <th className="num">{bName || "—"}</th>
           <th className="num">領先</th>
         </tr>
       </thead>
       <tbody>
-        {kpis.map((k, i) => (
+        {[1, 2, 3].map(i => (
           <tr key={i}>
-            <td className="pt-metric">{k.label}</td>
-            <td className={`num${k.better === "a" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}>{k.a}</td>
-            <td className={`num${k.better === "b" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}>{k.b}</td>
-            <td className="num pt-note">{k.diff && k.diff !== "—" ? `${k.better === "a" ? aName : bName} +${k.diff}` : "—"}</td>
+            <td className="pt-metric"><span className="skeleton" style={{ display:"inline-block", width:60, height:14, borderRadius:4, background:"rgb(var(--muted)/.15)" }}/></td>
+            <td className="num"><span className="skeleton" style={{ display:"inline-block", width:48, height:14, borderRadius:4, background:"rgb(var(--muted)/.15)" }}/></td>
+            <td className="num"><span className="skeleton" style={{ display:"inline-block", width:48, height:14, borderRadius:4, background:"rgb(var(--muted)/.15)" }}/></td>
+            <td className="num"/>
           </tr>
         ))}
       </tbody>
@@ -446,10 +420,12 @@ export default function PeerPage() {
   const { suggestions: dynamicSuggestions, fading: chipsFading } = useSuggestions({ mode: "peer" });
   const chips = dynamicSuggestions ?? PRESETS;
 
+  const dbPeriods = usePeriods();
+
   const [aId, setAId] = useState("");
   const [bId, setBId] = useState("");
   const [tab, setTab] = useState("financial");
-  const [fiscalPeriod, setFiscalPeriod] = useState("2026Q2");
+  const [fiscalPeriod, setFiscalPeriod] = useState("");
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
   const { rows: aFinRows } = useFinancials(aId || null);
@@ -465,7 +441,7 @@ export default function PeerPage() {
       // 只有一家或都沒有：顯示有資料的期別（聯集）
       result = [...new Set([...aPeriods, ...bPeriods])].sort().reverse();
     }
-    return result.length > 0 ? result : PERIOD_OPTIONS;
+    return result.length > 0 ? result : dbPeriods;
   })();
 
   // 年/季/月拆分 derived values
@@ -508,7 +484,7 @@ export default function PeerPage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const slotRef = useRef<HTMLDivElement>(null);
   // Stable ref for current query/ticker/period to avoid stale closures
-  const runParamsRef = useRef({ aId: "", bId: "", fiscalPeriod: "2026Q2", query: "" });
+  const runParamsRef = useRef({ aId: "", bId: "", fiscalPeriod: "", query: "" });
 
   useEffect(() => () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -530,6 +506,14 @@ export default function PeerPage() {
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, [openSlot]);
+
+  // 初始化：dbPeriods 從 BQ 載入後，若 fiscalPeriod 還是空（未選過）就設成最新期別
+  useEffect(() => {
+    if (dbPeriods.length > 0 && !fiscalPeriod) {
+      setFiscalPeriod(dbPeriods[0]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbPeriods]);
 
   // Auto-select latest period when BQ financials load and current selection is stale
   useEffect(() => {
@@ -629,12 +613,14 @@ export default function PeerPage() {
 
   const runQuery = async (q?: string) => {
     const text = q ?? query;
-    // parseQuery 只取 period / tab（company alias 覆蓋率太低，改用下方動態辨識）
+    // parseQuery 只取 period / tab / year
     const res = parseQuery(text);
 
-    // 動態公司辨識：比對 BQ companies 的 ticker 與 company_name（涵蓋全部 20 家）
+    // 動態公司辨識：比對 BQ company_dim 的 ticker、company_name、aliases（涵蓋全部 20 家）
     const dynMatches = companies.filter(c =>
-      text.includes(c.id) || (c.name && text.includes(c.name))
+      text.includes(c.id) ||
+      (c.name && text.includes(c.name)) ||
+      c.aliases.some(alias => alias && text.includes(alias))
     );
 
     // 優先序：動態辨識 > parseQuery alias > 選擇框
@@ -651,9 +637,17 @@ export default function PeerPage() {
     const autoTab = detectQueryTab(text);
     if (res.tab) switchTab(res.tab);
     else if (autoTab) switchTab(autoTab);
+
     const normPeriod = res.period.replace(/\s+/g, "");
-    const period = availablePeriods.includes(normPeriod) ? normPeriod : fiscalPeriod;
+    // 若只解析到年份（無季別），從 availablePeriods 取該年最新一季
+    const yearFallback = res.year
+      ? (availablePeriods.find(p => p.startsWith(String(res.year))) ?? fiscalPeriod)
+      : null;
+    const period = availablePeriods.includes(normPeriod)
+      ? normPeriod
+      : (yearFallback ?? fiscalPeriod);
     if (availablePeriods.includes(normPeriod)) setFiscalPeriod(normPeriod);
+    else if (yearFallback) setFiscalPeriod(yearFallback);
     setParseMsg({
       ignored: dynMatches.slice(2).map(o => o.name),
       unknown: res.ordered.filter(o => o.status === "nodata").map(o => o.name),

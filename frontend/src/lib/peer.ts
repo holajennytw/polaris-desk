@@ -5,13 +5,7 @@
 // ============================================================
 import type { ComparisonVM } from "@/types/viewmodel";
 
-// 公司名稱對映（NLP 別名）— 與後端 _COMPANY_NAMES 保持一致
-const COMPANY_ALIASES: Record<string, string> = {
-  "台積電": "2330", "tsmc": "2330", "TSMC": "2330", "台積": "2330",
-  "鴻海": "2317", "foxconn": "2317", "Foxconn": "2317",
-  "聯發科": "2454", "mediatek": "2454", "MediaTek": "2454",
-  "聯詠": "3034", "novatek": "3034", "Novatek": "3034",
-};
+// 公司辨識由 peer/page.tsx dynMatches 動態從 BQ company_dim.aliases 比對，不在此維護
 
 // 季別 pattern
 const PERIOD_PATTERN = /(\d{4})\s*[Q第]?\s*([1-4])/i;
@@ -43,27 +37,22 @@ const TAB_KEYWORDS: Record<string, string> = {
 export interface ParsedQuery {
   ordered: Array<{ id: string; name: string; status: "ok" | "nodata" }>;
   period: string;
+  year: number | null;
   tab: string;
 }
 
 export function parseQuery(q: string): ParsedQuery {
-  const found: Array<{ id: string; name: string; status: "ok" | "nodata" }> = [];
-  const lower = q.toLowerCase();
-
-  // 找公司
-  for (const [alias, id] of Object.entries(COMPANY_ALIASES)) {
-    if (q.includes(alias) || lower.includes(alias.toLowerCase())) {
-      if (!found.find((f) => f.id === id)) {
-        found.push({ id, name: alias, status: "ok" });
-      }
-    }
-  }
-
-  // 季別
-  // 只有 query 明確包含季度才填入；否則回空字串，由呼叫端沿用目前 fiscalPeriod。
+  // 季別：明確包含季度才填入；否則回空字串，由呼叫端沿用目前 fiscalPeriod
   let period = "";
   const pm = q.match(PERIOD_PATTERN);
-  if (pm) period = `${pm[1]} Q${pm[2]}`;
+  if (pm) period = `${pm[1]}Q${pm[2]}`;
+
+  // 年份 only（如「2025年毛利率」）：提取年份供呼叫端推算最近季別
+  let year: number | null = null;
+  if (!period) {
+    const ym = q.match(/(\d{4})年/);
+    if (ym) year = parseInt(ym[1]);
+  }
 
   // 分頁
   let tab = "financial";
@@ -71,7 +60,7 @@ export function parseQuery(q: string): ParsedQuery {
     if (q.includes(kw)) { tab = t; break; }
   }
 
-  return { ordered: found, period, tab };
+  return { ordered: [], period, year, tab };
 }
 
 // buildComparison: mock 情境下直接回傳已正規化的切片

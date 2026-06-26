@@ -197,6 +197,11 @@ export const api = {
     }
   },
 
+  async periods(): Promise<string[]> {
+    const raw = await get("/periods") as string[];
+    return Array.isArray(raw) ? raw : [];
+  },
+
   async healthz() {
     const raw = await get("/healthz") as any;
     return raw;

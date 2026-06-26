@@ -584,6 +584,12 @@ def companies() -> list[CompanyResponse]:
     return [CompanyResponse(**row) for row in _structured_store.list_companies()]
 
 
+@app.get("/periods", response_model=list[str], tags=["structured"])
+def periods() -> list[str]:
+    """BQ 中實際存在的 fiscal_period 清單，倒序排列（如 2026Q1, 2025Q4 …）。前端期別選單動態來源。"""
+    return _structured_store.list_periods()
+
+
 @app.get("/financials", response_model=list[FinancialMetricResponse], tags=["structured"])
 def financials(
     ticker: str | None = Query(default=None, description="股票代號，如 2330"),
