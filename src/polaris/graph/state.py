@@ -50,6 +50,10 @@ class Citation(BaseModel):
         default=None,
         description="發佈年月（INT64，如 202606；無則 None）",
     )
+    ticker: str | None = Field(
+        default=None,
+        description="股票代號（如 2330；來源無對應 ticker 時 None）",
+    )
     doc_type: str | None = Field(
         default=None,
         description="文件類型（transcript / major_news / news；無則 None）",
@@ -57,6 +61,14 @@ class Citation(BaseModel):
     fiscal_period: str | None = Field(
         default=None,
         description="財務期別（如 2026Q1；無則 None）",
+    )
+    page_num: int | None = Field(
+        default=None,
+        description="PDF/簡報頁碼（vision-OCR / colpali 通道有值；文字 chunk 無則 None）",
+    )
+    source_file: str | None = Field(
+        default=None,
+        description="來源檔名（如 2330_2025Q1.pdf；無則 None）",
     )
     published_at: date | None = Field(
         default=None,

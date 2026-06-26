@@ -34,13 +34,31 @@ def resolve_port(env: Mapping[str, str] | None = None) -> int:
 
 
 def health_payload() -> dict[str, str]:
-    """健康檢查內容：證明 import OK + 設定載入。**不含任何祕密。**"""
-    return {
+    """健康檢查內容：證明 import OK + 設定載入。**不含任何祕密。**
+
+    Cloud Run 環境變數（自動注入，無須設定）：
+    - ``K_REVISION`` → Cloud Run revision 名稱（如 polaris-api-00016）
+    - ``K_SERVICE``  → Cloud Run 服務名稱
+    Dockerfile / CI 可注入：
+    - ``GIT_COMMIT``   → 對應 git SHA（用於 QA 追蹤 deployment traceability）
+    - ``BUILD_TIME``   → ISO 8601 build timestamp（如 2026-06-26T10:00:00Z）
+    """
+    payload: dict[str, str] = {
         "status": "ok",
         "service": "polaris-desk",
         "app_env": settings.app_env,
         "vector_backend": settings.vector_backend,
     }
+    for env_key, out_key in (
+        ("K_REVISION", "revision"),
+        ("K_SERVICE", "cloud_run_service"),
+        ("GIT_COMMIT", "git_commit"),
+        ("BUILD_TIME", "build_time"),
+    ):
+        val = os.environ.get(env_key)
+        if val:
+            payload[out_key] = val
+    return payload
 
 
 class _HealthHandler(BaseHTTPRequestHandler):

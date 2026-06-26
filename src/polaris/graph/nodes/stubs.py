@@ -130,10 +130,14 @@ def _real_contexts(
                         "company": r.company,  # ticker
                         "company_name": company_name(r.company),  # canonical 中文名 / None
                         "origin": _citation_origin(meta.get("origin")),
-                        # P1：v_chunk_semantic 三欄透傳到 /ask citation（缺值 → None，不編造）。
+                        # v_chunk_semantic 欄位透傳到 /ask citation（缺值 → None，不編造）。
                         "event_key": meta.get("event_key"),
                         "source_key": meta.get("source_key"),
                         "published_yyyymm": meta.get("published_yyyymm"),
+                        "doc_type": meta.get("doc_type"),
+                        "fiscal_period": meta.get("fiscal_period") or r.period,
+                        "page_num": meta.get("page_num"),
+                        "source_file": meta.get("source_file"),
                     }
                 )
     return contexts
