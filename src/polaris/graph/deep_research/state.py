@@ -16,8 +16,12 @@ from polaris.graph.state import Citation
 
 DeepResearchStatus = Literal["running", "answered", "exhausted"]
 
-#: 逐點來源標記：「（來源：<source_id>）」。
-_SOURCE_TAG = re.compile(r"（來源：([^）]+)）")
+#: 逐點來源標記：「（來源：<source_id>）」。半/全形括號與冒號皆收
+#: （R2：Flash 常輸出半形 `(來源:sid)`，若只認全形冒號 → 閘門永遠 fail → 靜默退回 base）。
+_SOURCE_TAG = re.compile(r"[（(]來源[：:]([^）)]+)[）)]")
+
+#: 數字 token：整數 / 小數（含千分位逗號）。
+_NUMBER_RE = re.compile(r"\d+(?:[,，]\d{3})*(?:[.．]\d+)?")
 
 
 class ReActStep(BaseModel):
@@ -62,6 +66,58 @@ def is_fully_traceable(answer: str, evidence: Sequence[Citation]) -> bool:
     return True
 
 
+def is_traceable_prose(text: str, evidence: Sequence[Citation]) -> bool:
+    """prose 中是否存在 ≥1 個「（來源：sid）」且 sid ∈ evidence。
+
+    與 :func:`is_fully_traceable`（bullet 格式）不同：此函式適用於自由散文，
+    只要至少一個有效引用存在即 pass（P0 Gemini 潤飾後的格式）。
+    """
+    if not text or not evidence:
+        return False
+    valid = {c.source_id for c in evidence}
+    found_any_valid = any(m.group(1) in valid for m in _SOURCE_TAG.finditer(text))
+    return found_any_valid
+
+
+def _extract_numbers(text: str) -> set[str]:
+    """抽出文字中的數字 token（先移除 source-tag 子串，避免 sid 內數字誤算）。"""
+    return set(_NUMBER_RE.findall(_SOURCE_TAG.sub("", text)))
+
+
+def numbers_grounded_in_text(prose: str, source: str) -> bool:
+    """``prose`` 中所有數字是否都出現在 ``source`` 文字中（text-vs-text 接地閘門）。
+
+    給「來源就是一段確定性文字」的觸點用（如 peer-compare 的 base 摘要）。
+    prose 無數字 → True（無可驗數字）。
+    """
+    nums_in_prose = _extract_numbers(prose)
+    if not nums_in_prose:
+        return True
+    return nums_in_prose.issubset(_extract_numbers(source))
+
+
+def numbers_grounded(text: str, evidence: Sequence[Citation]) -> bool:
+    """prose 中所有數字 token 是否都能在 evidence snippets 中找到。
+
+    防幻覺閘門（R2/R3 風險）：
+    - 先移除 source-tag 子串再抽數字，避免 sid 內數字（如 stub-2330）誤算。
+    - evidence snippet 同樣移 source-tag 後取數字池。
+    - prose 無數字 → True（無可驗數字）。
+    """
+    nums_in_prose = _extract_numbers(text)
+    if not nums_in_prose:
+        return True
+
+    if not evidence:
+        return False
+
+    evidence_pool: set[str] = set()
+    for c in evidence:
+        evidence_pool.update(_extract_numbers(c.snippet))
+
+    return nums_in_prose.issubset(evidence_pool)
+
+
 def should_continue(state: Mapping, *, max_loops: int = 6) -> bool:
     """是否續跑 ReAct 迴圈：已 answered 或達 ``max_loops`` 硬上限 → 停（FR-004 ≤6）。"""
     if state.get("status") == "answered":
@@ -86,6 +142,9 @@ __all__ = [
     "ReActStep",
     "dedup_evidence",
     "is_fully_traceable",
+    "is_traceable_prose",
+    "numbers_grounded",
+    "numbers_grounded_in_text",
     "should_continue",
     "DeepResearchResult",
     "DeepResearchStatus",

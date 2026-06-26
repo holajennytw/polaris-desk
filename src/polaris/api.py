@@ -35,6 +35,8 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
+import os
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -62,6 +64,8 @@ from polaris.notifications import (
 from polaris.server import health_payload, resolve_port
 from polaris.structured_store import StructuredStore
 from polaris.user_store import UserStore
+
+_log = logging.getLogger(__name__)
 
 _WATCHDOG_MOCK_EVENTS = (
     Path(__file__).resolve().parent / "graph" / "watchdog" / "data" / "watchdog_events.json"
@@ -314,15 +318,78 @@ _SUGGESTION_PRESETS: dict[str, list[str]] = {
 }
 
 
+# P3 接地觸點：/suggestions LLM 動態問句的結果分類（觀測 prod 採用率，對齊 R2/R6）。
+SUGG_OUTCOME_LLM = "llm"  # 成功：採用 LLM 生成問句
+SUGG_OUTCOME_FALLBACK = "fallback"  # flag 關
+SUGG_OUTCOME_NO_KEY = "no_key"  # 無金鑰
+SUGG_OUTCOME_LLM_ERROR = "llm_error"  # 生成例外
+SUGG_OUTCOME_EMPTY = "empty"  # 解析後無有效問句
+SUGG_OUTCOME_COMPLIANCE_REJECTED = "compliance_rejected"  # 含買賣字眼
+
+
+def _llm_suggestions(mode: str, presets: list[str], *, client) -> tuple[list[str], str]:
+    """嘗試用 Gemini Flash 生成動態提示問句（P3 接地觸點）。
+
+    Returns ``(suggestions, outcome)``。任一失敗 → 回 ``(presets, outcome)``，token=0。
+    Flag ``SUGGESTIONS_LLM`` 必須為 ``"1"`` 才啟動；預設關。
+
+    刻意**不掛 grounding 閘門**：問句不含事實/數字，無來源可接（P3 反模式提醒）。
+    唯一守門是 ``compliance_agent`` 的 NFR-031 買賣紅線。
+    """
+    from polaris.graph.nodes import compliance_agent as _compliance
+    from polaris.graph.prompts import SUGGESTIONS_SYSTEM_PROMPT
+    from polaris.retry import call_with_retry
+
+    if os.getenv("SUGGESTIONS_LLM", "0") != "1":
+        return presets, SUGG_OUTCOME_FALLBACK
+
+    if client is None:
+        _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_NO_KEY)
+        return presets, SUGG_OUTCOME_NO_KEY
+
+    scene = "單檔個股研究" if mode == "research" else "同業比較"
+    prompt = f"情境：{scene}。請產生 5 條此情境的研究型提示問句。"
+    try:
+        raw = call_with_retry(
+            lambda: client.generate(prompt, flash=True, system_instruction=SUGGESTIONS_SYSTEM_PROMPT)
+        )
+    except Exception:  # noqa: BLE001 — 任何生成失敗都退回 presets
+        _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_LLM_ERROR)
+        return presets, SUGG_OUTCOME_LLM_ERROR
+
+    lines = [ln.strip() for ln in (raw or "").splitlines() if ln.strip()]
+    if not lines:
+        _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_EMPTY)
+        return presets, SUGG_OUTCOME_EMPTY
+
+    # NFR-031：整批問句過 compliance（R7：問句也可能暗示買賣）。
+    _, comp = _compliance.review("\n".join(lines), client)
+    if comp != "passed":
+        _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_COMPLIANCE_REJECTED)
+        return presets, SUGG_OUTCOME_COMPLIANCE_REJECTED
+
+    _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_LLM)
+    return lines[:5], SUGG_OUTCOME_LLM
+
+
 @app.get("/suggestions", response_model=SuggestionsResponse, tags=["research"])
 def suggestions(
     mode: Literal["research", "peer"] = Query(
         default="research", description="提示情境：research（單檔研究）/ peer（同業比較）"
     ),
 ) -> SuggestionsResponse:
-    """回傳輸入提示問句晶片（前端 useSuggestions）。規則式精選、token-free，
-    無效 ``mode`` 由 FastAPI 回 422。NFR-031：問句皆為研究型，絕無買賣建議。"""
-    return SuggestionsResponse(suggestions=_SUGGESTION_PRESETS[mode])
+    """回傳輸入提示問句晶片（前端 useSuggestions）。預設規則式精選、token-free，
+    無效 ``mode`` 由 FastAPI 回 422。NFR-031：問句皆為研究型，絕無買賣建議。
+
+    Flag ``SUGGESTIONS_LLM=1`` 時改走 Gemini 動態生成（過 compliance 才採用），
+    否則 / 失敗一律退回 presets（``source="rule"``）。"""
+    from polaris.llm.gemini import active_llm as _active_llm
+
+    presets = _SUGGESTION_PRESETS[mode]
+    items, outcome = _llm_suggestions(mode, presets, client=_active_llm())
+    if outcome == SUGG_OUTCOME_LLM:
+        return SuggestionsResponse(suggestions=items, source="llm")
+    return SuggestionsResponse(suggestions=presets, source="rule")
 
 
 @app.post("/contradiction", response_model=ContradictionResponse, tags=["research"])
@@ -860,6 +927,62 @@ def _call_side(citation: Citation | None) -> _PeerCallSide:
     )
 
 
+# P1 peer-synthesis outcome constants (R6 採用率可觀測).
+PEER_OUTCOME_POLISHED = "polished"
+PEER_OUTCOME_GATE_FAILED = "gate_failed"
+PEER_OUTCOME_LLM_ERROR = "llm_error"
+PEER_OUTCOME_NO_KEY = "no_key"
+PEER_OUTCOME_COMPLIANCE_REJECTED = "compliance_rejected"
+PEER_OUTCOME_FALLBACK = "fallback"
+
+
+def _peer_synthesis(base: str, *, client) -> tuple[str, str]:
+    """嘗試用 Gemini Flash 把 peer-compare 確定性摘要潤飾成敘事段落（P1 接地觸點）。
+
+    Returns ``(summary_text, outcome)``。不過閘門 / compliance 失敗 / 例外 → 回 ``(base, outcome)``。
+    Flag ``PEER_COMPARE_LLM_SYNTHESIS`` 必須為 ``"1"`` 才啟動；預設關（token=0）。
+    """
+    import re as _re
+
+    from polaris.graph.deep_research.state import numbers_grounded_in_text
+    from polaris.graph.nodes import compliance_agent as _compliance
+    from polaris.graph.prompts import PEER_SYNTHESIS_SYSTEM_PROMPT
+    from polaris.retry import call_with_retry
+
+    if os.getenv("PEER_COMPARE_LLM_SYNTHESIS", "0") != "1":
+        return base, PEER_OUTCOME_FALLBACK
+
+    if client is None:
+        _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_NO_KEY)
+        return base, PEER_OUTCOME_NO_KEY
+
+    try:
+        prose = call_with_retry(
+            lambda: client.generate(base, flash=True, system_instruction=PEER_SYNTHESIS_SYSTEM_PROMPT)
+        )
+    except Exception:  # noqa: BLE001
+        _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_LLM_ERROR)
+        return base, PEER_OUTCOME_LLM_ERROR
+
+    # Gate 1: prose must contain at least one source tag (來源：...).
+    # Gate 2: every number in prose must come from the deterministic base
+    # (防幻覺數字；憲法 §II「每個數字都要有來源」)。base 已是接地的數字來源。
+    if not _re.search(r"[（(]來源[：:][^）)]+[）)]", prose) or not numbers_grounded_in_text(
+        prose, base
+    ):
+        _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_GATE_FAILED)
+        return base, PEER_OUTCOME_GATE_FAILED
+
+    # Compliance check (R7: 比較→買賣 紅線).
+    _, comp = _compliance.review(prose, client)
+    if comp != "passed":
+        _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_COMPLIANCE_REJECTED)
+        return base, PEER_OUTCOME_COMPLIANCE_REJECTED
+
+    _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_POLISHED)
+    return prose, PEER_OUTCOME_POLISHED
+
+
 @app.post("/peer-compare", response_model=PeerCompareResponse, tags=["research"])
 def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
     """同業比較：真實財務指標 + 法說 RAG 引用；PE/PB 目前無資料回 []，不造假。"""
@@ -1030,9 +1153,14 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         except Exception:
             pass  # fallback to machine-generated summary
 
+    # P1 接地觸點：flag 開時嘗試 Gemini 潤飾比較結論；fallback = raw_summary。
+    from polaris.llm.gemini import active_llm as _active_llm
+
+    final_summary, _ = _peer_synthesis(raw_summary, client=_active_llm())
+
     from polaris.graph.nodes import compliance_agent
 
-    _, compliance_status = compliance_agent.review(raw_summary, None)
+    _, compliance_status = compliance_agent.review(final_summary, None)
 
     return PeerCompareResponse(
         a_ticker=req.a_ticker,
@@ -1043,7 +1171,7 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         calls=calls,
         trend=trend,
         valuation=[],
-        summary=raw_summary,
+        summary=final_summary,
         compliance_status=compliance_status,
     )
 
