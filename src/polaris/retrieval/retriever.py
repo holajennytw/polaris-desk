@@ -316,6 +316,72 @@ def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[
         return results
 
 
+# --- Recency-aware reorder (issue #49) -------------------------------------
+# 「最新一季 / 近期」類查詢，舊期別的強相關塊常壓過最新期別。資料本就帶
+# period / published_at，這裡在截斷 top_k 前依時間意圖做「有界」recency 加權：
+# 只在偵測到時間意圖時啟用，且加權上限 = 候選最高分 × RECENCY_WEIGHT，足以
+# 翻轉近似分數、但不足以把強相關舊文壓到不相關的新文之下（降級安全）。
+_RECENCY_TERMS = (
+    "最新", "最近", "近期", "近一季", "近兩季", "近幾季", "本季", "這季", "當季",
+    "latest", "most recent", "recent", "current quarter", "this quarter",
+)
+_PERIOD_RE = re.compile(r"(\d{4})\s*[Qq]([1-4])")
+_DATE_RE = re.compile(r"(\d{4})-(\d{2})")
+# 加權係數：newest 候選最多 +RECENCY_WEIGHT×max_score。0.5 → 可翻轉 ≲50%
+# 分數差的近似排名，不會把 2× 強的舊文壓下去。
+RECENCY_WEIGHT = 0.5
+
+
+def _wants_recency(query: str) -> bool:
+    """查詢是否表達『偏好最新期別』的時間意圖（中英關鍵詞）。"""
+    q = (query or "").lower()
+    return any(term in q for term in _RECENCY_TERMS)
+
+
+def _recency_ordinal(result: SearchResult) -> float | None:
+    """把 period / published_at 換算成可比較的『年』浮點（2024Q3 → 2024.5）。
+    period 優先，缺則用 published_at / fiscal_period；都缺回 None（不參與加權）。"""
+    period = result.period or ""
+    m = _PERIOD_RE.search(period)
+    if m:
+        return int(m.group(1)) + (int(m.group(2)) - 1) / 4
+    pub = str(result.metadata.get("published_at") or "")
+    m = _DATE_RE.search(pub)
+    if m:
+        return int(m.group(1)) + (int(m.group(2)) - 1) / 12
+    fp = str(result.metadata.get("fiscal_period") or "")
+    m = _PERIOD_RE.search(fp)
+    if m:
+        return int(m.group(1)) + (int(m.group(2)) - 1) / 4
+    return None
+
+
+def _boost_recency(results: list[SearchResult]) -> list[SearchResult]:
+    """對帶時間意圖的查詢，依 recency 線性加分（上限 max_score×RECENCY_WEIGHT）。
+    時間資訊不足以區分（<2 個相異期別）時原樣返回，不動排序。"""
+    ordinals = [_recency_ordinal(r) for r in results]
+    present = [o for o in ordinals if o is not None]
+    if len(set(present)) < 2:
+        return results
+    lo, hi = min(present), max(present)
+    max_score = max((r.score for r in results), default=0.0)
+    boosted: list[SearchResult] = []
+    for result, ordinal in zip(results, ordinals, strict=True):
+        if ordinal is None:
+            boosted.append(result)
+            continue
+        fraction = (ordinal - lo) / (hi - lo)
+        boosted.append(SearchResult(
+            id=result.id,
+            content=result.content,
+            score=result.score + fraction * max_score * RECENCY_WEIGHT,
+            company=result.company,
+            period=result.period,
+            metadata=result.metadata,
+        ))
+    return boosted
+
+
 def _merge_results(results: list[SearchResult]) -> list[SearchResult]:
     merged: dict[str, SearchResult] = {}
     for result in results:
@@ -435,6 +501,10 @@ class HybridRetriever:
             *self._bm25_search(query, filters),
             *self._vector_search(query, filters, top_k=limit),
         ])
+        # 時間意圖（「最新一季 / 近期」）→ 在截斷 top_k 前做有界 recency 加權，
+        # 避免最新期別被舊期別的強相關塊擠出候選（issue #49）。
+        if _wants_recency(query):
+            ranked = _boost_recency(ranked)
         ranked.sort(key=lambda r: r.score, reverse=True)
         return [_ensure_citation_metadata(r) for r in ranked[:limit]]
 
