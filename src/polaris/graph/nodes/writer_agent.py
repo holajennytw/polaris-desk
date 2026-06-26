@@ -41,10 +41,14 @@ def build_citations(contexts: list[dict[str, Any]]) -> list[Citation]:
                 snippet=snippet,
                 origin=ctx.get("origin", "stub"),
                 company=ctx.get("company_name") or company_name(ctx.get("company")),
-                # P1：v_chunk_semantic 三欄由 contexts 透傳到 /ask citation（缺值 → None）。
+                ticker=ctx.get("company"),
                 event_key=ctx.get("event_key"),
                 source_key=ctx.get("source_key"),
                 published_yyyymm=ctx.get("published_yyyymm"),
+                doc_type=ctx.get("doc_type"),
+                fiscal_period=ctx.get("fiscal_period") or ctx.get("period"),
+                page_num=ctx.get("page_num"),
+                source_file=ctx.get("source_file"),
             )
         )
     return cites

@@ -19,9 +19,15 @@ RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .
 # 再複製程式
 COPY src/ ./src/
 
+# Build-time arg for deployment traceability (passed by CI/gcloud builds submit)
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME=unknown
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/src \
-    APP_ENV=cloud
+    APP_ENV=cloud \
+    GIT_COMMIT=${GIT_COMMIT} \
+    BUILD_TIME=${BUILD_TIME}
 
 # Cloud Run 會以 $PORT 注入監聽埠；本地預設 8000（見 polaris/server.py:resolve_port）
 EXPOSE 8000

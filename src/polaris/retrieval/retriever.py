@@ -496,11 +496,14 @@ def _result_to_citation(sr: SearchResult, citation_cls):
         snippet=sr.content,
         origin=origin,
         company=company_name(sr.company),
+        ticker=sr.company,
         event_key=sr.metadata.get("event_key"),
         source_key=sr.metadata.get("source_key"),
         published_yyyymm=sr.metadata.get("published_yyyymm"),
         doc_type=sr.metadata.get("doc_type"),
         fiscal_period=sr.metadata.get("fiscal_period") or sr.period,
+        page_num=sr.metadata.get("page_num"),
+        source_file=sr.metadata.get("source_file"),
         published_at=sr.metadata.get("published_at"),
     )
 
