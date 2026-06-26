@@ -1,0 +1,204 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "body": {
+      "query": "鴻海近期在 AI 伺服器或電動車布局上有哪些新聞或重大訊息？"
+    }
+  },
+  "http_status": 200,
+  "elapsed_sec": 25.16,
+  "response": {
+    "answer": "根據提供的引用片段，鴻海（2317）近期在 AI 伺服器與電動車領域的重大訊息與布局整理如下：\n\n### 一、 AI 伺服器布局\n1.  **產品與技術發布**：鴻海於 GTC 大會發布次世代 AI 伺服器，並展示三大智慧平台的最新運用 [2317-2025Q1-p025-c001]。此外，AI ASIC 的 chiplet 專案預計於下半年完成量產設計 Tape-out [fb643705-5924-4e42-801c-e3a051c3c6b5]。\n2.  **全球產能配置**：\n    *   **美洲地區**：目前為鴻海最大的 AI 伺服器生產基地。因應地緣政治與客戶在地化需求，集團近兩年資本支出增加 2 至 3 成，多用於 AI 伺服器相關產能（如廠房、設備與自動化產線） [6b6ffefb-52d1-4a06-a7bb-c48bdf1e8a78]。\n    *   **台灣地區**：扮演研發核心、驗證及初期量產基地，並推進亞灣超算中心等專案 [6b6ffefb-52d1-4a06-a7bb-c48bdf1e8a78]。\n3.  **策略合作與定位**：鴻海為 Nvidia 在台灣的首家雲端合作夥伴（NCP），將提供算力給產官學界，定位為「主權 AI」的提供者 [8ecbfdae-711c-4074-8917-bf34c4f50645]。公司目標於 2030 年轉型為以 AI 為核心驅動力的全方位公司 [2317-2025Q4-p019-c001]。\n\n### 二、 電動車（EV）布局\n1.  **硬體與零組件進展**：\n    *   於台北國際車電展展示電動車、車用零組件及國產化電池 [2317-2025Q1-p025-c001]。\n    *   **車載資訊控制單元（TCU）**：4G TCU 系統今年上半年已安裝於 100 萬輛車，目標最終安裝量為 3,000 萬台 [af5e016a-a9bc-4056-8d63-c64b952df80e]。\n    *   **半導體**：8 吋晶圓廠新產品已量產；碳化矽（SiC）預計於第四季完成最終驗證，加速導入商用車 [fb643705-5924-4e42-801c-e3a051c3c6b5]。\n2.  **軟體與架構合作**：與中東車廠合作開發下一代 EEA 電子電氣架構，提供智慧座艙與智慧網關解決方案，並導入 AI 技術強化自然語言人機互動 [af5e016a-a9bc-4056-8d63-c64b952df80e]。\n3.  **產業競爭策略**：董事長劉揚偉認為 EV 產業將重演 1990 年代 PC 產業的「專業分工」模式，預期車廠將由一條龍轉向委外代工，鴻海將以此爭取製造服務訂單 [8ecbfdae-711c-4074-8917-bf34c4f50645]。\n\n### 三、 其他 AI 延伸應用\n1.  **智慧製造**：Genesis 平台逐步應用於產線，第二季已於美國工廠導入人形機器人與協作型機器人 [fb643705-5924-4e42-801c-e3a051c3c6b5]。\n2.  **智慧城市**：積極推廣 CityGPT 平台至國際市場（如墨西哥、菲律賓），並與高雄市政府簽署 Y15 聯開案，投入 159 億元 [af5e016a-a9bc-4056-8d63-c64b952df80e, 2317-2025Q4-p033-c001]。\n3.  **數位健康**：開發 AI 刷手協作機器人，並與北榮合作提升醫療效率 [fb643705-5924-4e42-801c-e3a051c3c6b5]。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "2317-2025Q1-p025-c001",
+        "snippet": "本投影片介紹了鴻海近期重大事件與參展項目。左側圖片展示鴻海在GTC發布次世代AI伺服器，並分享三大智慧平台最新運用。右側圖片則顯示鴻海在台北國際車電展上展示電動車、車用零組件及國產化電池。\nPage: 25/29",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "af5e016a-a9bc-4056-8d63-c64b952df80e",
+        "snippet": "。這不只是技術的合作，更是我們在電動車軟體布局\n上非常關鍵的一步，它將成為未來車載系統的核心基礎。\n再來是有關於相關模組的說明。我們持續與中東車廠密切合作，共同打造下一代的 EEA 電子\n電氣架構，提供智慧座艙和智慧網關的解決方案。目前已經完成初步的跨模組整合測試。在智\n慧座艙方面，我們也會進一步導入 AI技術，強化人機互動 的體驗，讓使用者不需要下達非常\n精確的指令，只要用自然的語言，就能輕鬆完成操作。\n8\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n在車聯網元件方面，我們也與重要夥伴合作，開發 4G 車載資訊控制單元（TCU），這套系統\n在今年上半年已經成功安裝到 100 萬輛車上，並且朝著最終安裝至 3,000 萬台車的目標穩步\n邁進。\n最後，智慧城市方面。我們也正積極地將 CityGPT 平台推向國際市場，同時也持續在台灣在\n地深耕。在海外合作擴展方面，我們目前與墨西哥的合作持續推進，同時也開始和菲律賓企業，\n開展 更多 相關的洽談，希望將我們的智慧城市 AI解決方案，帶到更多國際城市。\n在台灣，我們持續深化",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202508,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "fb643705-5924-4e42-801c-e3a051c3c6b5",
+        "snippet": "智慧製造方面，Genesis 平台也逐步走向實際產線應用。我們的 Agentic AI 架構，要讓工\n廠進一步邁向主導決策與自主優化。我們第二季也已經開始於美國工廠導入人形機器人以及協\n作型機器人。\n在智慧城市方面，我們會繼續深化現有方案並且拓展到更多國家城市。\n在數位健康方面，我們的 AI 刷手協作機器人，可以提升手術效率，並降低醫護人員的作業負\n擔。另外，我們與北榮的智慧機器人合作，處理高重複性、高工時及高風險的作業，來提升醫\n療效率。同時，我們也正在推進 AI 技術，用於實際醫療照護的場景。展望未來，鴻海也將持\n續深化數位健康布局，包含醫院流程自動化、智慧醫院、以及醫材GMP工廠建置等，打造健\n康台灣。\n7\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n半導體方面，8吋晶圓廠新產品已進入量產。印度的封測廠也開始建廠。在Silicon Carbide 方\n面，目標於第四季完成最終驗證，加速導入到商用車。AI ASIC 的 chiplet 專案，預計在下半\n年完成量產設計Tape-out。\n鴻海第二代低軌衛星「珍珠號",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202605,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "07392932-b8cb-4aa4-bc39-50080f9c6d90",
+        "snippet": "的環保技術。\n接著，是鴻海在各領域耕耘的獲獎成果，包含 AI 創新百強、健康職場、國家永續獎和運動推\n手獎。另外在投資人關係團隊，也獲得了多項大獎肯定。最後，鴻海董事張慶瑞教授入選「量\n子百強」，展現在量子領域的國際影響力；研究院諮詢委員張懋中教授榮獲工程界最高終身成\n就榮譽。兩項殊榮凸顯鴻海在前瞻研發上的成果。\n以上為本次簡報內容，謝謝。\n問答時間\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n謝謝James，那接下來，我們進入法說會的第二個階段，問答時間，我們先針對大家會前的提\n問，彙整跟各位報告，之後就開放自由提問。\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n第一題，剛剛簡報中看到公司對於今年 AI 伺服器相當正面的看法，請董事長和大家分享，怎\n麼看AI伺服器強勁成長的延續性、以及鴻海在AI伺服器的市占率目標？\n10\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n劉揚偉 Young Liu 鴻海精密工業股份有限公司—董事長\n前面提到我們預期今",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202603,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "6b6ffefb-52d1-4a06-a7bb-c48bdf1e8a78",
+        "snippet": "、美國與台灣進行 AI 伺服器擴產。能否分別說明這三地 AI 伺服器的產\n能投資進度與目標？未來的產能分佈將會如何？\n蔣集恆 Michael Chiang 鴻海精密工業股份有限公司—輪值CEO\n目前整個美洲地區是鴻海最大的 AI 伺服器生產基地，在當地已建立相當完整的供應鏈，現階\n段仍是支撐全球 AI 伺服器出貨的重要核心。因應全球地緣政治變化，以及客戶對在地化生產\n需求提升，鴻海近年加大美國投資力道。集團整體資本支出這兩年分別有 2 到3 成的增加，其\n中相當大一部分即與AI伺服器相關產能擴建有關，包括廠房、設備與自動化產線的投入。\n從需求端來看，目前大型CSP客戶，無論GPU 或是ASIC AI伺服器需求，以及主權AI與大\n型資料中心專案，主要仍集中在美國市場。因此，未來美國將逐步成為鴻海最大的 AI 伺服器\n生產基地，這也是我們 Local for Local全球製造策略的重要方向，所以美、墨將會是最大的量\n產基地。\n至於台灣，除了持續扮演研發的核心角色外，近年產能也持續擴建，作為開發、驗證、初期量\n產的基地。隨著 AI需求快速成長，以及包括亞灣超算中心等專案推進，台灣在高階 A",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202605,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "8ecbfdae-711c-4074-8917-bf34c4f50645",
+        "snippet": "鍵里程碑。我們同時也是\nNvidia 在台灣第一家雲端合作夥伴 (NCP)，未來將提供算力給產官學界，顯示我們不只是AI\n解決方案的整合者，更是主權AI 的提供者。\n最後，跟大家分享我對於電動車市場的觀察。之前我就提過 1990 年代的 PC 產業走向外包的\n型態，一定會典範轉移到EV 產業。過往車廠採取一條龍模式，包辦設計、生產到行銷服務的\n所有作業，與90年代初期的PC製造模式相同，都是一手包辦。\n這幾年電動車市場進入門檻降低，價格競爭越來越激烈，這跟我們預期是一樣的，也跟 90年\n代初期的 PC 產業非常的類似。所以我們預期未來車廠一定會跟過去 PC 的發展趨勢一樣走向\n專業分工。這時候需要像鴻海這樣專業的製造服務公司來負責生產，以維持品牌廠商的獲利。\n我們在1996年爭取到PC大廠Compaq的第一筆訂單，我們稱之為Outsourcing Breaking\nPoint。當時 PC廠也都有自己的製造團隊，但後來大家也都看到，這些廠商都陸續把廠賣給鴻\n海，委託給我們製造，PC 廠只需要專注在品牌行銷以及設計開發的服務，在產業中維持繼續\n領先的地位。\n我們認為 EV 的 Outsou",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202511,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2317-2025Q4-p019-c001",
+        "snippet": "鴻海2030年目標: AI核心卓越轉型 以AI為核心驅動力,成為「全方位世界級卓越公司」",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202603,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2317-2025Q4-p033-c001",
+        "snippet": "近期重大事件 | 最新營運進展\n鴻海與高市府Y15聯開案簽約 投入: 159億\nWEF公佈 鴻海科技集團 再添: 1座",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202603,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5236
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 2004
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 13824
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4011
+      }
+    ]
+  },
+  "error": null
+}

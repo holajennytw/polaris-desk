@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/health"
+  },
+  "http_status": 200,
+  "elapsed_sec": 2.53,
+  "response": {
+    "status": "ok",
+    "service": "polaris-desk",
+    "app_env": "cloud",
+    "vector_backend": "bigquery"
+  },
+  "error": null,
+  "deployment_version": "unknown"
+}

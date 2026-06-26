@@ -1,0 +1,204 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "body": {
+      "query": "請摘要台積電近期與先進製程或海外設廠相關的重大新聞。"
+    }
+  },
+  "http_status": 200,
+  "elapsed_sec": 45.57,
+  "response": {
+    "answer": "根據提供的引用片段，台積電近期與海外設廠及營運相關的重大新聞摘要如下：\n\n### 一、 海外設廠與投資\n台積公司已宣布有意增加在美國的投資金額，預計總投資額將達到 1,650 億美元 [2330-2025Q1-p011-c001, mops_a1c0f002b99cd114]。此項投資計畫的主要目的在於驅動人工智慧（AI）的未來發展 [mops_a1c0f002b99cd114]。\n\n### 二、 先進製程相關資訊\n在提供的資料片段中，並未提及關於先進製程（如 2 奈米、3 奈米等）的具體技術進展、產能規劃或客戶合作細節。資料不足，無法針對先進製程提供進一步摘要。\n\n### 三、 其他重大營運事件\n*   **地震影響：** 台積公司初步估計將於 2025 年第一季認列相關地震損失，扣除保險理賠後之金額約為 53 億元 [2330-2025Q1-p011-c001]。\n*   **股利政策：** 董事會核准之每股現金股利呈現增長趨勢，分別為 2024 年第四季 4.5 元 [2330-2025Q1-p011-c001]、2025 年第一季 5 元 [2330-2025Q2-p011-c001]，以及 2025 年第三季 6 元 [2330-2025Q4-p014-c001]。\n*   **營收報告：** 資料中提及 2025 年 6 月、8 月及 11 月之營收報告已發布，但片段中未顯示具體營收數字 [mops_723e08dd220ea7c8, mops_76d0ee267c9d8464, mops_965e70cddae7ff0f]。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "2330-2025Q1-p011-c001",
+        "snippet": "近期重要事件摘要\n台積公司宣布有意增加在美投資金額: 1650億美元\n台積公司董事會核准2024年第四季之每股現金股利: 4.5元\n台積公司說明地震影響,初步估計將於2025年第一季認列扣除保險理賠後之相關地震損失: 53億元",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_a1c0f002b99cd114",
+        "snippet": "台積公司宣布有意增加在美投資金額至1,650億美元\n以驅動人工智慧未來",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2330-2025Q4-p014-c001",
+        "snippet": "近期重要事件摘要\n台積公司董事會核准2025年第三季之每股現金股利: 6元",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202601,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2330-2025Q2-p011-c001",
+        "snippet": "近期重要事件摘要\n台積公司董事會核准2025年第一季之每股現金股利: 5元",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202507,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_5d41abe7a78d51a8",
+        "snippet": "台積公司媒體聲明",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202511,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_965e70cddae7ff0f",
+        "snippet": "台積公司2025年11月營收報告",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202512,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_723e08dd220ea7c8",
+        "snippet": "台積公司2025年6月營收報告",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202507,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_76d0ee267c9d8464",
+        "snippet": "台積公司2025年8月營收報告",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202509,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5458
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1980
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 10009
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 27955
+      }
+    ]
+  },
+  "error": null
+}

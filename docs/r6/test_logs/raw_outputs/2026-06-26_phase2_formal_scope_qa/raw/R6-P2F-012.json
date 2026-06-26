@@ -1,0 +1,204 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "body": {
+      "query": "2308 台達電 2025Q1 的毛利率或獲利表現如何？"
+    }
+  },
+  "http_status": 200,
+  "elapsed_sec": 27.72,
+  "response": {
+    "answer": "根據提供的引用片段，台達電（2308）2025年第一季（1Q25）的毛利率與獲利表現整理如下：\n\n### 一、 毛利率表現\n台達電 2025Q1 的毛利率（GPM）為 **31.8%**，相較於去年同期（1Q24）的 29.5% 以及上一季（4Q24）的 30.8% 均呈現增長態勢 [2308-2025Q1-p004-c001]。該季毛利金額為 37.8 NT$ billion，年增 40%，季增 8% [2308-2025Q1-p004-c001]。\n\n### 二、 獲利表現\n1.  **稅後淨利**：1Q25 稅後淨利為 **10.2 NT$ billion**（具體數值為 10,231 百萬元），較去年同期大幅增長 78%，較上一季增長 43% [2308-2025Q1-p009-c001]。\n2.  **稅後淨利率**：該季稅後淨利率為 **8.6%**，高於 1Q24 的 6.3% 與 4Q24 的 6.3% [2308-2025Q1-p009-c001]。\n3.  **稅前淨利與 EBITDA**：\n    *   稅前淨利為 15.7 NT$ billion（15,663 百萬元），年增 79%，季增 59% [2308-2025Q1-p008-c001, 2308-2025Q1-p009-c001]。\n    *   EBITDA 為 23 NT$ billion，年增 54%，季增 35% [2308-2025Q1-p008-c001]。\n\n### 三、 主要部門獲利狀況\n*   **電源及零組件 (Power Electronics)**：獲利 10,194 百萬元，年增 39%，季增 14% [2308-2025Q1-p006-c001]。\n*   **自動化 (Automation)**：獲利 462 百萬元，年增達 984%，季增 507% [2308-2025Q1-p006-c001]。\n*   **交通 (Mobility)**：該部門 1Q25 呈現虧損，虧損金額為 **266 百萬元** [2308-2025Q1-p006-c001]。\n\n綜合資料顯示，台達電 2025Q1 在營收增長 30% 的背景下，毛利率與各項獲利指標（稅前、稅後淨利）均較去年同期有顯著提升 [2308-2025Q1-p004-c001, 2308-2025Q1-p009-c001]。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "2308-2025Q1-p006-c001",
+        "snippet": "Performance by Segment 主要部門表現\nSales% 營收佔比（stacked_bar_chart）: Others (1Q24): 24%、Infrastructure (1Q24): 13%、Automation (1Q24): 12%、Mobility (1Q24): 12%、Power Electronics (1Q24): 51%、Others (4Q24): 27%、Infrastructure (4Q24): 12%、Automation (4Q24): 9%、Mobility (4Q24): 9%、Power Electronics (4Q24): 52%、Others (1Q25): 29%、Infrastructure (1Q25): 12%、Automation (1Q25): 9%、Mobility (1Q25): 9%、Power Electronics (1Q25): 50%\n| NT$ million 新台幣百萬元 | Sales | Y/Y | Q/Q | Profits | Y/Y | Q/Q |\n| :----------------------- | :---- | :-- | :-- | :------ | :-- | :-- |\n| Power Electronics 電源及零組件 | 59,777 | +28% | +1% | 10,194 | +39% | +14% |\n| Mobility 交通 | 10,623 | +1% | +1% | -266 | n.m. (turned to loss) | +59% |\n| Automation 自動化 | 13,697 | +16% | +1% | 462 | +984% | +507% |\n| Infrastructure 基礎設施 | 34,704 | +",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_c76a3eb3d39e1359",
+        "snippet": "本公司代子公司Delta Electronics (Thailand) Public\nCompany Limited公告現金股利除息基準日",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_b02da98e8bafc03c",
+        "snippet": "本公司代子公司Delta Electronics (Thailand) Public\nCompany Limited公告發放現金股利",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_e3e6c5b9aea602ce",
+        "snippet": "本公司代子公司Delta Electronics (Thailand) Public\nCompany Limited公告決議召集2025年股東常會",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2308-2025Q1-p004-c001",
+        "snippet": "Sales Revenues & Gross Profits 合併營收及毛利\nSales Y/Y: 30%\nSales Q/Q: 4%\nGP Y/Y: 40%\nGP Q/Q: 8%\nSales 營收（bar）: 1Q24 Sales: 91.3NT$ billion、2Q24 Sales: 103.4NT$ billion、3Q24 Sales: 112.2NT$ billion、4Q24 Sales: 114.2NT$ billion、1Q25 Sales: 118.9NT$ billion\nGP 毛利 & GPM 毛利率（bar_line）: 1Q24 GP: 26.9NT$ billion、2Q24 GP: 35.3NT$ billion、3Q24 GP: 39.2NT$ billion、4Q24 GP: 35.2NT$ billion、1Q25 GP: 37.8NT$ billion、1Q24 GPM: 29.5%、2Q24 GPM: 34.1%、3Q24 GPM: 34.9%、4Q24 GPM: 30.8%、1Q25 GPM: 31.8%\n| | Y/Y 年對年 | Q/Q 季對季 |\n|---|---|---|\n| Sales 營收 | +30% | +4% |\n| GP 毛利 | +40% | +8% |",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2308-2025Q1-p008-c001",
+        "snippet": "Profits before Tax v.s EBITDA 稅前淨利及息稅折舊及攤銷前利潤\nProfits before tax Y/Y: 79%\nProfits before tax Q/Q: 59%\nEBITDA Y/Y: 54%\nEBITDA Q/Q: 35%\nProfits before tax（combo_chart）: PBT 1Q24: 8.8NT$ billion、PBT 2Q24: 15NT$ billion、PBT 3Q24: 17.7NT$ billion、PBT 4Q24: 9.8NT$ billion、PBT 1Q25: 15.7NT$ billion、% of sales 1Q24: 9.6%、% of sales 2Q24: 14.5%、% of sales 3Q24: 15.8%、% of sales 4Q24: 8.6%、% of sales 1Q25: 13.2%\nEBITDA（combo_chart）: EBITDA 1Q24: 14.9NT$ billion、EBITDA 2Q24: 21.7NT$ billion、EBITDA 3Q24: 24.3NT$ billion、EBITDA 4Q24: 17NT$ billion、EBITDA 1Q25: 23NT$ billion、% of sales 1Q24: 16.4%、% of sales 2Q24: 20.9%、% of sales 3Q24: 21.7%、% of sales 4Q24: 14.9%、% of sales 1Q25: 19.3%",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_ffba51fa0574a526",
+        "snippet": "本公司代子公司DETH公告董事會決議擬增資Delta Electronics\n(Slovakia), s.r.o.",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2308-2025Q1-p009-c001",
+        "snippet": "Net Profits after Tax\nNet profits after tax Y/Y: 78%\nNet profits after tax Q/Q: 43%\nNet profits after tax（bar）: 1Q24: 5.8NT$ billion、2Q24: 9.9NT$ billion、3Q24: 12.3NT$ billion、4Q24: 7.2NT$ billion、1Q25: 10.2NT$ billion\nNet profit after tax rate（line）: 1Q24: 6.3%、2Q24: 9.6%、3Q24: 11%、4Q24: 6.3%、1Q25: 8.6%\n| | 1Q24 | 4Q24 | 1Q25 |\n|:---|---:|---:|---:|\n| Profit before income tax (稅前淨利) | 8765 | 9840 | 15663 |\n| Income tax (所得稅) | -1798 | -2517 | -3620 |\n| Non-controlling interest (非控制權益) | -1203 | -145 | -1812 |\n| Net profit after tax (稅後淨利) | 5764 | 7178 | 10231 |",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 10729
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1969
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 10799
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4097
+      }
+    ]
+  },
+  "error": null
+}

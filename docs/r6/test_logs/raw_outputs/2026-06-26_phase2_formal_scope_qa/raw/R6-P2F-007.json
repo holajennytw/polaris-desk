@@ -1,0 +1,300 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "body": {
+      "query": "請比較 2317 鴻海與 2454 聯發科在 2025Q1 對 AI 相關業務的展望。"
+    }
+  },
+  "http_status": 200,
+  "elapsed_sec": 31.18,
+  "response": {
+    "answer": "根據 2025 年第一季法人說明會資料，鴻海（2317）與聯發科（2454）在 AI 相關業務的表現與展望整理如下：\n\n### 一、 鴻海（2317）：聚焦 AI 伺服器基礎設施\n鴻海的 AI 業務成長動能主要來自雲端網路產品領域中的 AI 伺服器。\n\n*   **2025Q1 表現：**\n    *   AI 伺服器與通用伺服器營收年增率（YoY）均超過 50%，但未達一倍 [41bf5a15-e89c-4174-95dd-482081e63cb1]。\n    *   受惠於算力需求成長及新平台推動，雲端網路產品佔比提升 [e5504627-8f4e-4035-a2b0-64209bddca2e]。\n*   **2025Q2 及後續展望：**\n    *   **出貨加速：** 預期第二季整體伺服器營收季增與年增皆可達「高雙位數」成長；其中 AI 伺服器出貨量預計將有「將近倍數」的成長 [41bf5a15-e89c-4174-95dd-482081e63cb1]。\n    *   **產品進展：** GB 系列伺服器於第一季底進入量產，預計大部分於第二季交貨。此外，與 CSP（雲端服務供應商）合作開發的 ASIC 架構 AI 伺服器已陸續出貨，HGX 需求亦持續擴張 [41bf5a15-e89c-4174-95dd-482081e63cb1]。\n    *   **全年趨勢：** 2025 年全年展望中，「雲端網路產品領域」維持成長預期 [2317-2025Q1-p011-c001]。\n\n### 二、 聯發科（2454）：聚焦邊緣 AI 與旗艦 SoC\n聯發科的 AI 業務體現在手機晶片（Mobile Phone）與智慧終端平台（Smart Edge Platforms）的 AI 化。\n\n*   **2025Q1 表現：**\n    *   **手機業務：** 營收佔比 56%，年增 6%，主要受惠於 AI SoC（如天璣系列）的採用 [2454-2025Q1-p019-c001, 3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。\n    *   **智慧終端平台：** 營收佔比 39%，年增達 32%，季增 23%，展現強勁成長動能 [2454-2025Q1-p019-c001]。\n*   **2025Q2 及後續展望：**\n    *   **旗艦產品帶動：** 預期第二季在旗艦與高階市場將持續成長，主因為更多客戶採用天璣 9400+ 及天璣 8000 系列等 AI SoC [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。\n    *   **市場滲透：** 隨著 AI 應用普及，公司預期旗艦產品線將持續取得市佔率，並提升平均銷售單價（ASP） [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。\n    *   **風險因素：** 儘管高階 AI 產品成長，但主流（mainstream）與入門級（entry）市場需求在強勁拉貨後出現放緩跡象 [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a]。\n\n### 三、 綜合比較總結\n\n| 比較項目 | 鴻海 (2317) | 聯發科 (2454) |\n| :--- | :--- | :--- |\n| **AI 核心領域** | AI 伺服器基礎設施（CSP 客戶、ASIC、HGX、GB 系列）[41bf5a15-e89c-4174-95dd-482081e63cb1] | 邊緣 AI 晶片（手機 SoC、智慧終端平台）[3c68fddb-9c9b-498e-a8be-f7ffd2acec5a] |\n| **2025Q1 成長** | AI 伺服器營收 YoY > 50% [2317-2025Q1-p014-c001] | 智慧終端平台營收 YoY 32% [2454-2025Q1-p019-c001] |\n| **2025Q2 展望** | AI 伺服器出貨量預計將有「將近倍數」成長 [41bf5a15-e89c-4174-95dd-482081e63cb1] | 旗艦 AI SoC 持續成長，但主流/入門市場放緩 [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a] |\n| **關鍵驅動力** | GB 系列量產、CSP 客戶 ASIC 開發 [41bf5a15-e89c-4174-95dd-482081e63cb1] | 天璣 9400+/8000 系列 AI SoC 滲透率提升 [3c68fddb-9c9b-498e-a8be-f7ffd2acec5a] |\n\n資料來源：鴻海（2317）及聯發科（2454）2025Q1 法說會簡報與逐字稿。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "2317-2025Q1-p011-c001",
+        "snippet": "2025年全年展望，顯示了鴻海科技集團在不同產品領域的年度成長趨勢，並比較了2025年3月14日和2025年5月14日的預期。\n| | 全年 | 消費智能產品領域 | 雲端網路產品領域 | 電腦終端產品領域 | 元件及其他產品領域 |\n|---|---|---|---|---|---|\n| YoY 2025/3/14 | 成長 | 持平 | 成長 | 衰退 | 成長 |\n| YoY 2025/5/14 | 微幅成長 | 持平 | 成長 | 衰退 | 成長 |",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2317-2025Q1-p014-c001",
+        "snippet": "AI伺服器業務\n2025年 第一季 AI 伺服器與通用伺服器 營收 YoY 成長 >: 50%",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "41bf5a15-e89c-4174-95dd-482081e63cb1",
+        "snippet": "的看法？以及今年整體AI 伺服器營收展望是否改變？\n劉揚偉 Young Liu 鴻海精密工業股份有限公司—董事長\n我們第一季受惠於算力需求持續成長，以及新平台推動，AI 伺服器與通用型伺服器出貨表現\n皆顯著提升，營收年增都超過 50%、但沒有達到一倍。主要是因為 GB 系列第一季底進入大量\n生產的階段，所以大部分產品都是在第二季交貨。以市場來看，主要北美 CSP 客戶除了持續\n擴大AI 伺服器部署外，也同步增加通用型伺服器採購，支撐整體出貨成長。\n展望第二季，我們預期整體伺服器業務將持續成長，營收季增及年增都可望達到高雙位數增長。\n在AI 伺服器方面，GB 系列量產能力持續改善；另外，我們已經跟幾家CSP 客戶共同開發ASIC\n架構 AI 伺服器，並也陸續出貨；再加上 HGX 需求進一步擴張，所以 AI 伺服器的出貨量已經\n在加速當中，預計會有將近倍數的成長。\n8\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n在大語言模型持續更迭優化的帶動下，市場對 AI 基礎設施，以及本地部署解決方案的需求明\n顯提升。基於目前訂單能",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "e5504627-8f4e-4035-a2b0-64209bddca2e",
+        "snippet": "現金周轉天數51天，與去年持平。負債比例則為百分\n之 60，較去年同期增加，主要原因為營收成長，為了因應營運資金的週轉需求，故增加借款\n所致。\n2\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n最後，簡報第 7頁，現金流量表。2025年截至3月底，營業活動現金流出為511億元。較去\n年同期流入182億元相比，主要為存貨增加所致。存貨變動主因為客戶對新品拉貨動能提升，\n故配合客戶備料所致，但我們仍會秉持存貨穩健管理的原則進行管控。自由現金流為淨流出\n949億元，與去年同期相比，現金流出增加 800億元，主要係因營業活動現金流出增加，及資\n本支出增加所致。\n以上為2025年第一季財務報表的簡要報告，接下來我們把時間交給劉董事長。\n劉揚偉 Young Liu 鴻海精密工業股份有限公司—董事長\n謝謝David。大家好，總結第一季的表現，營收創下歷年同期新高，季節性表現優於過去五年\n平均水準，相較於去年同期，則達到強勁成長，表現與上次法說會的預期大致相當。\n從產品組合的角度來看，在 AI 伺服器的強勁成長帶動下，雲端網路產品的佔",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "5d4dc251-cb99-4a89-b139-c81090f15b12",
+        "snippet": "會影響到我們帳上台幣營收\n的表現。至於在獲利方面，主要可能影響到業內的存貨成本，以及業外損益的部分。舉例來說，\n台幣兌美元，年平均匯率升值一元時，會影響到鴻海的營收約百分之三，毛利率也會減少約百\n分之0.1。以目前來看，我們會持續透過存貨管理的機制，讓美元貶值對於毛利率的影響降到\n最低。\n業外的部分，確實會受到匯率波動的影響，但是我們已進行必要的避險，將風險降至可控的範\n圍。此外，我們公司有一套因應匯率波動的政策指引，例如跟客戶的合約中有訂定匯率的調整\n條款，以及增加報價的頻率，並以合適的金融避險工具，對沖營業投資以及融資活動匯率風險\n等多種舉措，來降低匯率波動的相關風險。\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n謝謝財務長。接下來是最後一個問題，線上若想要提問的朋友，現在可以點選舉手符號等候。\n我們在下一題問答結束之後，將會開放給線上的法人與媒體自由提問。\n第三題：AI 伺服器：請公司說明AI 伺服器在第一季整體表現和原先預期的差異？對於第二季\n的看法？以及今年整體AI 伺服器營收展望是否改變？\n劉揚偉 Young Liu 鴻海精密工業股份有限",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "e2f78903-32b9-4624-a4e9-a5b92d350ef4",
+        "snippet": "\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n簡報\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n各位投資以及媒體先進大家好，我是 Kristen，歡迎參加鴻海公司法人說明會。今天我們再次\n邀請到董事長劉揚偉先生、財務長黃德才先生、以及發言人James為各位說明。\n法說會的時間預計是一個小時，第一階段是簡報，第二階段是問答時間。在會議正式進行前，\n請大家先詳細閱讀簡報中的免責聲明。\n接下來就進入法說會的第一個階段簡報，這次有四個議題: 分別是2025年第一季回顧、2025\n年第二季暨全年的展望、重要事業進展、以及近期重大事件。現在先邀請財務長 David向大家\n說明2025年第一季的財務表現。\n黃德才 David Huang 鴻海精密工業股份有限公司—財務長\n謝謝 Kristen。各位在線上的投資先進，還有媒體朋友們，大家好。我是黃德才。接下來，由\n我向大家報告鴻海2025年第一季營運狀況。\n請大家看到第 5 頁 2025 年第",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2317-2025Q1-p005-c001",
+        "snippet": "2025年第一季財務三表\n| | Q1/25 | Q4/24 | QoQ | Q1/24 | YoY |\n|---|---|---|---|---|---|\n| 營業收入 (新台幣百萬元) | 1,644,316 | 2,130,504 | -23% | 1,323,992 | 24% |\n| 營業毛利 (新台幣百萬元) | 100,548 | 131,044 | -23% | 83,662 | 20% |\n| 營業利益 (新台幣百萬元) | 46,500 | 64,481 | -28% | 36,751 | 27% |\n| 營業外收入及支出 (新台幣百萬元) | 12,620 | (1,167) | 1181% | (4,242) | 398% |\n| 稅前淨利 (新台幣百萬元) | 59,120 | 63,313 | -7% | 32,509 | 82% |\n| 所得稅費用 (新台幣百萬元) | (13,287) | (10,797) | 23% | (7,636) | 74% |\n| 本期淨利歸屬母公司業主 (新台幣百萬元) | 42,108 | 46,326 | -9% | 22,009 | 91% |\n| 基本每股盈餘 (新台幣元) | 3.03 | 3.34 | -9% | 1.59 | 91% |\n| 毛利率 | 6.11% | 6.15% | -4 bps | 6.32% | -20 bps |\n| 營業利益率 | 2.83% | 3.03% | -20 bps | 2.78% | 5 bps |\n| 淨利率 | 2.56% | 2.17% | 39 bps | 1.66% | 90 bps |",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "93767102-64d8-4b45-b084-ba681cb59a84",
+        "snippet": "法說會逐字稿\n鴻海精密工業股份有限公司 2025 年第一季法人說明會\n會議日期及時間 ：2025 年 5 月14 日 台北時間下午3 點\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n鴻海精密工業股份有限公司\n2025 年第一季法人說明會\n公司與會者\n劉揚偉 Young Liu 鴻海精密工業股份有限公司 董事長\n黃德才 David Huang 鴻海精密工業股份有限公司 財務長\n巫俊毅 James Wu 鴻海精密工業股份有限公司 發言人\n方文妍 Kristen Fang 鴻海精密工業股份有限公司 投資人關係資深經理\n法說會提問者\nSharon Shih Morgan Stanley-分析師\nAngela Hsiang 凱基投顧-分析師\nCarrie Liu Citi-分析師\n方昱翔 三立財經-記者\n謝佩穎 TVBS新聞網-記者\nAlbert Hong J.P. Morgan-分析師\nArthur Liao 富邦投顧-分析師\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com |",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "3c68fddb-9c9b-498e-a8be-f7ffd2acec5a",
+        "snippet": "unch our next generation flagship SoC, which has gained better\ntraction with more customers than the previous ones. We expect our strong flagship product line-up to\ncontinue gaining shares and enhancing our blended ASP as AI becomes more pervasive.\nFor the second quarter, thanks to more adoptions of our AI SoCs, Dimensity 9400+ and Dimensity 8000\nseries, we will grow our business in the flagship and premium segments. However, as demand in\nmainstream and entry segments slow down after the strong ",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2454-2025Q1-p013-c001",
+        "snippet": "聯發科技股份有限公司 合併損益表(自結數) for 2025-Q1 Investor Conference\n2025年 第一季 每股盈餘: 18.43元\n2025年 第一季 平均匯率(美金/新台幣): 32.88\n營業收入 Q-Q: 11.1%\n營業收入 Y-Y: 14.9%\n營業毛利 Q-Q: 10.2%\n營業毛利 Y-Y: 5.6%\n營業利益 Q-Q: 40.4%\n營業利益 Y-Y: -6.6%\n本期淨利 Q-Q: 23.3%\n本期淨利 Y-Y: -6.7%\n母公司業主 Q-Q: 23.3%\n母公司業主 Y-Y: -7%\n| | 2025年 第一季 | 2024年 第四季 | 2024年 第一季 | Q-Q | Y-Y |\n|---|---|---|---|---|---|\n| 營業收入 (單位:新台幣佰萬元) | 153312 | 138043 | 133458 | 11.1% | 14.9% |\n| 營業成本 (單位:新台幣佰萬元) | (79503) | (71042) | (63558) | | |\n| 營業毛利 (單位:新台幣佰萬元) | 73809 | 67001 | 69901 | 10.2% | 5.6% |\n| 推銷費用 (單位:新台幣佰萬元) | (4990) | (5642) | (3754) | | |\n| 管理費用 (單位:新台幣佰萬元) | (2985) | (3194) | (2820) | | |\n| 研究發展費用 (單位:新台幣佰萬元) | (35782) | (36752) | (31147) | | |\n| 營業費用合計 (單位:新台幣佰萬元) | (43756) | (45589) | (37721) | | |\n| 營業利益 (單位:新台幣佰萬元) | 30053 | 21412 | 32180 | 40.4% | (6.6%)",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2454-2025Q1-p014-c001",
+        "snippet": "2025-Q1 INVESTOR CONFERENCE 聯發科技股份有限公司 合併損益表(佔營收比例) 註:數字加總不等,因四捨五入造成。\n| | 2025年 第一季 | 2024年 第四季 | 2024年 第一季 |\n|---|---|---|---|\n| 營業毛利率 | 48.1% | 48.5% | 52.4% |\n| 推銷費用率 | (3.3%) | (4.1%) | (2.8%) |\n| 管理費用率 | (1.9%) | (2.3%) | (2.1%) |\n| 研究發展費用率 | (23.3%) | (26.6%) | (23.3%) |\n| 營業利益率 | 19.6% | 15.5% | 24.1% |\n| 營業外收入及支出率 | 2.9% | 3.5% | 2.6% |\n| 所得稅費用率 | (3.3%) | (1.6%) | (3.0%) |\n| 本期淨利率 | 19.3% | 17.3% | 23.7% |",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2454-2025Q1-p016-c001",
+        "snippet": "聯發科技股份有限公司合併現金流量表(自結數) 2025-Q1 INVESTOR CONFERENCE\n| 項目 | 2025年 第一季 | 2024年 第四季 | 2024年 第一季 |\n| :--------------------------------- | :------------- | :------------- | :------------- |\n| 營業活動之淨現金流入(出) | 13423 | 44685 | 25204 |\n| 投資活動之淨現金流入(出) | -7533 | -7154 | -18271 |\n| 籌資活動之淨現金流入(出) | -16140 | -18398 | -33881 |\n| 匯率變動對現金及約當現金之影響 | 2244 | 4733 | 4897 |\n| 本期現金及約當現金增加(減少)數 | -8007 | 23866 | -22051 |\n| 期末現金及約當現金餘額 | 195689 | 203696 | 143345 |",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2454-2025Q1-p019-c001",
+        "snippet": "2025-Q1 INVESTOR CONFERENCE 本季產品類別營收佔比\n2025年 第一季 營收佔比（bar）: Mobile Phone: 56%、Smart Edge Platforms: 39%、Power IC: 5%、Total: 100%\n| 產品類別* | 2025年 第一季 營收佔比(註1) | QoQ% | YoY% |\n|---|---|---|---|\n| Mobile Phone | 56% | 6% | 6% |\n| Smart Edge Platforms | 39% | 23% | 32% |\n| Power IC | 5% | -9% | 7% |\n| Total | 100% | 11% | 15% |",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2454-2025Q1-p003-c001",
+        "snippet": "2025-Q1 INVESTOR CONFERENCE. 合併營業收入 (單位: 新台幣佰萬元)\nYoY: 14.9%\nQoQ: 11.1%\n合併營業收入（bar）: 1Q24: 133458新台幣佰萬元、4Q24: 138043新台幣佰萬元、1Q25: 153312新台幣佰萬元",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2454-2025Q1-p008-c001",
+        "snippet": "2025-Q1 INVESTOR CONFERENCE - 合併本期淨利 (單位: 新台幣佰萬元)\nYoY: -6.7%\nQoQ: 23.3%\n合併本期淨利（bar）: 1Q24: 31655新台幣佰萬元、4Q24: 23941新台幣佰萬元、1Q25: 29529新台幣佰萬元",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "5e444001-5e31-47a0-a1b0-fd221e6ea08d",
+        "snippet": "MediaTek 1Q25 Earnings Call\nWednesday, April 30, 2025, 3:00pm Taiwan Time\nPREPARED REMARKS\nJessie Wang, IR Deputy Director\nGood afternoon, everyone. Joining us today are Dr. Rick Tsai, MediaTek CEO and Mr. David Ku, MediaTek\nCFO. Mr. Ku will report our first quarter results and then Dr. Tsai will provide our prepared remarks. After\nthat, we will open for Q&A.\nAs a reminder: Today’s presentation will provide forward looking statements based on our current\nexpectations. The statements are subject ",
+        "origin": "rerank",
+        "company": "聯發科",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5408
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4291
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 14180
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 7129
+      }
+    ]
+  },
+  "error": null
+}

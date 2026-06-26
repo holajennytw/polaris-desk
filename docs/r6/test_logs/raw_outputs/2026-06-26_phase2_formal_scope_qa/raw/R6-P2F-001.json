@@ -1,0 +1,204 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/ask",
+    "body": {
+      "query": "2330 台積電 2025Q1 法說會重點是什麼？"
+    }
+  },
+  "http_status": 200,
+  "elapsed_sec": 42.52,
+  "response": {
+    "answer": "根據提供的引用片段，台積電（2330）於 2025 年 4 月 17 日舉行 2025 年第一季法說會 [f8352363-0099-412a-b337-d3c165690527]，重點摘要如下：\n\n### 一、 財務表現與營運成果\n*   **營收表現：** 2025 年第一季營收以新台幣計價較前一季減少 3.4%，若以美元計價則季減 5.1% [56f3cc47-48b5-4ee2-a593-71c2b3092e3e]。\n*   **資產負債狀況：** \n    *   第一季末現金及有價證券總額為 2.7 兆新台幣（約 810 億美元）[30a0e52d-b375-472a-bf2b-2e7a1eab8252]。\n    *   流動負債較前一季增加 1,350 億新台幣，主要受應付所得稅增加導致應計負債增加 1,110 億新台幣所致 [30a0e52d-b375-472a-bf2b-2e7a1eab8252]。\n*   **營運效率指標：** \n    *   應收帳款週轉天數增加 1 天至 28 天 [30a0e52d-b375-472a-bf2b-2e7a1eab8252]。\n    *   存貨天數增加 3 天至 83 天，主因為海外新廠的產能爬坡（ramping）[112cf0ca-c297-4fb0-906f-40a9b9a3bc94]。\n\n### 二、 現金流量與資本支出\n*   **現金流動：** 第一季營運產生之現金約為 6,260 億新台幣 [112cf0ca-c297-4fb0-906f-40a9b9a3bc94]。\n*   **資本支出：** 該季資本支出為 3,310 億新台幣 [112cf0ca-c297-4fb0-906f-40a9b9a3bc94]。\n*   **股利與融資：** 支付了 1,040 億新台幣的 2024 年第二季現金股利，並透過發行債券籌得 160 億新台幣 [112cf0ca-c297-4fb0-906f-40a9b9a3bc94]。\n*   **現金餘額：** 季末現金餘額增加 2,670 億新台幣，達到 2.4 兆新台幣 [112cf0ca-c297-4fb0-906f-40a9b9a3bc94]。\n\n### 三、 未來展望與策略\n*   **AI 需求：** 會中提及將討論 AI 需求展望 [0203bf5e-8b77-4728-b701-e05397596399]，但具體預測數據與細節在提供的片段中並未顯示。\n*   **第二季指引：** 財務長黃仁昭（Wendell Huang）於會中提供 2025 年第二季的營運指引 [b5839817-bd61-4d94-b63b-77b2ad3afcd5]，惟具體指引數字在片段中資料不足。\n\n資料來源說明：以上內容僅根據提供的法說會逐字稿片段整理，部分關於未來展望的具體數據因片段缺失而無法提供。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "56f3cc47-48b5-4ee2-a593-71c2b3092e3e",
+        "snippet": "25 Refinitiv. All rights reserved. Republication or redistribution of Refinitiv content, including by framing or similar means, is prohibited without the prior written\nconsent of Refinitiv. 'Refinitiv' and the Refinitiv logo are registered trademarks of Refinitiv and its affiliated companies.\nAPRIL 17, 2025 / 6:00AM, 2330.TW - Q1 2025 Taiwan Semiconductor Manufacturing Co Ltd Earnings Call\nFirst quarter revenue decreased 3.4% sequentially in NT dollars or 5.1% in US dollars as our business was i",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "3773319d-4ec2-4afb-a8d3-90525842f915",
+        "snippet": "ough the conference call, your dial-in lines are in listen-only mode.\nThe format for today's event will be as follows: First, TSMC's Senior Vice President and CFO, Mr. Wendell Huang, will summarize our operations in\nthe first quarter 2025, followed by our guidance for the second quarter 2025. Afterwards, Mr. Huang and TSMC's Chairman and CEO, Dr. C.C. Wei,\nwill jointly provide the company's key messages. Then we will open the line for questions and answers.\nAs usual, I would like to remind every",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "f8352363-0099-412a-b337-d3c165690527",
+        "snippet": "REFINITIV STREETEVENTS\nEDITED TRANSCRIPT\n2330.TW - Q1 2025 Taiwan Semiconductor Manufacturing Co Ltd\nEarnings Call\nEVENT DATE/TIME: APRIL 17, 2025 / 6:00AM GMT\nREFINITIV STREETEVENTS | www.refinitiv.com | Contact Us\n©2025 Refinitiv. All rights reserved. Republication or redistribution of Refinitiv content, including by framing or similar means, is prohibited without the prior written\nconsent of Refinitiv. 'Refinitiv' and the Refinitiv logo are registered trademarks of Refinitiv and its affiliate",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "0203bf5e-8b77-4728-b701-e05397596399",
+        "snippet": "025.\n4\nREFINITIV STREETEVENTS | www.refinitiv.com | Contact Us\n©2025 Refinitiv. All rights reserved. Republication or redistribution of Refinitiv content, including by framing or similar means, is prohibited without the prior written\nconsent of Refinitiv. 'Refinitiv' and the Refinitiv logo are registered trademarks of Refinitiv and its affiliated companies.\nAPRIL 17, 2025 / 6:00AM, 2330.TW - Q1 2025 Taiwan Semiconductor Manufacturing Co Ltd Earnings Call\nNow, I will talk about our AI demand outl",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "b5839817-bd61-4d94-b63b-77b2ad3afcd5",
+        "snippet": "ry of operations and the current quarter guidance.\nWendell Huang - Taiwan Semiconductor Manufacturing Co Ltd - Senior Vice President and Chief Financial Officer\nThank you, Jeff. Good afternoon, everyone. Thank you for joining us today. My presentation will start with financial highlights for the first quarter\n2025. After that, I will provide the guidance for the second quarter of 2025.\n2\nREFINITIV STREETEVENTS | www.refinitiv.com | Contact Us\n©2025 Refinitiv. All rights reserved. Republication o",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "c8157f71-7d9f-4f0a-90be-05d4b4aa6bce",
+        "snippet": "cturing Co Ltd - Director of Investor Relations\n(spoken in foreign language)\ngood afternoon, everyone, and welcome to TSMC's first quarter 2025 earnings conference call. This is Jeff Su, TSMC's Director of Investor Relations\nand your host for today.\nTSMC is holding our earnings conference call via live audio webcast through the company's website at www.tsmc.com, where you can also download\nthe earnings release materials. If you are joining us through the conference call, your dial-in lines are i",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "30a0e52d-b375-472a-bf2b-2e7a1eab8252",
+        "snippet": "\nMoving on to the balance sheet. We ended the first quarter with cash and marketable securities of TWD2.7 trillion or USD81 billion. On the liability\nside, current liabilities increased by TWD135 billion quarter-over-quarter, mainly due to the increase of TWD111 billion in accrued liabilities and\nothers. The increase in accrued liabilities and others was mainly due to the accrual of income tax payables. On financial ratios, accounts receivable\nturnover days increased 1 day to 28 days. Days of in",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      },
+      {
+        "source_id": "112cf0ca-c297-4fb0-906f-40a9b9a3bc94",
+        "snippet": "rnover days increased 1 day to 28 days. Days of inventory increased 3 days to 83 days, primarily due to the ramping of new overseas fabs.\nRegarding cash flow and CapEx. During the first quarter, we generated about TWD626 billion in cash from operations, spent TWD331 billion in\nCapEx and distributed TWD104 billion for second quarter 2024 cash dividend. In addition, we raised TWD16 billion in cash from bond issuances.\nOverall, our cash balance increased TWD267 billion to TWD2.4 trillion at the end",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "doc_type": null,
+        "fiscal_period": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 15085
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 6326
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 14424
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3350
+      }
+    ]
+  },
+  "error": null
+}
