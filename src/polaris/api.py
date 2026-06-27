@@ -936,6 +936,25 @@ PEER_OUTCOME_COMPLIANCE_REJECTED = "compliance_rejected"
 PEER_OUTCOME_FALLBACK = "fallback"
 
 
+# 條列前綴（「・」「-」「*」「1.」「1)」「1、」等）：LLM 偶爾仍會自帶；前端
+# PeerSummaryPanel 已會渲染項目符號，這裡統一去除，避免雙重 bullet。
+_BULLET_PREFIX_RE = re.compile(r"^\s*(?:[・·‧•◦\-\*–—]+|\d+[.)、])\s*")
+
+
+def _bulletize_summary(text: str) -> str:
+    """把摘要整理成「每行一個重點、無前綴符號」的條列字串。
+
+    前端 ``PeerSummaryPanel`` 以換行切分並自動加項目符號（第一行視為總覽標題），
+    因此這裡只負責：去空行、去每行開頭的條列／編號符號、trim。回傳以 ``\\n`` 連接。
+    """
+    lines: list[str] = []
+    for raw in (text or "").splitlines():
+        cleaned = _BULLET_PREFIX_RE.sub("", raw.strip()).strip()
+        if cleaned:
+            lines.append(cleaned)
+    return "\n".join(lines)
+
+
 def _peer_synthesis(base: str, *, client) -> tuple[str, str]:
     """嘗試用 Gemini Flash 把 peer-compare 確定性摘要潤飾成敘事段落（P1 接地觸點）。
 
@@ -1109,12 +1128,13 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         key=lambda r: (r.period, r.metric),
     )
 
-    # build summary：可讀格式，不在句中暴露 source_id
-    summary_parts = [f"比較期間：{req.fiscal_period}"]
+    # build summary：條列格式，第一行為總覽標題，其後每行一個比較重點，不在句中暴露
+    # source_id。每行「不」自帶「・」前綴——前端 PeerSummaryPanel 會自動加項目符號。
+    summary_parts = [f"比較期間 {req.fiscal_period}，{req.a_ticker} 與 {req.b_ticker} 主要指標對比："]
     for kpi in kpis:
         better_name = req.a_ticker if kpi.better == "a" else req.b_ticker
         summary_parts.append(
-            f"・{kpi.label}：{req.a_ticker} {kpi.a.v} vs {req.b_ticker} {kpi.b.v}"
+            f"{kpi.label}：{req.a_ticker} {kpi.a.v} vs {req.b_ticker} {kpi.b.v}"
             f"（{better_name} 領先 {kpi.diff}）"
         )
     raw_summary = "\n".join(summary_parts)
@@ -1141,15 +1161,24 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         call_lines = "\n".join(call_snippets[:5]) or "（無法說引用）"
         prompt = (
             f"你是台股產業研究員。請用繁體中文，根據以下財務指標與法說引用，"
-            f"為「{req.a_ticker} vs {req.b_ticker}」（{req.fiscal_period}）"
-            f"寫一段100-150字的同業比較摘要，直接輸出段落文字，不加標題或條列符號。\n\n"
+            f"為「{req.a_ticker} vs {req.b_ticker}」（{req.fiscal_period}）寫一份同業比較摘要。\n\n"
+            f"輸出格式（務必嚴格遵守）：\n"
+            f"第一行：一句 15-35 字的整體總覽，點出兩家最關鍵的差異。\n"
+            f"第二行起：每行一個比較重點，共 3-5 行，每行 15-45 字，直接陳述事實差異"
+            f"（可帶數字，數字需與下列指標一致）。\n"
+            f"每行「不要」加「・」「-」「*」等符號或數字編號（介面會自動加項目符號），"
+            f"行與行之間用換行分隔，讓使用者一眼就能掃讀。\n\n"
             f"財務指標：\n{kpi_lines}\n\n"
             f"法說引用（節錄）：\n{call_lines}\n\n"
             f"使用者問題：{req.question}\n\n"
             f"限制：禁止出現買進、賣出、建議投資等語句。"
         )
         try:
-            raw_summary = llm.generate(prompt, flash=True)
+            llm_summary = _bulletize_summary(llm.generate(prompt, flash=True))
+            # 至少要 2 行（總覽＋1 重點）才採用 LLM 版；若 LLM 仍回單段落，
+            # 沿用上方結構化條列，確保前端永遠能渲染成 bullet point。
+            if "\n" in llm_summary:
+                raw_summary = llm_summary
         except Exception:
             pass  # fallback to machine-generated summary
 

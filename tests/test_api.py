@@ -463,6 +463,73 @@ class TestPeerCompare:
             ("2330", "2026Q1", "比較毛利率與法說重點"),
             ("2454", "2026Q1", "比較毛利率與法說重點"),
         ]
+        # 比較摘要應為「多行條列」（首行總覽 + 每行一個重點），讓前端 PeerSummaryPanel
+        # 能渲染成 bullet point；且每行不得自帶「・」前綴（否則前端會雙重 bullet）。
+        summary_lines = [ln for ln in body["summary"].split("\n") if ln.strip()]
+        assert len(summary_lines) >= 2
+        assert not any(ln.lstrip().startswith("・") for ln in summary_lines)
+
+    def _peer_store(self):
+        """最小 PeerStore：兩家各一筆毛利率，確保 kpis 非空。"""
+
+        class _Store:
+            def list_financials(self, *, ticker=None, period=None, metric=None, limit=None):
+                rows = {
+                    "2330": [{"ticker": "2330", "fiscal_period": "2026Q1", "metric_id": "gross_margin", "value": 57.8, "unit": "%", "source_id": "fa"}],
+                    "2454": [{"ticker": "2454", "fiscal_period": "2026Q1", "metric_id": "gross_margin", "value": 38.3, "unit": "%", "source_id": "fb"}],
+                }.get(ticker, [])
+                if period is not None:
+                    rows = [r for r in rows if r["fiscal_period"] == period]
+                if metric is not None:
+                    rows = [r for r in rows if r["metric_id"] == metric]
+                return rows[: limit or 200]
+
+        return _Store()
+
+    def test_llm_summary_normalized_to_clean_bullets(self, client, monkeypatch):
+        """LLM 即使回傳帶「・」前綴的多行，後端會去前綴並保留多行（前端自加項目符號）。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+        from polaris.llm import gemini
+
+        class FakeLLM:
+            def generate(self, prompt, flash=False, **kw):
+                return "台積電整體領先聯發科。\n・毛利率：台積電 57.8% vs 聯發科 38.3%\n- 規模優勢明顯"
+
+        monkeypatch.setattr(api, "_structured_store", self._peer_store())
+        monkeypatch.setattr(api, "_search_peer_calls", lambda t, p, q: [Citation(source_id=f"c-{t}", snippet="原文", origin="embedding", company=t, doc_type="transcript", fiscal_period=p)])
+        monkeypatch.setattr(gemini, "active_llm", lambda: FakeLLM())
+
+        r = client.post("/peer-compare", json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q1", "question": "比較毛利率"})
+        assert r.status_code == 200
+        lines = [ln for ln in r.json()["summary"].split("\n") if ln.strip()]
+        assert len(lines) == 3
+        assert not any(ln.startswith(("・", "-", "*")) for ln in lines)
+
+    def test_llm_single_paragraph_falls_back_to_structured_bullets(self, client, monkeypatch):
+        """LLM 若仍回單段落（無換行），後端沿用結構化條列，確保前端仍能渲染 bullet。"""
+        from polaris import api
+        from polaris.llm import gemini
+
+        class FakeLLM:
+            def generate(self, prompt, flash=False, **kw):
+                return "台積電毛利率高於聯發科，整體表現領先，這是一段沒有換行的敘述文字。"
+
+        monkeypatch.setattr(api, "_structured_store", self._peer_store())
+        monkeypatch.setattr(api, "_search_peer_calls", lambda t, p, q: [])
+        monkeypatch.setattr(gemini, "active_llm", lambda: FakeLLM())
+
+        r = client.post("/peer-compare", json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q1", "question": "比較毛利率"})
+        assert r.status_code == 200
+        lines = [ln for ln in r.json()["summary"].split("\n") if ln.strip()]
+        assert len(lines) >= 2  # 結構化條列：總覽 + 至少一項指標
+
+    def test_bulletize_summary_strips_prefixes_and_blank_lines(self):
+        from polaris.api import _bulletize_summary
+
+        out = _bulletize_summary("總覽句子\n・第一點\n- 第二點\n\n3. 第三點\n   \n* 第四點")
+        assert out.split("\n") == ["總覽句子", "第一點", "第二點", "第三點", "第四點"]
+        assert _bulletize_summary("只有一段沒有換行").count("\n") == 0
 
     def test_peer_call_search_uses_existing_retriever_bridge(self, monkeypatch):
         from polaris import api
