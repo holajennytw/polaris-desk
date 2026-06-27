@@ -33,12 +33,16 @@ Watchdog（specs/003，R7 Alert Inbox 消費端）：
 from __future__ import annotations
 
 import hashlib
+import hmac
+import json
+import logging
+import os
 import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator
@@ -60,6 +64,8 @@ from polaris.notifications import (
 from polaris.server import health_payload, resolve_port
 from polaris.structured_store import StructuredStore
 from polaris.user_store import UserStore
+
+_log = logging.getLogger(__name__)
 
 _WATCHDOG_MOCK_EVENTS = (
     Path(__file__).resolve().parent / "graph" / "watchdog" / "data" / "watchdog_events.json"
@@ -86,6 +92,18 @@ app.add_middleware(
 )
 
 
+# --- 輸入上限（security review #3：成本型 DoS / 儲存濫用防護）---
+# LLM / 檢索入口的 query / question 字數上限——擋超長輸入觸發 LLM / retrieval 成本。
+# 自然語言研究問句 2000 字綽綽有餘；超過由 FastAPI 回 422。
+_MAX_QUERY_LEN = 2000
+# 歷史紀錄寫入 Firestore 的上限：tickers 筆數、整包 result 的序列化位元組數。
+_MAX_TICKERS = 50
+_MAX_RESULT_BYTES = 256 * 1024  # 256 KiB：整包 result 還原所需，遠大於正常回應
+# 通知事件 payload 序列化上限——擋超大事件灌爆收件匣 / 外送管道（security review #2/#3）。
+_MAX_EVENT_BYTES = 64 * 1024  # 64 KiB：真實事件遠小於此（標題 + 證據數筆）
+_NOTIFY_TOKEN_HEADER = "X-Polaris-Notify-Token"
+
+
 # --- 請求 / 回應模型（回應重用引擎既有 pydantic 型別 → 序列化不會與引擎漂移）---
 def _reject_blank(value: str) -> str:
     """空白（含全形空白）視同未輸入 → 422，不把垃圾餵進引擎。"""
@@ -94,11 +112,45 @@ def _reject_blank(value: str) -> str:
     return value
 
 
+def _viewer_for(user: dict | None) -> str:
+    """ACL principal 由**已驗證**的 Google 身分（``sub``）推導；匿名 → public sentinel。
+
+    security review #1：``viewer`` 絕不可由 client 提供——否則任何呼叫者只要把
+    身分改成 ``owner`` 就能讀他人 owner-scoped 文件（store SQL 以 ``owner == viewer``
+    放行）。匿名請求固定看公開文件（owner IS NULL）。
+    """
+    if user and user.get("sub"):
+        return user["sub"]
+    return PUBLIC_VIEWER
+
+
+def require_producer(
+    token: str | None = Header(default=None, alias=_NOTIFY_TOKEN_HEADER),
+) -> None:
+    """通知「生產者」端點守門（security review #2）。
+
+    - 設了 ``notifications_producer_token`` → 一律要求 header 常數時間相符，否則 401。
+    - 沒設 + ``app_env=="cloud"`` → fail closed 503：prod 未設定即拒收，絕不接受匿名事件。
+    - 沒設 + 非 cloud（local / CI / demo）→ 放行，保 token-free 開發與互動 demo。
+    """
+    expected = settings.notifications_producer_token
+    if not expected:
+        if settings.app_env == "cloud":
+            raise HTTPException(
+                status_code=503,
+                detail="通知生產者端點未設定密鑰（NOTIFICATIONS_PRODUCER_TOKEN）",
+            )
+        return  # 本地 / CI / demo：token-free 放行
+    if not token or not hmac.compare_digest(token, expected):
+        raise HTTPException(status_code=401, detail="需要有效的通知生產者密鑰")
+
+
 class AskRequest(BaseModel):
-    query: str = Field(min_length=1, description="自然語言問題")
-    # issue #32: viewer identity for owner-based document access control.
-    # Omit to use the public sentinel principal (public docs only).
-    viewer: str = Field(default=PUBLIC_VIEWER, description="存取控制身分（issue #32）")
+    query: str = Field(min_length=1, max_length=_MAX_QUERY_LEN, description="自然語言問題")
+    # issue #32 的 ``viewer`` ACL principal **不再由 client 提供**——改由後端從
+    # 已驗證的 Google id_token（``sub``）推導（見 :func:`_viewer_for`）。請求帶入的
+    # ``viewer`` 一律被 pydantic 當 extra field 忽略，杜絕「改 body 讀他人 owner-scoped
+    # 文件」的授權邊界錯置（security review #1）。
 
     _not_blank = field_validator("query")(_reject_blank)
 
@@ -111,9 +163,8 @@ class AskResponse(BaseModel):
 
 
 class ResearchRequest(BaseModel):
-    question: str = Field(min_length=1, description="開放式研究問題")
-    # issue #32: viewer identity forwarded to Deep Research search fn.
-    viewer: str = Field(default=PUBLIC_VIEWER, description="存取控制身分（issue #32）")
+    question: str = Field(min_length=1, max_length=_MAX_QUERY_LEN, description="開放式研究問題")
+    # ``viewer`` 同 :class:`AskRequest`：後端從登入身分推導，client 帶入一律忽略。
 
     _not_blank = field_validator("question")(_reject_blank)
 
@@ -203,12 +254,14 @@ def healthz() -> dict[str, str]:
 
 
 @app.post("/ask", response_model=AskResponse, tags=["research"])
-def ask(req: AskRequest) -> AskResponse:
+def ask(req: AskRequest, user=Depends(current_user)) -> AskResponse:
     """跑 5 節點 workflow，回帶引用 + 合規狀態 + 每節點 trace 的答案。
 
-    ``viewer`` 透傳進 workflow state（issue #32）：retriever 依此做 owner-scoped 過濾。
+    ``viewer`` 由登入身分（Google ``sub``）推導後透傳進 workflow state（issue #32 /
+    security review #1）：retriever 依此做 owner-scoped 過濾。匿名 → 只看公開文件。
     """
-    result = build_workflow().invoke({"query": req.query, "viewer": req.viewer})
+    viewer = _viewer_for(user)
+    result = build_workflow().invoke({"query": req.query, "viewer": viewer})
     return AskResponse(
         answer=result.get("answer", ""),
         compliance_status=result.get("compliance_status", "unknown"),
@@ -218,13 +271,14 @@ def ask(req: AskRequest) -> AskResponse:
 
 
 @app.post("/research", response_model=ResearchResponse, tags=["research"])
-def research(req: ResearchRequest) -> ResearchResponse:
+def research(req: ResearchRequest, user=Depends(current_user)) -> ResearchResponse:
     """跑 Deep Research ReAct loop（≤6 迴圈 / ≥3 引用 / 過合規），回結論 + 證據 + 步驟。
 
-    ``viewer`` 透傳進 run_deep_research（issue #32）：R4 真實 search fn 接入後
-    可依此做 owner-scoped 過濾；stub_search 無 owner 欄位，目前為 no-op。
+    ``viewer`` 由登入身分推導後透傳進 run_deep_research（issue #32 / security review #1）：
+    R4 真實 search fn 接入後依此做 owner-scoped 過濾；stub_search 無 owner 欄位，目前為 no-op。
     """
-    r = run_deep_research(req.question, viewer=req.viewer)
+    viewer = _viewer_for(user)
+    r = run_deep_research(req.question, viewer=viewer)
     return ResearchResponse(
         final_answer=r.final_answer,
         evidence=r.evidence,
@@ -264,15 +318,78 @@ _SUGGESTION_PRESETS: dict[str, list[str]] = {
 }
 
 
+# P3 接地觸點：/suggestions LLM 動態問句的結果分類（觀測 prod 採用率，對齊 R2/R6）。
+SUGG_OUTCOME_LLM = "llm"  # 成功：採用 LLM 生成問句
+SUGG_OUTCOME_FALLBACK = "fallback"  # flag 關
+SUGG_OUTCOME_NO_KEY = "no_key"  # 無金鑰
+SUGG_OUTCOME_LLM_ERROR = "llm_error"  # 生成例外
+SUGG_OUTCOME_EMPTY = "empty"  # 解析後無有效問句
+SUGG_OUTCOME_COMPLIANCE_REJECTED = "compliance_rejected"  # 含買賣字眼
+
+
+def _llm_suggestions(mode: str, presets: list[str], *, client) -> tuple[list[str], str]:
+    """嘗試用 Gemini Flash 生成動態提示問句（P3 接地觸點）。
+
+    Returns ``(suggestions, outcome)``。任一失敗 → 回 ``(presets, outcome)``，token=0。
+    Flag ``SUGGESTIONS_LLM`` 必須為 ``"1"`` 才啟動；預設關。
+
+    刻意**不掛 grounding 閘門**：問句不含事實/數字，無來源可接（P3 反模式提醒）。
+    唯一守門是 ``compliance_agent`` 的 NFR-031 買賣紅線。
+    """
+    from polaris.graph.nodes import compliance_agent as _compliance
+    from polaris.graph.prompts import SUGGESTIONS_SYSTEM_PROMPT
+    from polaris.retry import call_with_retry
+
+    if os.getenv("SUGGESTIONS_LLM", "0") != "1":
+        return presets, SUGG_OUTCOME_FALLBACK
+
+    if client is None:
+        _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_NO_KEY)
+        return presets, SUGG_OUTCOME_NO_KEY
+
+    scene = "單檔個股研究" if mode == "research" else "同業比較"
+    prompt = f"情境：{scene}。請產生 5 條此情境的研究型提示問句。"
+    try:
+        raw = call_with_retry(
+            lambda: client.generate(prompt, flash=True, system_instruction=SUGGESTIONS_SYSTEM_PROMPT)
+        )
+    except Exception:  # noqa: BLE001 — 任何生成失敗都退回 presets
+        _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_LLM_ERROR)
+        return presets, SUGG_OUTCOME_LLM_ERROR
+
+    lines = [ln.strip() for ln in (raw or "").splitlines() if ln.strip()]
+    if not lines:
+        _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_EMPTY)
+        return presets, SUGG_OUTCOME_EMPTY
+
+    # NFR-031：整批問句過 compliance（R7：問句也可能暗示買賣）。
+    _, comp = _compliance.review("\n".join(lines), client)
+    if comp != "passed":
+        _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_COMPLIANCE_REJECTED)
+        return presets, SUGG_OUTCOME_COMPLIANCE_REJECTED
+
+    _log.info("llm_suggestions outcome=%s", SUGG_OUTCOME_LLM)
+    return lines[:5], SUGG_OUTCOME_LLM
+
+
 @app.get("/suggestions", response_model=SuggestionsResponse, tags=["research"])
 def suggestions(
     mode: Literal["research", "peer"] = Query(
         default="research", description="提示情境：research（單檔研究）/ peer（同業比較）"
     ),
 ) -> SuggestionsResponse:
-    """回傳輸入提示問句晶片（前端 useSuggestions）。規則式精選、token-free，
-    無效 ``mode`` 由 FastAPI 回 422。NFR-031：問句皆為研究型，絕無買賣建議。"""
-    return SuggestionsResponse(suggestions=_SUGGESTION_PRESETS[mode])
+    """回傳輸入提示問句晶片（前端 useSuggestions）。預設規則式精選、token-free，
+    無效 ``mode`` 由 FastAPI 回 422。NFR-031：問句皆為研究型，絕無買賣建議。
+
+    Flag ``SUGGESTIONS_LLM=1`` 時改走 Gemini 動態生成（過 compliance 才採用），
+    否則 / 失敗一律退回 presets（``source="rule"``）。"""
+    from polaris.llm.gemini import active_llm as _active_llm
+
+    presets = _SUGGESTION_PRESETS[mode]
+    items, outcome = _llm_suggestions(mode, presets, client=_active_llm())
+    if outcome == SUGG_OUTCOME_LLM:
+        return SuggestionsResponse(suggestions=items, source="llm")
+    return SuggestionsResponse(suggestions=presets, source="rule")
 
 
 @app.post("/contradiction", response_model=ContradictionResponse, tags=["research"])
@@ -355,12 +472,18 @@ def list_notifications(
 
 
 @app.post("/notifications/events", response_model=PublishOutcome, tags=["notifications"])
-def publish_event(event: dict) -> PublishOutcome:
+def publish_event(event: dict, _=Depends(require_producer)) -> PublishOutcome:
     """發布事件進**真實管線**（去重→接地→合規閘門→訂閱→digest/派送）。
 
-    壞事件回 ``status=rejected``（HTTP 200——拒收是管線的正常 outcome，
-    不是傳輸層錯誤；生產者依 ``status`` 分支）。
+    需內部生產者密鑰（security review #2，見 :func:`require_producer`）。超大 payload
+    → 413（擋灌爆收件匣 / 外送）。壞事件回 ``status=rejected``（HTTP 200——拒收是管線
+    的正常 outcome，不是傳輸層錯誤；生產者依 ``status`` 分支）。
     """
+    size = len(json.dumps(event, ensure_ascii=False, default=str).encode("utf-8"))
+    if size > _MAX_EVENT_BYTES:
+        raise HTTPException(
+            status_code=413, detail=f"事件過大（{size} > {_MAX_EVENT_BYTES} bytes）"
+        )
     return _notification_service.publish(event)
 
 
@@ -376,8 +499,12 @@ def mark_notification_read(notification_id: str) -> Notification:
 
 
 @app.post("/notifications/reset", tags=["notifications"])
-def reset_notifications() -> dict[str, str]:
-    """重置為全新收件匣（in-memory 單例換新；demo / 測試隔離用）。"""
+def reset_notifications(_=Depends(require_producer)) -> dict[str, str]:
+    """重置為全新收件匣（in-memory 單例換新；demo / 測試隔離用）。
+
+    與 ``/events`` 同守門（security review #2）：未授權者不得清空收件匣。cloud 未設密鑰
+    時一律 503（prod 本就不該對外開放 reset）。
+    """
     global _notification_service
     _notification_service = _new_notification_service()
     return {"status": "reset"}
@@ -800,6 +927,81 @@ def _call_side(citation: Citation | None) -> _PeerCallSide:
     )
 
 
+# P1 peer-synthesis outcome constants (R6 採用率可觀測).
+PEER_OUTCOME_POLISHED = "polished"
+PEER_OUTCOME_GATE_FAILED = "gate_failed"
+PEER_OUTCOME_LLM_ERROR = "llm_error"
+PEER_OUTCOME_NO_KEY = "no_key"
+PEER_OUTCOME_COMPLIANCE_REJECTED = "compliance_rejected"
+PEER_OUTCOME_FALLBACK = "fallback"
+
+
+# 條列前綴（「・」「-」「*」「1.」「1)」「1、」等）：LLM 偶爾仍會自帶；前端
+# PeerSummaryPanel 已會渲染項目符號，這裡統一去除，避免雙重 bullet。
+_BULLET_PREFIX_RE = re.compile(r"^\s*(?:[・·‧•◦\-\*–—]+|\d+[.)、])\s*")
+
+
+def _bulletize_summary(text: str) -> str:
+    """把摘要整理成「每行一個重點、無前綴符號」的條列字串。
+
+    前端 ``PeerSummaryPanel`` 以換行切分並自動加項目符號（第一行視為總覽標題），
+    因此這裡只負責：去空行、去每行開頭的條列／編號符號、trim。回傳以 ``\\n`` 連接。
+    """
+    lines: list[str] = []
+    for raw in (text or "").splitlines():
+        cleaned = _BULLET_PREFIX_RE.sub("", raw.strip()).strip()
+        if cleaned:
+            lines.append(cleaned)
+    return "\n".join(lines)
+
+
+def _peer_synthesis(base: str, *, client) -> tuple[str, str]:
+    """嘗試用 Gemini Flash 把 peer-compare 確定性摘要潤飾成敘事段落（P1 接地觸點）。
+
+    Returns ``(summary_text, outcome)``。不過閘門 / compliance 失敗 / 例外 → 回 ``(base, outcome)``。
+    Flag ``PEER_COMPARE_LLM_SYNTHESIS`` 必須為 ``"1"`` 才啟動；預設關（token=0）。
+    """
+    import re as _re
+
+    from polaris.graph.deep_research.state import numbers_grounded_in_text
+    from polaris.graph.nodes import compliance_agent as _compliance
+    from polaris.graph.prompts import PEER_SYNTHESIS_SYSTEM_PROMPT
+    from polaris.retry import call_with_retry
+
+    if os.getenv("PEER_COMPARE_LLM_SYNTHESIS", "0") != "1":
+        return base, PEER_OUTCOME_FALLBACK
+
+    if client is None:
+        _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_NO_KEY)
+        return base, PEER_OUTCOME_NO_KEY
+
+    try:
+        prose = call_with_retry(
+            lambda: client.generate(base, flash=True, system_instruction=PEER_SYNTHESIS_SYSTEM_PROMPT)
+        )
+    except Exception:  # noqa: BLE001
+        _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_LLM_ERROR)
+        return base, PEER_OUTCOME_LLM_ERROR
+
+    # Gate 1: prose must contain at least one source tag (來源：...).
+    # Gate 2: every number in prose must come from the deterministic base
+    # (防幻覺數字；憲法 §II「每個數字都要有來源」)。base 已是接地的數字來源。
+    if not _re.search(r"[（(]來源[：:][^）)]+[）)]", prose) or not numbers_grounded_in_text(
+        prose, base
+    ):
+        _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_GATE_FAILED)
+        return base, PEER_OUTCOME_GATE_FAILED
+
+    # Compliance check (R7: 比較→買賣 紅線).
+    _, comp = _compliance.review(prose, client)
+    if comp != "passed":
+        _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_COMPLIANCE_REJECTED)
+        return base, PEER_OUTCOME_COMPLIANCE_REJECTED
+
+    _log.info("peer_synthesis outcome=%s", PEER_OUTCOME_POLISHED)
+    return prose, PEER_OUTCOME_POLISHED
+
+
 @app.post("/peer-compare", response_model=PeerCompareResponse, tags=["research"])
 def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
     """同業比較：真實財務指標 + 法說 RAG 引用；PE/PB 目前無資料回 []，不造假。"""
@@ -926,12 +1128,13 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         key=lambda r: (r.period, r.metric),
     )
 
-    # build summary：可讀格式，不在句中暴露 source_id
-    summary_parts = [f"比較期間：{req.fiscal_period}"]
+    # build summary：條列格式，第一行為總覽標題，其後每行一個比較重點，不在句中暴露
+    # source_id。每行「不」自帶「・」前綴——前端 PeerSummaryPanel 會自動加項目符號。
+    summary_parts = [f"比較期間 {req.fiscal_period}，{req.a_ticker} 與 {req.b_ticker} 主要指標對比："]
     for kpi in kpis:
         better_name = req.a_ticker if kpi.better == "a" else req.b_ticker
         summary_parts.append(
-            f"・{kpi.label}：{req.a_ticker} {kpi.a.v} vs {req.b_ticker} {kpi.b.v}"
+            f"{kpi.label}：{req.a_ticker} {kpi.a.v} vs {req.b_ticker} {kpi.b.v}"
             f"（{better_name} 領先 {kpi.diff}）"
         )
     raw_summary = "\n".join(summary_parts)
@@ -958,21 +1161,35 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         call_lines = "\n".join(call_snippets[:5]) or "（無法說引用）"
         prompt = (
             f"你是台股產業研究員。請用繁體中文，根據以下財務指標與法說引用，"
-            f"為「{req.a_ticker} vs {req.b_ticker}」（{req.fiscal_period}）"
-            f"寫一段100-150字的同業比較摘要，直接輸出段落文字，不加標題或條列符號。\n\n"
+            f"為「{req.a_ticker} vs {req.b_ticker}」（{req.fiscal_period}）寫一份同業比較摘要。\n\n"
+            f"輸出格式（務必嚴格遵守）：\n"
+            f"第一行：一句 15-35 字的整體總覽，點出兩家最關鍵的差異。\n"
+            f"第二行起：每行一個比較重點，共 3-5 行，每行 15-45 字，直接陳述事實差異"
+            f"（可帶數字，數字需與下列指標一致）。\n"
+            f"每行「不要」加「・」「-」「*」等符號或數字編號（介面會自動加項目符號），"
+            f"行與行之間用換行分隔，讓使用者一眼就能掃讀。\n\n"
             f"財務指標：\n{kpi_lines}\n\n"
             f"法說引用（節錄）：\n{call_lines}\n\n"
             f"使用者問題：{req.question}\n\n"
             f"限制：禁止出現買進、賣出、建議投資等語句。"
         )
         try:
-            raw_summary = llm.generate(prompt, flash=True)
+            llm_summary = _bulletize_summary(llm.generate(prompt, flash=True))
+            # 至少要 2 行（總覽＋1 重點）才採用 LLM 版；若 LLM 仍回單段落，
+            # 沿用上方結構化條列，確保前端永遠能渲染成 bullet point。
+            if "\n" in llm_summary:
+                raw_summary = llm_summary
         except Exception:
             pass  # fallback to machine-generated summary
 
+    # P1 接地觸點：flag 開時嘗試 Gemini 潤飾比較結論；fallback = raw_summary。
+    from polaris.llm.gemini import active_llm as _active_llm
+
+    final_summary, _ = _peer_synthesis(raw_summary, client=_active_llm())
+
     from polaris.graph.nodes import compliance_agent
 
-    _, compliance_status = compliance_agent.review(raw_summary, None)
+    _, compliance_status = compliance_agent.review(final_summary, None)
 
     return PeerCompareResponse(
         a_ticker=req.a_ticker,
@@ -983,7 +1200,7 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         calls=calls,
         trend=trend,
         valuation=[],
-        summary=raw_summary,
+        summary=final_summary,
         compliance_status=compliance_status,
     )
 
@@ -991,9 +1208,14 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
 @app.get("/chunk/{source_id}", response_model=ChunkResponse, tags=["research"])
 def chunk(
     source_id: str,
-    viewer: str = Query(default=PUBLIC_VIEWER, description="存取控制身分"),
+    user=Depends(current_user),
 ) -> ChunkResponse:
-    """展開單一引用原文；不存在與無權限皆回 404，避免洩漏文件是否存在。"""
+    """展開單一引用原文；不存在與無權限皆回 404，避免洩漏文件是否存在。
+
+    ``viewer`` 由登入身分推導（security review #1）：匿名只看公開原文，登入者另可
+    看自己 owner-scoped 的原文——絕不接受 client 指定 viewer。
+    """
+    viewer = _viewer_for(user)
     row = _structured_store.get_chunk(source_id, viewer=viewer)
     if row is None:
         raise HTTPException(status_code=404, detail="查無此引用")
@@ -1036,14 +1258,31 @@ def _require_uid(user: dict | None) -> str:
 
 
 class HistoryIn(BaseModel):
-    """一筆活動紀錄（B 級：``result`` 存整包 → 日後完整還原）。"""
+    """一筆活動紀錄（B 級：``result`` 存整包 → 日後完整還原）。
 
-    origin: str = Field(description='來源頁面："research" | "peer"')
-    query: str = Field(min_length=1, description="使用者查詢文字")
-    tickers: list[str] = Field(default_factory=list, description="涉及股票代號")
+    security review #3：登入後寫入 Firestore，需設上限擋儲存濫用——``query`` 字數、
+    ``tickers`` 筆數、整包 ``result`` 的序列化大小皆有界。
+    """
+
+    origin: str = Field(max_length=32, description='來源頁面："research" | "peer"')
+    query: str = Field(min_length=1, max_length=_MAX_QUERY_LEN, description="使用者查詢文字")
+    tickers: list[str] = Field(
+        default_factory=list, max_length=_MAX_TICKERS, description="涉及股票代號"
+    )
     result: dict | None = Field(default=None, description="整包回應，供完整還原（B 級）")
 
     _not_blank = field_validator("query")(_reject_blank)
+
+    @field_validator("result")
+    @classmethod
+    def _result_within_limit(cls, value: dict | None) -> dict | None:
+        """整包 ``result`` 序列化後不得超過上限——擋大型 JSON 灌進 Firestore。"""
+        if value is None:
+            return value
+        size = len(json.dumps(value, ensure_ascii=False).encode("utf-8"))
+        if size > _MAX_RESULT_BYTES:
+            raise ValueError(f"result 過大（{size} > {_MAX_RESULT_BYTES} bytes）")
+        return value
 
 
 class HistoryRecordResponse(BaseModel):
@@ -1080,6 +1319,18 @@ def get_history_one(session_id: str, user=Depends(current_user)) -> dict:
     if s is None:
         raise HTTPException(status_code=404, detail="查無此紀錄")
     return s
+
+
+@app.delete("/history/{session_id}", tags=["user"])
+def delete_history_one(session_id: str, user=Depends(current_user)) -> dict[str, str]:
+    """刪除登入使用者一筆活動紀錄（security review #4）；查無 → 404。
+
+    需登入：以 Google ``sub`` 收斂只能刪自己的紀錄。前端原本因後端缺此端點而「靜默
+    成功」，導致 Firestore 仍留資料——補上後刪除才真的落地。
+    """
+    if not _user_store.delete_session(_require_uid(user), session_id):
+        raise HTTPException(status_code=404, detail="查無此紀錄")
+    return {"status": "deleted"}
 
 
 @app.get("/subscriptions", response_model=SubsResponse, tags=["user"])

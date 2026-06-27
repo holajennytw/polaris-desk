@@ -16,7 +16,7 @@ from polaris.graph.compliance import BUYSELL_KEYWORDS
 
 DATASET = (
     Path(__file__).resolve().parents[1]
-    / "src" / "polaris" / "eval" / "data" / "questions_v0.csv"
+    / "src" / "polaris" / "eval" / "data" / "questions_v1.csv"
 )
 
 
@@ -33,9 +33,10 @@ def make_item(**overrides) -> EvalItem:
 # ── 題庫 ─────────────────────────────────────────────────────────────────────
 
 class TestDataset:
-    def test_load_75_questions(self):
+    def test_load_questions(self):
         items = load_dataset(DATASET)
-        assert len(items) == 75
+        # R5 canonical v1 = 130；+ 本案接地觸點題 Q131–Q139（9 題）。
+        assert len(items) == 139
         assert all(isinstance(i, EvalItem) for i in items)
 
     def test_ids_unique(self):
@@ -46,8 +47,14 @@ class TestDataset:
     def test_redteam_flag_parsed(self):
         items = load_dataset(DATASET)
         redteam = [i for i in items if i.redteam]
-        assert len(redteam) == 10
+        assert len(redteam) == 14  # v1 canonical 10 + 本案 Q131–Q134（P1 比較式紅隊）
         assert all(i.category == "紅隊" for i in redteam)
+
+    def test_gate_subset_parsed(self):
+        """v1 新增 gate_subset 選用欄：scenario4_gate（R5）+ prose_faithfulness（本案 P0）。"""
+        items = load_dataset(DATASET)
+        assert sum(i.gate_subset == "scenario4_gate" for i in items) == 10
+        assert sum(i.gate_subset == "prose_faithfulness" for i in items) == 4
 
     def test_scenarios_present(self):
         scenarios = {i.scenario for i in load_dataset(DATASET)}
@@ -81,6 +88,32 @@ class TestRunner:
         assert record.answer.strip()
         assert record.contexts
         assert record.citation_count >= 3  # FR-004 ≥3 條引用
+
+    def test_scenario_5_peer_compare_does_not_crash(self):
+        """場景 5（peer-compare）：公司欄 '<a>;<b>' → 走 peer-compare 引擎，不拋 AttributeError。
+
+        回歸：runner 曾誤讀 item.fiscal_period（EvalItem 欄位實為 period）。
+        """
+        record = run_item(make_item(
+            item_id="T080", scenario="5",
+            question="比較台積電與聯發科毛利率差異及可能成因？",
+            company="2330;2454", period="2025Q1",
+        ))
+        assert record.answer.strip()
+        assert record.compliance_status == "passed"
+
+    def test_prose_faithfulness_rows_route_and_pass_smoke(self):
+        """P0 敘事接地題（Q081–Q084）：場景 2 走 Deep Research，stub 模式下確定性過煙測。
+
+        這些題的 golden_answer 訂的是 faithfulness 契約（敘事 + 句句來源 + 無數字幻覺
+        + 無投資結論）；flag 開 + 真 LLM 時實際考潤飾路徑，CI（token=0）則守確定性契約。
+        """
+        items = [i for i in load_dataset(DATASET) if i.category == "敘事接地"]
+        assert len(items) == 4  # Q081–Q084
+        for item in items:
+            assert item.scenario == "2"
+            score = smoke_check(run_item(item))
+            assert score.passed, (item.item_id, score.checks)
 
     def test_scenario_3_routes_through_text_workflow(self):
         """ColPali 退役後：場景 3（圖表題）改走文字 workflow。

@@ -77,8 +77,15 @@ gcloud run deploy polaris-api \
   --port 8000 \
   --service-account polaris-run@polaris-desk-team.iam.gserviceaccount.com \
   --set-env-vars "APP_ENV=cloud,VECTOR_BACKEND=bigquery,GCP_PROJECT=polaris-desk-team,BQ_DATASET=polaris_core,GEMINI_USE_VERTEX=1,POLARIS_CORS_ORIGINS=https://<r7-vercel-domain>" \
-  --set-secrets "GEMINI_API_KEY=gemini-api-key:latest"
+  --set-secrets "GEMINI_API_KEY=gemini-api-key:latest,NOTIFICATIONS_PRODUCER_TOKEN=notifications-producer-token:latest"
 ```
+
+> ⚠️ `--set-secrets` / `--set-env-vars` 是**整組覆蓋**（不是合併）。線上 `polaris-api` 實際
+> 還掛了 `GOOGLE_CLIENT_ID` / `google-client-secret` / `nextauth-secret` / `cohere-api-key` 等。
+> **只想新增 / 換一把祕密時用 `--update-secrets`（合併，不動其它）**，例如本次加通知密鑰：
+> `gcloud run deploy polaris-api --source . --region asia-east1 --update-secrets "NOTIFICATIONS_PRODUCER_TOKEN=notifications-producer-token:latest"`。
+> 用上面整組 `--set-secrets` 重建前，請先 `gcloud run services describe polaris-api --region asia-east1`
+> 把現有 env / secrets 補齊，否則會掉設定（如 OAuth 的 `GOOGLE_CLIENT_ID`）。
 
 - **非敏感設定**（`APP_ENV` / `VECTOR_BACKEND` / `GCP_PROJECT` / `BQ_DATASET`）→ `--set-env-vars`。
   對齊 `polaris/config.py` 的 `Settings` 欄位（同一份程式、雲端只換環境變數）。
@@ -86,7 +93,9 @@ gcloud run deploy polaris-api \
   繞過 AI Studio 免費日配額 429）。需 runtime SA 有 `roles/aiplatform.user`（見 §4）+ Vertex AI API 已開
   （`gcloud services enable aiplatform.googleapis.com`）。**嵌入（`embed`）仍走 `GEMINI_API_KEY` 同一模型**，
   保住 `polaris_core` 768 向量空間。模型 `gemini-3-flash-preview` 僅 `vertex_location=global` 可用（實測）。
-- 只掛 `gemini-api-key` 一把祕密（embeddings 用）；Cohere/Tavily 為佔位，未建祕密（rerank / 網搜 graceful skip）。
+- `gemini-api-key`（embeddings 用）+ `notifications-producer-token`（通知生產者端點守門，
+  security review #2；runtime SA 需 `secretAccessor`，見 §4）。`APP_ENV=cloud` 未掛此密鑰 → `/notifications/events`
+  與 `/reset` 一律 503（fail closed）。Tavily 為佔位，未建祕密（網搜 graceful skip）。
 - **`POLARIS_CORS_ORIGINS`**：R7 前端（Vercel）跨域呼叫本 API 的允許來源。**部署時換成 R7 實際的
   Vercel 網域**（如 `https://polaris-desk.vercel.app`，多個逗號分隔）。本地 dev 預設已含
   `http://localhost:3000`（Next.js）/ `:8501`（Chainlit）。不設＝只允許本地，R7 線上會被 CORS 擋。

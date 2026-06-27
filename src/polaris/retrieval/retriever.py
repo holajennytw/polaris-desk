@@ -540,7 +540,12 @@ class HybridRetriever:
         if _wants_recency(query):
             ranked = _boost_recency(ranked)
         ranked.sort(key=lambda r: r.score, reverse=True)
-        return [_ensure_citation_metadata(r) for r in ranked[:limit]]
+        # _trim_result_content 去掉既有 chunk 開頭的半截英文字（issue #50 存量止血，
+        # 不改 store）。放在 retrieve_candidates 這個共用瓶頸 → retrieve()（5-node /ask）
+        # 與 make_research_search_fn（/research 的 per-doc-type quota 路徑）都涵蓋到。
+        return [
+            _ensure_citation_metadata(_trim_result_content(r)) for r in ranked[:limit]
+        ]
 
     def retrieve(self, query: str, *, filters: dict | None = None) -> list[SearchResult]:
         """3-path retrieval: BM25 keyword + optional vector + optional Cohere Rerank.
@@ -555,12 +560,9 @@ class HybridRetriever:
 
         reranker = self.rerank_fn if self.rerank_fn is not None else _cohere_rerank
         candidates = reranker(query.strip(), candidates, self.top_k)[: self.top_k]
-        # Every result must carry the citation-facing metadata keys so downstream
-        # adapters (api.py /research, Deep Research) can read metadata["doc_type"/
-        # "published_at"] safely regardless of channel (incl. BM25/stub fallback).
-        # _trim_result_content 去掉既有 chunk 開頭的半截英文字（issue #50 存量止血，
-        # 不改 store）。
-        return [_ensure_citation_metadata(_trim_result_content(r)) for r in candidates]
+        # candidates 已由 retrieve_candidates 完成 citation-metadata 補齊 + 半截字修剪；
+        # 此處不重複修剪（避免連續兩個 fragment-like token 被過度裁切）。
+        return candidates
 
 
 # ---------------------------------------------------------------------------

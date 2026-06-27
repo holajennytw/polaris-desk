@@ -742,3 +742,41 @@ def test_retrieve_trims_leading_fragment_in_returned_content():
     top = next(r for r in results if r.id == "t-2330-frag")
     assert top.content.startswith("days increased")
     assert "rnover" not in top.content
+
+
+def _frag_store():
+    frag = type("R", (), {})()
+    frag.id = "t-2330-frag"
+    frag.content = "rnover days increased 1 day to 28 days."
+    frag.score = 0.9
+    frag.company = "2330"
+    frag.period = "2024Q3"
+    frag.metadata = {"source_id": "t-2330-frag"}
+
+    class FakeStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):
+            return [frag]
+
+    return FakeStore()
+
+
+def test_retrieve_candidates_trims_leading_fragment():
+    # /research 走 make_research_search_fn → retrieve_candidates（非 retrieve），
+    # 修剪必須在 retrieve_candidates 生效，否則研究答案仍洩半截字（issue #50 後續）。
+    retriever = HybridRetriever(top_k=3, store=_frag_store(), embedding_fn=lambda _q: [1.0])
+    cands = retriever.retrieve_candidates("台積電 turnover", filters={"company": "2330"})
+    top = next(c for c in cands if c.id == "t-2330-frag")
+    assert top.content.startswith("days increased")
+    assert "rnover" not in top.content
+
+
+def test_research_search_fn_snippets_trimmed():
+    # 端到端：/research 的 search fn 產出的 Citation snippet 不得帶半截字。
+    from polaris.retrieval.retriever import make_research_search_fn
+
+    retriever = HybridRetriever(top_k=3, store=_frag_store(), embedding_fn=lambda _q: [1.0])
+    search = make_research_search_fn(retriever=retriever)
+    citations = search("台積電 turnover")
+    frag = next(c for c in citations if c.source_id == "t-2330-frag")
+    assert frag.snippet.startswith("days increased")
+    assert "rnover" not in frag.snippet

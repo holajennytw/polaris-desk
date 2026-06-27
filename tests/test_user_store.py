@@ -46,6 +46,9 @@ class FakeDocRef:
     def get(self):
         return FakeSnap(self.id, self._node.fields)
 
+    def delete(self):
+        self._node.fields = None
+
     def collection(self, name):
         return self._node.subcols.setdefault(name, FakeCollection())
 
@@ -123,6 +126,23 @@ class TestSessions:
         store = make_store()
         store.save_session("alice", SAMPLE)
         assert store.list_sessions("bob") == []
+
+    def test_delete_removes_session_and_returns_true(self):
+        store = make_store()
+        rid = store.save_session("u1", SAMPLE)
+        assert store.delete_session("u1", rid) is True
+        assert store.get_session("u1", rid) is None
+        assert store.list_sessions("u1") == []
+
+    def test_delete_unknown_session_returns_false(self):
+        assert make_store().delete_session("u1", "nope") is False
+
+    def test_delete_is_scoped_per_user(self):
+        """bob 不能刪 alice 的紀錄（uid 收斂在自己的 sessions 子集合）。"""
+        store = make_store()
+        rid = store.save_session("alice", SAMPLE)
+        assert store.delete_session("bob", rid) is False
+        assert store.get_session("alice", rid) is not None  # alice 的還在
 
 
 class TestSubscriptions:

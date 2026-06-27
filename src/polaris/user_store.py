@@ -72,6 +72,18 @@ class UserStore:
         snap = self._sessions(uid).document(session_id).get()
         return _with_id(snap) if snap.exists else None
 
+    def delete_session(self, uid: str, session_id: str) -> bool:
+        """刪除該使用者一筆 session；存在並刪除回 ``True``，查無回 ``False``。
+
+        security review #4：前端有刪除 UI 但後端原本缺端點，登入資料不會真的刪。
+        以 ``uid`` 收斂在使用者自己的 sessions 子集合——刪不到別人的紀錄。
+        """
+        ref = self._sessions(uid).document(session_id)
+        if not ref.get().exists:
+            return False
+        ref.delete()
+        return True
+
     # ── 訂閱清單（users/{uid}.tickers）────────────────────────────────────────
 
     def get_subs(self, uid: str) -> list[str]:
