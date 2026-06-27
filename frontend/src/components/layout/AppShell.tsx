@@ -157,6 +157,7 @@ export function AppShell({
           className="icon-btn collapse-btn"
           onClick={toggleCollapse}
           title={collapsed ? "展開側邊欄" : "收合側邊欄"}
+          aria-label={collapsed ? "展開側邊欄" : "收合側邊欄"}
         >
           <Icon name="panelLeft" size={18} />
         </button>
@@ -166,7 +167,7 @@ export function AppShell({
           <b>{CRUMB[pathname] ?? ""}</b>
         </div>
         <div className="topbar-right">
-          <button ref={themeButtonRef} className="icon-btn" onClick={toggleTheme} title="切換主題">
+          <button ref={themeButtonRef} className="icon-btn" onClick={toggleTheme} title="切換主題" aria-label={isDark ? "切換為淺色模式" : "切換為深色模式"}>
             <Icon name={isDark ? "sun" : "moon"} size={18} />
           </button>
         </div>

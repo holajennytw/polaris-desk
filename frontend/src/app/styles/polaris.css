@@ -851,7 +851,7 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
   .mobnav-item:active { transform: scale(0.94); }
   .page { padding: 20px 16px 30px; }
   .dock { padding: 11px 16px; }
-  /* Touch tap targets — buttons & icon buttons at least 44×44 */
+  /* Touch tap targets — all interactive elements ≥ 44×44px */
   .btn { min-height: 44px; }
   .icon-btn { width: 44px; height: 44px; }
   .mobnav-item { min-height: 44px; }
@@ -859,6 +859,34 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
   .news-tab { min-height: 44px; }
   .cpick-btn { min-height: 44px; }
   .cite-item { min-height: 44px; }
+  /* dock */
+  .dock-tool { width: 44px; height: 44px; }
+  .dock-send { width: 44px; height: 44px; }
+  /* KPI 條列 */
+  .kpi-row { min-height: 44px; }
+  /* 表格∕圖表切換 */
+  .vm-btn { min-height: 44px; }
+  /* 通知頁籤 */
+  .nf-tab { min-height: 44px; }
+  /* 通知返回 */
+  .nf-back { min-height: 44px; }
+  /* 系統折疊列 */
+  .sys-fold-head { min-height: 44px; }
+  /* Alert modal 關閉 */
+  .alert-modal-close { min-width: 44px; min-height: 44px; }
+  /* 歷史刪除（手機不依賴 hover，常設可見）*/
+  .history-del { width: 44px; height: 44px; opacity: 1; }
+  /* 追蹤規則控制鈕 */
+  .bell-toggle, .track-del { width: 44px; height: 44px; }
+  .track-toggle { min-width: 44px; min-height: 44px; }
+  /* 確認對話 yes/no */
+  .tc-yes, .tc-no { min-height: 44px; }
+  /* 群組切換 */
+  .gt-opt { min-height: 44px; }
+  /* 設定頁 */
+  .sso-btn, .set-logout { min-height: 44px; }
+  /* 下拉選單項 */
+  .cpick-option, .cpick-opt, .model-opt, .add-opt { min-height: 44px; }
   .kpi-grid, .peer-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .gics-row { grid-template-columns: 1fr; gap: 7px; }
   .gics-row { grid-template-columns: 1fr; gap: 7px; }
@@ -1159,11 +1187,6 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
 .rr-desc { font-size: 13px; color: rgb(var(--muted)); }
 .rr-desc.ro { opacity: .8; }
 
-/* ── 開關 ── */
-.switch { width: 40px; height: 23px; border-radius: 12px; border: 1px solid rgb(var(--border)); background: rgb(var(--muted-bg)); position: relative; cursor: pointer; margin-left: auto; flex-shrink: 0; padding: 0; transition: background .15s, border-color .15s; }
-.switch-knob { position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: rgb(var(--card)); box-shadow: var(--shadow-sm); transition: left .15s; }
-.switch.on { background: rgb(var(--primary)); border-color: rgb(var(--primary)); }
-.switch.on .switch-knob { left: 19px; background: #fff; }
 
 /* ============================================================
    Notifications v2 — risk visuals, detail drill-in, tracking

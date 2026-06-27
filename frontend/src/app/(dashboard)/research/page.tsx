@@ -139,6 +139,7 @@ function ResearchPageInner() {
   const [showReport, setShowReport] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(true);
   const [kpiViewMode, setKpiViewMode] = useState<ViewMode>("table");
+  const [kpiShowAll, setKpiShowAll] = useState(false);
 
   // B 級還原：從 history 頁點進來時，讀 sessionStorage 直接復原結果
   useEffect(() => {
@@ -385,24 +386,35 @@ function ResearchPageInner() {
                       {kpiViewMode === "chart" ? (
                         <ResearchBarChart data={toSingleBarData(sortedKpis)}/>
                       ) : (
-                        <div className="kpi-list">
-                          {sortedKpis.map((k, i) => (
-                            <button key={i} className="kpi-row" onClick={() => handleOpenDoc(k.cite)}>
-                              <span className="kr-label">{k.label}</span>
-                              {k.period && <span className="kr-period">{k.period}</span>}
-                              <span className="kr-value">
-                                <span className="kr-num">{fmtFinNum(k.value)}</span>
-                                {k.unit && <span className="kr-unit">{k.unit}</span>}
-                              </span>
-                              {k.delta && (
-                                <span className={"kr-delta " + k.trend}>
-                                  <Icon name={k.trend === "up" ? "arrowUp" : "arrowDown"} size={12}/>
-                                  {k.delta}
+                        <>
+                          <div className="kpi-list">
+                            {(kpiShowAll ? sortedKpis : sortedKpis.slice(0, 5)).map((k, i) => (
+                              <button key={i} className="kpi-row" onClick={() => handleOpenDoc(k.cite)}>
+                                <span className="kr-label">{k.label}</span>
+                                {k.period && <span className="kr-period">{k.period}</span>}
+                                <span className="kr-value">
+                                  <span className="kr-num">{fmtFinNum(k.value)}</span>
+                                  {k.unit && <span className="kr-unit">{k.unit}</span>}
                                 </span>
-                              )}
+                                {k.delta && (
+                                  <span className={"kr-delta " + k.trend}>
+                                    <Icon name={k.trend === "up" ? "arrowUp" : "arrowDown"} size={12}/>
+                                    {k.delta}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                          {sortedKpis.length > 5 && (
+                            <button
+                              className="btn ghost"
+                              style={{ fontSize: 13, padding: "3px 12px", marginTop: 4 }}
+                              onClick={() => setKpiShowAll(v => !v)}
+                            >
+                              {kpiShowAll ? `收起 · 顯示前 5 項` : `其他 ${sortedKpis.length - 5} 項指標`}
                             </button>
-                          ))}
-                        </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )
@@ -503,7 +515,7 @@ function ResearchPageInner() {
                           onClick={()=>{setSelectedAlertIdx(selectedAlertIdx===i?null:i);rs.markRead(a.id);}}
                           onDoubleClick={()=>{setModalAlert(a);rs.markRead(a.id);}}/>
                       ))
-                    : <EmptyState icon="shield" message={hasQueried ? "本次研究未發現異常訊號" : "執行研究後顯示相關警示"} style={{padding:"20px 16px"}} />
+                    : <div className="chart-empty" style={{padding:"20px 16px"}}><span>{hasQueried ? "本次研究未發現異常訊號" : "執行研究後顯示相關警示"}</span></div>
                 }
               </div>
             </div>
@@ -549,7 +561,7 @@ function ResearchPageInner() {
           <div className="alert-modal" onClick={e=>e.stopPropagation()}>
             <div className="alert-modal-head">
               <h2>{modalAlert.title}</h2>
-              <button className="alert-modal-close" onClick={()=>setModalAlert(null)}><Icon name="x" size={18}/></button>
+              <button className="alert-modal-close" onClick={()=>setModalAlert(null)} aria-label="關閉"><Icon name="x" size={18}/></button>
             </div>
             <div className="alert-modal-body">
               <div className="alert-modal-tag">

@@ -5,8 +5,8 @@ import {
   metricForPeriod,
   normalizePeerCompare,
   peerCitations,
-} from "../src/lib/peer-result.ts";
-import { parseQuery } from "../src/lib/peer.ts";
+} from "../src/lib/peer-result";
+import { parseQuery } from "../src/lib/peer";
 
 test("metricForPeriod returns the selected quarter instead of the latest quarter", () => {
   const rows = [
@@ -52,14 +52,14 @@ test("normalizePeerCompare follows the actual FastAPI response contract", () => 
       a: { v: "57.8%", citations: [{ src: "fin-a", page: "2025Q4" }] },
       b: { v: "38.3%", citations: [{ src: "fin-b", page: "2025Q4" }] },
       diff: "19.5pp",
-      better: "a",
+      better: "a" as "a",
     }],
     financial: [],
     calls: [{
       dim: "法說會",
       topic: "毛利率",
-      a: { stance: "有相關引用", tone: "neu", quote: "A 原文", cite: "chunk-a" },
-      b: { stance: "有相關引用", tone: "neu", quote: "B 原文", cite: "chunk-b" },
+      a: { stance: "有相關引用", tone: "neu" as "neu", quote: "A 原文", cite: "chunk-a" },
+      b: { stance: "有相關引用", tone: "neu" as "neu", quote: "B 原文", cite: "chunk-b" },
     }],
     trend: [],
     valuation: [],

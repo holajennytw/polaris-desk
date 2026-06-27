@@ -6,6 +6,7 @@ import useSWR, { useSWRConfig } from "swr";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api";
 import { logError } from "@/lib/logger";
+import { PanelSkeleton } from "@/components/polaris/Skeleton";
 import { historyStore } from "@/lib/historyStore";
 import type { HistoryEntry } from "@/lib/historyStore";
 
@@ -92,9 +93,8 @@ export default function HistoryPage() {
           ))}
         </div>
         {isLoading ? (
-          <div className="thinking-pulse">
-            <div className="thinking-dots"><span/><span/><span/></div>
-            載入中
+          <div className="panel" style={{ marginTop: 16, padding: "0 16px" }}>
+            <PanelSkeleton rows={6} />
           </div>
         ) : groups.length === 0 ? (
           <div className="panel" style={{ marginTop: 16 }}>

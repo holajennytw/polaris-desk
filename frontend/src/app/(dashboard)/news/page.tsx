@@ -4,6 +4,7 @@ import useSWR from "swr";
 import { Icon } from "@/components/ui/Icon";
 import { api } from "@/lib/api";
 import { useCompanies } from "@/hooks/useCompanies";
+import { PanelSkeleton } from "@/components/polaris/Skeleton";
 
 function fmtDate(s: string): string {
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -65,10 +66,7 @@ export default function NewsPage() {
           </div>
 
           {isLoading ? (
-            <div className="thinking-pulse">
-              <div className="thinking-dots"><span/><span/><span/></div>
-              載入中
-            </div>
+            <PanelSkeleton rows={6} />
           ) : items.length === 0 ? (
             <div style={{ padding: "48px 16px", textAlign: "center", color: "rgb(var(--muted))" }}>
               <Icon name="news" size={32} style={{ marginBottom: 10, opacity: 0.25 }} />

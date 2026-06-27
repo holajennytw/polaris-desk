@@ -37,6 +37,12 @@ export function ReportModal({ query, kpis, summary, react, citations, onClose }:
     controls.forEach(c => { c.style.visibility = "hidden"; });
     const footer = el.querySelector<HTMLElement>(".report-footer");
     if (footer) footer.style.display = "none";
+    // PDF 不含引用來源與模型思考路徑
+    const pdfHide = el.querySelectorAll<HTMLElement>(".report-pdf-hide");
+    pdfHide.forEach(e => { e.style.display = "none"; });
+    // 強制亮色模式捕捉，避免深色模式文字在白底 PDF 上不可讀
+    const htmlEl = document.documentElement;
+    const prevTheme = htmlEl.getAttribute("data-theme");
 
     const prevMaxWidth = el.style.maxWidth;
     const prevWidth    = el.style.width;
@@ -59,6 +65,7 @@ export function ReportModal({ query, kpis, summary, react, citations, onClose }:
       const renderPx = Math.round(contentW / 25.4 * 96);
       el.style.maxWidth = renderPx + "px";
       el.style.width    = renderPx + "px";
+      htmlEl.setAttribute("data-theme", "light");
       await new Promise<void>(resolve => setTimeout(resolve, 0));
 
       const canvas = await html2canvas(el, {
@@ -98,6 +105,9 @@ export function ReportModal({ query, kpis, summary, react, citations, onClose }:
       el.style.width    = prevWidth;
       if (footer) footer.style.display = "";
       controls.forEach(c => { c.style.visibility = ""; });
+      pdfHide.forEach(e => { e.style.display = ""; });
+      if (prevTheme) htmlEl.setAttribute("data-theme", prevTheme);
+      else htmlEl.removeAttribute("data-theme");
       setExporting(false);
     }
   };
@@ -174,7 +184,7 @@ export function ReportModal({ query, kpis, summary, react, citations, onClose }:
           )}
 
           {citations.length > 0 && (
-            <section className="report-section">
+            <section className="report-section report-pdf-hide">
               <h2 className="report-sec-title">引用來源</h2>
               <div className="report-cite-list">
                 {citations.map((c, i) => (
@@ -189,7 +199,7 @@ export function ReportModal({ query, kpis, summary, react, citations, onClose }:
           )}
 
           {react.length > 0 && (
-            <section className="report-section">
+            <section className="report-section report-pdf-hide">
               <h2 className="report-sec-title">模型思考路徑</h2>
               <div className="report-react">
                 {react.map((s, i) => (

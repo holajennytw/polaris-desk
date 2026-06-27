@@ -157,9 +157,13 @@ function PeerKpiGridLive({ result, aName, bName, queryHint = "" }: {
   }
 
   const sorted = queryHint ? sortByRelevance(validKpis, queryHint) : validKpis;
-  const top = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) > 0) : sorted;
-  const rest = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) === 0) : [];
-  const showSplit = top.length > 0 && rest.length > 0;
+  const topByQuery = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) > 0) : [];
+  const restByQuery = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) === 0) : [];
+  // 有關鍵字篩選時依相關性拆；否則超過5筆也折疊
+  const querySplit = topByQuery.length > 0 && restByQuery.length > 0;
+  const top = querySplit ? topByQuery : sorted.slice(0, 5);
+  const rest = querySplit ? restByQuery : sorted.slice(5);
+  const showSplit = querySplit || sorted.length > 5;
   const displayKpis = showSplit && !showAll ? top : sorted;
   const barData = toPeerBarData(sorted.map(k => ({ label: k.label, aRaw: k.a.v, bRaw: k.b.v })));
 
@@ -202,7 +206,7 @@ function PeerKpiGridLive({ result, aName, bName, queryHint = "" }: {
               style={{ fontSize: 13, padding: "3px 12px", marginTop: 2 }}
               onClick={() => setShowAll(v => !v)}
             >
-              {showAll ? `收起 · 顯示相關 ${top.length} 項` : `其他 ${rest.length} 項指標`}
+              {showAll ? `收起 · 顯示前 ${top.length} 項` : `其他 ${rest.length} 項指標`}
             </button>
           )}
         </>
@@ -269,9 +273,12 @@ function FinancialBlock({ result, aName, bName, queryHint = "" }: {
   }
 
   const sorted = queryHint ? sortFinancialByRelevance(validFinancial, queryHint) : validFinancial;
-  const top = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) > 0) : sorted;
-  const rest = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) === 0) : [];
-  const showSplit = top.length > 0 && rest.length > 0;
+  const topByQuery = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) > 0) : [];
+  const restByQuery = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) === 0) : [];
+  const querySplit = topByQuery.length > 0 && restByQuery.length > 0;
+  const top = querySplit ? topByQuery : sorted.slice(0, 5);
+  const rest = querySplit ? restByQuery : sorted.slice(5);
+  const showSplit = querySplit || sorted.length > 5;
   const display = showSplit && !showAll ? top : sorted;
   const barData = toPeerBarData(sorted.map(f => ({ label: toLabel(f.metric), aRaw: f.a.v, bRaw: f.b.v })));
 
@@ -307,7 +314,7 @@ function FinancialBlock({ result, aName, bName, queryHint = "" }: {
             {showSplit && (
               <button className="btn ghost" style={{ fontSize: 13, padding: "3px 12px", marginTop: 6 }}
                 onClick={() => setShowAll(v => !v)}>
-                {showAll ? `收起 · 顯示相關 ${top.length} 項` : `其他 ${rest.length} 項指標`}
+                {showAll ? `收起 · 顯示前 ${top.length} 項` : `其他 ${rest.length} 項指標`}
               </button>
             )}
           </>
@@ -824,7 +831,6 @@ export default function PeerPage() {
                           onDoubleClick={() => { setModalAlert(a); rs.markRead(a.id); }}/>
                       ))
                     : <div className="chart-empty" style={{padding:"20px 16px"}}>
-                        <Icon name="shield" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
                         <span>{hasQueried ? "本次比較未發現異常訊號" : "執行比較後顯示相關警示"}</span>
                       </div>
                 }
@@ -879,7 +885,7 @@ export default function PeerPage() {
           <div className="alert-modal" onClick={e => e.stopPropagation()}>
             <div className="alert-modal-head">
               <h2>{modalAlert.title}</h2>
-              <button className="alert-modal-close" onClick={() => setModalAlert(null)}><Icon name="x" size={18}/></button>
+              <button className="alert-modal-close" onClick={() => setModalAlert(null)} aria-label="關閉"><Icon name="x" size={18}/></button>
             </div>
             <div className="alert-modal-body">
               <div className="alert-modal-tag">

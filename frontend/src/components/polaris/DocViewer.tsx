@@ -37,7 +37,7 @@ export function DocViewer({ doc, onClose }: DocViewerProps) {
                 <Icon name="file" size={14} />
                 {doc.kind}
               </div>
-              <button className="icon-btn" onClick={onClose}>
+              <button className="icon-btn" onClick={onClose} aria-label="關閉文件">
                 <Icon name="x" size={18} />
               </button>
             </div>
