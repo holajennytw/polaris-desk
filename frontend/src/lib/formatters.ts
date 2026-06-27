@@ -1,5 +1,29 @@
 // 財務數字格式化 — 集中管理，取代 peer/page.tsx 與 useFinancials.ts 的散落版本
 
+/**
+ * 財務數值千分位格式化（Presentation Layer Only）。
+ * - null / "" / "—" → "—"
+ * - 無法解析為數值（質性值）→ 原樣返回
+ * - 整數部分 ≥ 4 位 → 加千分位分隔符，小數位數與正負號原樣保留
+ * - 後綴（%, 元, 億 等）原樣保留
+ */
+export function fmtFinNum(raw: string | number | null | undefined): string {
+  if (raw == null || raw === "") return "—";
+  const s = String(raw).trim();
+  if (!s || s === "—") return "—";
+  const m = s.match(/^([+\-]?)([\d,]+(?:\.\d+)?)(.*)$/);
+  if (!m) return s;
+  const [, sign, numStr, suffix] = m;
+  const clean = numStr.replace(/,/g, "");
+  const dotIdx = clean.indexOf(".");
+  const intPart = dotIdx >= 0 ? clean.slice(0, dotIdx) : clean;
+  const decPart = dotIdx >= 0 ? clean.slice(dotIdx) : "";
+  const intNum = parseInt(intPart, 10);
+  if (isNaN(intNum)) return s;
+  const intFormatted = intPart.length >= 4 ? intNum.toLocaleString("en-US") : intPart;
+  return `${sign}${intFormatted}${decPart}${suffix}`;
+}
+
 /** 千元 → 億元顯示，例：439_105_000 → "4,391.1" */
 export function fmtRevenue(valueInThousands: number | null | undefined): string {
   if (valueInThousands == null) return "—";

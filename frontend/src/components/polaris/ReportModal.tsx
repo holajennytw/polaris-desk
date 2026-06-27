@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import type { KpiVM, SummaryItemVM, ReActStepVM, CitationTrackerVM } from "@/types/viewmodel";
+import type { KpiVM, SummaryItemVM, TraceStepVM, CitationTrackerVM } from "@/types/viewmodel";
+import { fmtFinNum } from "@/lib/formatters";
 
 interface Props {
   query: string;
   kpis: KpiVM[];
   summary: SummaryItemVM[];
-  react: ReActStepVM[];
+  react: TraceStepVM[];
   citations: CitationTrackerVM[];
   onClose: () => void;
 }
@@ -152,7 +153,7 @@ export function ReportModal({ query, kpis, summary, react, citations, onClose }:
                   <div key={i} className="report-kpi">
                     <div className="report-kpi-label">{k.label}</div>
                     <div className="report-kpi-value font-mono">
-                      {k.value}<span className="report-kpi-unit">{k.unit}</span>
+                      {fmtFinNum(k.value)}<span className="report-kpi-unit">{k.unit}</span>
                     </div>
                     <div className={"report-kpi-delta " + k.trend}>{k.delta}</div>
                   </div>

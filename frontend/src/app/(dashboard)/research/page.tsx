@@ -1,11 +1,11 @@
 ﻿"use client";
 import { useState, useRef, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { mutate } from "swr";
 import { Icon } from "@/components/ui/Icon";
 import { AlertItem } from "@/components/polaris/AlertItem";
 import { CitationList } from "@/components/polaris/CitationList";
-import { ReActTrace } from "@/components/polaris/ReActTrace";
+import { TracePanel } from "@/components/polaris/TracePanel";
 import { ComplianceBanner } from "@/components/polaris/ComplianceBanner";
 import { TextGenerate } from "@/components/ui/TextGenerate";
 import { DocViewer, type DocContent } from "@/components/polaris/DocViewer";
@@ -19,11 +19,15 @@ import { useContraAlerts } from "@/hooks/useContraAlerts";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useFinancials, inferTickerFromQuery, financialsToKpis } from "@/hooks/useFinancials";
 import { isFinancialQuery } from "@/lib/queryRelevance";
+import { hasValue } from "@/lib/fieldUtils";
+import { ViewModeToggle, type ViewMode } from "@/components/ui/ViewModeToggle";
+import { ResearchBarChart, ResearchTrendChart } from "@/components/polaris/FinancialChart";
+import { canSingleBarChart, toSingleBarData } from "@/lib/chartUtils";
+import { fmtFinNum } from "@/lib/formatters";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import type { KpiVM } from "@/types/viewmodel";
 import { historyStore, extractTickers } from "@/lib/historyStore";
 import { api } from "@/lib/api";
-import { API_BASE } from "@/lib/config";
 import { toast } from "sonner";
 import { ResearchTour } from "@/components/polaris/ResearchTour";
 
@@ -80,10 +84,35 @@ const TOUR_MOCK_RESULT = {
   ],
 };
 
+function thinkingMsgTier(sec: number): number {
+  if (sec >= 25) return 5;
+  if (sec >= 20) return 4;
+  if (sec >= 15) return 3;
+  if (sec >= 10) return 2;
+  if (sec >= 5)  return 1;
+  return 0;
+}
+function thinkingMsgText(sec: number): string {
+  if (sec >= 25) return "手滑就要重等囉~快完成了~謝謝您的等候~";
+  if (sec >= 20) return "真的快好了，別離開喔~不然又要重跑一遍~";
+  if (sec >= 15) return "絞盡腦汁中，快好了";
+  if (sec >= 10) return "正在睜大雙眼檢查數據";
+  if (sec >= 5)  return "腦袋快速翻轉跟審閱相關資料";
+  return "正在思考中";
+}
+function kpiSortKey(label: string): number {
+  if (label.startsWith("月營收 YoY")) return 2;
+  if (label.startsWith("月營收"))    return 1;
+  if (label.startsWith("淨利率"))  return 3;
+  if (label.includes("毛利率"))      return 4;
+  if (label.includes("EPS"))      return 5;
+  if (label.includes("累計 YoY"))         return 6;
+  return 99;
+}
+
 function ResearchPageInner() {
   const { trigger, data, isMutating } = useResearch();
   const rs = useReadStore();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [restoredData, setRestoredData] = useState<typeof data>(undefined);
   const [restoredAt, setRestoredAt] = useState<string | null>(null);
@@ -105,10 +134,11 @@ function ResearchPageInner() {
   const [progress, setProgress] = useState(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [thinkingLong, setThinkingLong] = useState(false);
+  const [thinkingSec, setThinkingSec] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(true);
+  const [kpiViewMode, setKpiViewMode] = useState<ViewMode>("table");
 
   // B 級還原：從 history 頁點進來時，讀 sessionStorage 直接復原結果
   useEffect(() => {
@@ -150,11 +180,15 @@ function ResearchPageInner() {
   const displayData = restoredData ?? data;
   const kpis = displayData?.kpis ?? [];
   const summary = displayData?.summary ?? [];
+  const chart = displayData?.chart ?? [];
   const reactSteps = displayData?.react ?? [];
   const citations = displayData?.citations ?? [];
 
   const { rows: financialRows, isLoading: isLoadingFinancials } = useFinancials(inferredTicker);
   const financialKpis = financialsToKpis(financialRows);
+  const sortedKpis = [...(kpis.length > 0 ? kpis : (isFinancialQuery(query) ? financialKpis : []))]
+    .sort((a, b) => kpiSortKey(a.label) - kpiSortKey(b.label))
+    .filter(k => hasValue(k.value));
 
   const researchAlerts = contraAlerts.filter(a => a.level !== "info");
 
@@ -165,20 +199,10 @@ function ResearchPageInner() {
     if (isCheckingContra) return;
     setIsCheckingContra(true);
     try {
-      let ok = false;
-      try {
-        const res = await fetch(`${API_BASE}/contradiction`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kpis: k, summary: s }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          contraAlertStore.set(data.alerts ?? [], "research");
-          ok = true;
-        }
-      } catch { /* backend not ready, fall through */ }
-    } finally {
+      const data = await api.contradiction(k, s);
+      contraAlertStore.set(data.alerts, "research");
+    } catch { /* backend not ready, fall through */ }
+    finally {
       setIsCheckingContra(false);
     }
   };
@@ -247,9 +271,10 @@ function ResearchPageInner() {
   }, []);
 
   useEffect(() => {
-    if (phase !== "running") { setThinkingLong(false); return; }
-    const t = setTimeout(() => setThinkingLong(true), 5000);
-    return () => clearTimeout(t);
+    if (phase !== "running") { setThinkingSec(0); return; }
+    setThinkingSec(0);
+    const t = setInterval(() => setThinkingSec(s => s + 1), 1000);
+    return () => clearInterval(t);
   }, [phase]);
 
   const handleTourRunSample = () => {
@@ -352,23 +377,33 @@ function ResearchPageInner() {
                   </div>
                 )}
                 {(isMutating || isLoadingFinancials) ? <KpiSkeleton/> : (
-                  (kpis.length > 0 || (financialKpis.length > 0 && isFinancialQuery(query))) && (
-                    <div className="kpi-list">
-                      {(kpis.length > 0 ? kpis : (isFinancialQuery(query) ? financialKpis : [])).map((k, i) => (
-                        <button key={i} className="kpi-row" onClick={() => handleOpenDoc(k.cite)}>
-                          <span className="kr-label">{k.label}</span>
-                          <span className="kr-value">
-                            {k.value !== "" && k.value != null ? k.value : <span style={{color:"rgb(var(--muted))",fontSize:16}}>不知道</span>}
-                            {k.unit && <span className="kr-unit">{k.unit}</span>}
-                          </span>
-                          {k.delta && (
-                            <span className={"kr-delta " + k.trend}>
-                              <Icon name={k.trend === "up" ? "arrowUp" : "arrowDown"} size={12}/>
-                              {k.delta}
-                            </span>
-                          )}
-                        </button>
-                      ))}
+                  sortedKpis.length > 0 && (
+                    <div className="kpi-list-wrap">
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+                        <ViewModeToggle mode={kpiViewMode} onToggle={setKpiViewMode} disabled={!canSingleBarChart(sortedKpis)}/>
+                      </div>
+                      {kpiViewMode === "chart" ? (
+                        <ResearchBarChart data={toSingleBarData(sortedKpis)}/>
+                      ) : (
+                        <div className="kpi-list">
+                          {sortedKpis.map((k, i) => (
+                            <button key={i} className="kpi-row" onClick={() => handleOpenDoc(k.cite)}>
+                              <span className="kr-label">{k.label}</span>
+                              {k.period && <span className="kr-period">{k.period}</span>}
+                              <span className="kr-value">
+                                <span className="kr-num">{fmtFinNum(k.value)}</span>
+                                {k.unit && <span className="kr-unit">{k.unit}</span>}
+                              </span>
+                              {k.delta && (
+                                <span className={"kr-delta " + k.trend}>
+                                  <Icon name={k.trend === "up" ? "arrowUp" : "arrowDown"} size={12}/>
+                                  {k.delta}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )
                 )}
@@ -381,30 +416,14 @@ function ResearchPageInner() {
                     <div className="panel-body">
                       {isMutating ? <PanelSkeleton/> : (
                         summary.length > 0 ? (
-                          summary.length === 1 ? (
-                            // 單段落：LLM 直接輸出的整段摘要，以 <p> 顯示保留可讀性
-                            <p style={{ lineHeight: 1.8, margin: 0 }}>
-                              <TextGenerate key={summary[0].text} text={summary[0].text} />
-                              {summary[0].cite && (
-                                <span className="cchip" role="button" tabIndex={0}
-                                  onClick={()=>handleOpenDoc(summary[0].cite)}
-                                  onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(summary[0].cite)}
-                                  style={{ marginLeft: 6 }}>
-                                  {summary[0].doc_type_label ?? "文件"} {summary[0].page}
-                                </span>
-                              )}
-                            </p>
-                          ) : (
-                            // 多條列：每行一個 <li>
-                            <ul className="summary">
-                              {summary.map((s,i)=>{
-                                const hasContra = contraAlerts.some(a => a.level !== "info" && (a as any).cite_key === s.cite);
-                                return (
-                                  <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} />{hasContra && <span className="tag mid" style={{marginLeft:5,padding:"1px 7px",fontSize:12,verticalAlign:"middle"}} title="矛盾偵測警告，建議核對引用原文"><span className="tdot"/>矛盾</span>}{s.cite && <span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.doc_type_label ?? "文件"} {s.page}</span>}</span></li>
-                                );
-                              })}
-                            </ul>
-                          )
+                          <ul className="summary">
+                            {summary.map((s,i)=>{
+                              const hasContra = contraAlerts.some(a => a.level !== "info" && (a as any).cite_key === s.cite);
+                              return (
+                                <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} />{hasContra && <span className="tag mid" style={{marginLeft:5,padding:"1px 7px",fontSize:12,verticalAlign:"middle"}} title="矛盾偵測警告，建議核對引用原文"><span className="tdot"/>矛盾</span>}{s.cite && <span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.doc_type_label ?? "文件"} {s.page}</span>}</span></li>
+                              );
+                            })}
+                          </ul>
                         ) : (
                           <div className="chart-empty">
                             <Icon name={loadError ? "alert" : "layers"} size={20} style={{color:"rgb(var(--muted))",marginBottom:8}}/>
@@ -415,7 +434,19 @@ function ResearchPageInner() {
                       )}
                     </div>
                   </div>
-                  {/* 量化分析：等 /research kpis+chart 欄位就緒後啟用 */}
+                  {chart.length >= 2 && (
+                    <div className="panel">
+                      <div className="panel-head">
+                        <span className="panel-title"><Icon name="target" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>指標走勢</span>
+                        <span className="panel-meta">{chart[0].label} – {chart[chart.length-1].label}</span>
+                      </div>
+                      <div className="panel-body">
+                        <div className="fchart-wrap">
+                          <ResearchTrendChart data={chart}/>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -423,8 +454,7 @@ function ResearchPageInner() {
             )}
             <div className="actions">
               <button className="btn" disabled={!data} title={!data ? "請先執行研究" : undefined} onClick={()=>setShowReport(true)}><Icon name="file" size={15}/>完整報告</button>
-              <button className="btn" disabled={!query} onClick={()=>{ toast("已帶入同業比較"); router.push(`/peer?q=${encodeURIComponent(query)}`); }}><Icon name="scale" size={15}/>送同業比較</button>
-              <button className="btn ghost" disabled={running} onClick={()=>run()}><Icon name="refresh" size={15}/>重新分析</button>
+<button className="btn ghost" disabled={running} onClick={()=>run()}><Icon name="refresh" size={15}/>重新分析</button>
             </div>
           </div>
           <aside className="rcol-ctx">
@@ -434,12 +464,12 @@ function ResearchPageInner() {
             </button>
             <div className="panel ctx-panel">
               <div className="panel-head">
-                <span className="panel-title"><Icon name="brain" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>模型思考追蹤</span>
-                <span className="panel-meta">ReAct</span>
+                <span className="panel-title"><Icon name="brain" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>思考追蹤</span>
+                <span className="panel-meta">思考追蹤</span>
               </div>
               {phase === "idle" ? (
                 <div className="chart-empty" style={{padding:"20px 16px"}}>
-                  <span>執行研究後顯示模型思考路徑</span>
+                  <span>執行研究後顯示思考路徑</span>
                 </div>
               ) : (
                 <>
@@ -450,16 +480,16 @@ function ResearchPageInner() {
                   {running && (
                     <div className="thinking-pulse">
                       <div className="thinking-dots"><span/><span/><span/></div>
-                      <span>{thinkingLong ? "正在絞盡腦汁中，請稍等" : "正在思考中"}</span>
+                      <span key={thinkingMsgTier(thinkingSec)} className="thinking-msg">{thinkingMsgText(thinkingSec)}</span>
                     </div>
                   )}
-                  <ReActTrace steps={reactSteps} activeIndex={running?stepN-1:undefined} visibleCount={running?stepN:undefined}/>
+                  <TracePanel steps={reactSteps} activeIndex={running?stepN-1:undefined} visibleCount={running?stepN:undefined}/>
                 </>
               )}
             </div>
             <div className="panel ctx-panel">
               <div className="panel-head">
-                <span className="panel-title"><Icon name="alert" size={14} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>監控系統警示</span>
+                <span className="panel-title"><Icon name="alert" size={14} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>監控系統</span>
               </div>
               <div className="alert-list">
                 {running
@@ -479,8 +509,8 @@ function ResearchPageInner() {
             </div>
             <div className="panel ctx-panel">
               <div className="panel-head">
-                <span className="panel-title"><Icon name="quote" size={14} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>引用追蹤器</span>
-                {citations.length > 0 && <span className="panel-meta">100% 可溯源</span>}
+                <span className="panel-title"><Icon name="quote" size={14} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>引用資訊</span>
+                {citations.length > 0 && <span className="panel-meta">可溯源</span>}
               </div>
               {running
                 ? <div className="thinking-pulse" style={{padding:"14px 16px"}}>

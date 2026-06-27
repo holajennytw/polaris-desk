@@ -2,13 +2,14 @@
 import { API_BASE } from "./config";
 import { logError } from "./logger";
 import {
-  normalizeAlerts, normalizeAsk, normalizeResearch, normalizeComparison, normalizeNews,
+  normalizeAlerts, normalizeAlert, normalizeAsk, normalizeResearch, normalizeComparison,
   normalizeLibrary, normalizeNotifications,
   normalizeResolve, normalizeWatchItem, normalizeCompany,
 } from "./adapters";
+import type { ContraAlert } from "@/lib/contraAlertStore";
 import { historyStore } from "./historyStore";
 import { getSession } from "next-auth/react";
-import type { ChunkRaw, FinancialRow, BackendPeerCompareResponse, PeerCompareResult } from "@/types/api";
+import type { ChunkRaw, FinancialRow, BackendPeerCompareResponse, PeerCompareResult, ContradictionResponse, SuggestionsResponse } from "@/types/api";
 import type { DocContent } from "@/components/polaris/DocViewer";
 import { normalizePeerCompare } from "@/lib/peer-result";
 
@@ -53,6 +54,27 @@ export const api = {
   async research(query: string) {
     const raw = await post("/research", { question: query }) as any;
     return normalizeResearch(raw, query);
+  },
+
+  async suggestions(mode: "research" | "peer" = "research"): Promise<SuggestionsResponse> {
+    const raw = await get(`/suggestions?mode=${mode}`) as SuggestionsResponse;
+    return raw;
+  },
+
+  async contradiction(
+    kpis: unknown[],
+    summary: Array<{ text: string; cite: string; page: string }>,
+  ): Promise<{ alerts: ContraAlert[] }> {
+    try {
+      const raw = await post("/contradiction", { kpis, summary }) as ContradictionResponse;
+      const alerts: ContraAlert[] = (raw.alerts ?? []).map(a => ({
+        ...normalizeAlert(a),
+        origin: "contradiction" as const,
+      }));
+      return { alerts };
+    } catch {
+      return { alerts: [] };
+    }
   },
 
   async alerts() {

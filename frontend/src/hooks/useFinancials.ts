@@ -2,6 +2,7 @@
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { fmtPeriodLabel, fmtRevenue, fmtYoy } from "@/lib/formatters";
+import { toLabel } from "@/lib/fieldUtils";
 import type { FinancialRow } from "@/types/api";
 
 export type { FinancialRow };
@@ -27,7 +28,7 @@ export function inferTickerFromQuery(
 
 // FinancialRow[] → 顯示用 KPI 摘要（最新期別）
 export function financialsToKpis(rows: FinancialRow[]): Array<{
-  label: string; value: string; unit: string; delta: string; trend: "up" | "down"; cite: string;
+  label: string; period: string; value: string; unit: string; delta: string; trend: "up" | "down"; cite: string;
 }> {
   if (!rows.length) return [];
 
@@ -43,7 +44,8 @@ export function financialsToKpis(rows: FinancialRow[]): Array<{
   const revRow = get("revenue");
   if (revRow?.value != null) {
     result.push({
-      label: `月營收 ${periodLabel}`,
+      label: toLabel("revenue"),
+      period: periodLabel,
       value: fmtRevenue(revRow.value),
       unit: "億元",
       delta: "",
@@ -54,7 +56,8 @@ export function financialsToKpis(rows: FinancialRow[]): Array<{
   const yoyRow = get("revenue_yoy");
   if (yoyRow?.value != null) {
     result.push({
-      label: `月營收 YoY ${periodLabel}`,
+      label: toLabel("revenue_yoy"),
+      period: periodLabel,
       value: yoyRow.value.toFixed(2),
       unit: "%",
       delta: "",
@@ -65,7 +68,8 @@ export function financialsToKpis(rows: FinancialRow[]): Array<{
   const ytdRow = get("ytd_yoy");
   if (ytdRow?.value != null) {
     result.push({
-      label: `累計 YoY ${periodLabel}`,
+      label: toLabel("ytd_yoy"),
+      period: periodLabel,
       value: ytdRow.value.toFixed(2),
       unit: "%",
       delta: "",

@@ -102,7 +102,7 @@ export interface ResearchCitationRaw {
   fiscal_period?: string;
 }
 
-export interface ResearchReActStepRaw {
+export interface ResearchTraceStepRaw {
   thought: string;
   action: string;
   action_input: string;
@@ -112,7 +112,7 @@ export interface ResearchReActStepRaw {
 export interface ResearchResponse {
   final_answer: string;
   evidence: ResearchCitationRaw[];
-  react_steps: ResearchReActStepRaw[];
+  react_steps: ResearchTraceStepRaw[];
   status: string;
   compliance_status: string;
 }
@@ -349,6 +349,20 @@ export interface AlertRaw {
   time?: string;
   source?: string;
   origin?: string;
+}
+
+// ── 矛盾偵測 POST /contradiction ──────────────────────────────
+
+export interface ContradictionResponse {
+  alerts: AlertRaw[];
+}
+
+// ── 提示晶片 GET /suggestions ─────────────────────────────────
+
+export interface SuggestionsResponse {
+  suggestions: string[];
+  source: "rule" | "llm";
+  is_generating: boolean;
 }
 
 // ── 新聞 GET /news ────────────────────────────────────────────

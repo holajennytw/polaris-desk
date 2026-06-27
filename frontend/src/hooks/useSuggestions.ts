@@ -1,12 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { API_BASE } from "@/lib/config";
-
-interface SuggestionsData {
-  suggestions: string[];
-  source: "rule" | "llm";
-  is_generating: boolean;
-}
+import { api } from "@/lib/api";
 
 export function useSuggestions(options?: { mode?: "research" | "peer" }) {
   const mode = options?.mode ?? "research";
@@ -18,9 +12,7 @@ export function useSuggestions(options?: { mode?: "research" | "peer" }) {
 
   const fetchSuggestions = async (isRefetch: boolean) => {
     try {
-      const res = await fetch(`${API_BASE}/suggestions?mode=${mode}`);
-      if (!res.ok) return;
-      const data: SuggestionsData = await res.json();
+      const data = await api.suggestions(mode);
 
       const isUpgrade = isRefetch && prevSource.current === "rule" && data.source === "llm";
 
