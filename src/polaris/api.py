@@ -42,7 +42,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator
@@ -61,6 +61,7 @@ from polaris.notifications import (
     PublishOutcome,
     SlackWebhookChannel,
 )
+from polaris.ratelimit import RateLimiter
 from polaris.server import health_payload, resolve_port
 from polaris.structured_store import StructuredStore
 from polaris.user_store import UserStore
@@ -143,6 +144,47 @@ def require_producer(
         return  # 本地 / CI / demo：token-free 放行
     if not token or not hmac.compare_digest(token, expected):
         raise HTTPException(status_code=401, detail="需要有效的通知生產者密鑰")
+
+
+# --- /ask /research app 層限流（security review #4：匿名成本型 DoS 護欄）---
+# Phase 0 的 internal ingress 擋掉「直連 api」，但擋不到「匿名經 polaris-web 的
+# /api/* 代轉」這條——後端 current_user 可選、匿名照樣跑 LLM。這個 guard 補上那 30 分。
+# 單一進程內存（見 polaris.ratelimit 的侷限說明）；配合 Cloud Run --max-instances 成本天花板有界。
+_RESEARCH_LIMITER = RateLimiter(window_s=60.0)
+
+
+def _client_key(request: Request) -> str:
+    """限流分桶 key：優先 ``X-Forwarded-For`` 最左（真實 client，含經 web 代轉的鏈），
+    否則退回 socket 對端 IP。
+
+    ⚠️ XFF 可被偽造；此處作為成本護欄的「分桶」而非身分驗證——目的在配合固定視窗 +
+    max-instances 封住匿名濫用的成本天花板，不是防單一攻擊者 IP 輪替。要更嚴可改由
+    web proxy 注入一個受信 header（如登入 session id）當 key。
+    """
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        first = xff.split(",")[0].strip()
+        if first:
+            return first
+    client = request.client
+    return client.host if client else "unknown"
+
+
+def enforce_rate_limit(request: Request) -> None:
+    """``/ask`` ``/research`` 守門：每 client key 每 60s ≤ ``settings.rate_limit_per_min``。
+
+    僅 ``app_env=="cloud"`` 生效（local / CI / demo 放行，保 token-free）；``rate_limit_per_min<=0``
+    亦關閉（escape hatch）。超限 → 429 + ``Retry-After: 60``。
+    """
+    if settings.app_env != "cloud":
+        return
+    limit = settings.rate_limit_per_min
+    if not _RESEARCH_LIMITER.hit(_client_key(request), limit):
+        raise HTTPException(
+            status_code=429,
+            detail="請求過於頻繁，請稍後再試。",
+            headers={"Retry-After": "60"},
+        )
 
 
 class AskRequest(BaseModel):
@@ -254,7 +296,11 @@ def healthz() -> dict[str, str]:
 
 
 @app.post("/ask", response_model=AskResponse, tags=["research"])
-def ask(req: AskRequest, user=Depends(current_user)) -> AskResponse:
+def ask(
+    req: AskRequest,
+    _rl: None = Depends(enforce_rate_limit),
+    user=Depends(current_user),
+) -> AskResponse:
     """跑 5 節點 workflow，回帶引用 + 合規狀態 + 每節點 trace 的答案。
 
     ``viewer`` 由登入身分（Google ``sub``）推導後透傳進 workflow state（issue #32 /
@@ -271,7 +317,11 @@ def ask(req: AskRequest, user=Depends(current_user)) -> AskResponse:
 
 
 @app.post("/research", response_model=ResearchResponse, tags=["research"])
-def research(req: ResearchRequest, user=Depends(current_user)) -> ResearchResponse:
+def research(
+    req: ResearchRequest,
+    _rl: None = Depends(enforce_rate_limit),
+    user=Depends(current_user),
+) -> ResearchResponse:
     """跑 Deep Research ReAct loop（≤6 迴圈 / ≥3 引用 / 過合規），回結論 + 證據 + 步驟。
 
     ``viewer`` 由登入身分推導後透傳進 run_deep_research（issue #32 / security review #1）：
