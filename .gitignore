@@ -58,3 +58,7 @@ frontend/.next/dev/logs/
 .claude/settings.local.json
 .claude/*.local.json
 .claude/worktrees/
+
+# Log / Error / Debug
+echo "*.log"
+echo "*.log.err"
