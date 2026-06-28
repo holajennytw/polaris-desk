@@ -13,13 +13,14 @@ export interface PeerSource {
   sourceId: string;
   label: string;
   detail: string;
+  snippet: string;
 }
 
 interface PeerResultLike {
   kpis: Array<{
     label: string;
-    a: { citations: Array<{ src: string; page: string }> };
-    b: { citations: Array<{ src: string; page: string }> };
+    a: { v?: string; citations: Array<{ src: string; page: string }> };
+    b: { v?: string; citations: Array<{ src: string; page: string }> };
   }>;
   calls: Array<{
     a: { quote: string; cite: string };
@@ -49,13 +50,31 @@ export function peerCitations(result: PeerResultLike | null): PeerSource[] {
   };
 
   result.kpis.forEach((kpi) => {
-    [...kpi.a.citations, ...kpi.b.citations].forEach((citation) => {
-      add({ sourceId: citation.src, label: kpi.label, detail: citation.page });
+    kpi.a.citations.forEach((citation) => {
+      add({
+        sourceId: citation.src,
+        label: citation.src,
+        detail: kpi.label,
+        snippet: [kpi.label, kpi.a.v, citation.page].filter(Boolean).join("　"),
+      });
+    });
+    kpi.b.citations.forEach((citation) => {
+      add({
+        sourceId: citation.src,
+        label: citation.src,
+        detail: kpi.label,
+        snippet: [kpi.label, kpi.b.v, citation.page].filter(Boolean).join("　"),
+      });
     });
   });
   result.calls.forEach((call) => {
     [call.a, call.b].forEach((side) => {
-      add({ sourceId: side.cite, label: "法說會", detail: side.quote });
+      add({
+        sourceId: side.cite,
+        label: side.cite || "法說會",
+        detail: "法說會逐字稿",
+        snippet: side.quote,
+      });
     });
   });
 

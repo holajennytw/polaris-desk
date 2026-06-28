@@ -27,6 +27,7 @@ export type GroundedVM =
 
 export interface KpiVM {
   label: string;
+  period?: string;
   value: string;
   unit: string;
   delta: string;
@@ -46,7 +47,7 @@ export interface ChartPointVM {
   value: number;
 }
 
-export interface ReActStepVM {
+export interface TraceStepVM {
   type: "THINK" | "ACT" | "OBS";
   text: string;
   tool: boolean;
@@ -69,7 +70,7 @@ export interface AskVM {
   kpis: KpiVM[];
   summary: SummaryItemVM[];
   chart: ChartPointVM[];
-  react: ReActStepVM[];
+  react: TraceStepVM[];
   citations: CitationTrackerVM[];
 }
 

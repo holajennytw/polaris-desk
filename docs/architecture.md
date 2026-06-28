@@ -138,7 +138,7 @@ flowchart TB
 
     subgraph Ext["☁️ Data / External"]
         CORE[("BigQuery polaris_core<br/>chunks 768-dim · financial_metrics<br/>company_dim · 語意 views")]
-        DEV[("polaris_dev_&lt;name&gt; scratch")]
+        DEV[("polaris_dev_<name> scratch")]
         FS[("Firestore — history / subscriptions")]
         PGDB[("Postgres + pgvector")]
         GEMAPI["Gemini API / Vertex AI"]
@@ -183,7 +183,7 @@ flowchart LR
     SAN --> PIPE["pipeline.ingest_chunks<br/>_to_document + embed"]
     PIPE --> EMB["llm/gemini embed<br/>gemini-embedding-2 · 768-dim · cosine<br/>(需 GEMINI_API_KEY)"]
     EMB --> FAC["vectorstore factory"]
-    FAC --> DEV[("polaris_dev_&lt;name&gt; (一般開發者)")]
+    FAC --> DEV[("polaris_dev_<name> (一般開發者)")]
     FAC -.->|"R1/R4 經 PM 同意"| CORE[("polaris_core")]
 
     classDef new fill:#1e4d3a,stroke:#3ad98a,color:#fff
@@ -368,13 +368,13 @@ flowchart TD
 
 ## 關鍵設計重點（verified）
 
-| # | 重點 | 程式落點 | 為什麼 |
-|---|------|----------|--------|
-| 1 | **單一切換點換後端** | `vectorstore/factory.py` ← `VECTOR_BACKEND` | BigQuery（預設/共用 `polaris_core`）↔ pgvector（離線 Demo），程式不動只改一個 env |
-| 2 | **檢索純 3 路** | `retrieval/retriever.py` | BM25（讀 `polaris_core` 真語料 #30）+ 向量 + Cohere rerank；逐字稿缺漏時退回**法說簡報** (#23/#39)；視覺內容改在 ingestion 用 **Vision-OCR** 抽成文字，**ColPali 第 4 路退役** |
-| 3 | **合規硬約束貫穿兩條路** | workflow `compliance` 節點 + notifications 第④關 | 落實 NFR-031；研究答案與 user 通知都必審，被攔不外洩原文 |
-| 4 | **引用接地 = 發送前提** | Retriever 帶 `Citation` + notifications 第③關 grounding | 沒來源的 user 事件 `rejected`；Writer 壓縮 context 但 citations 不受影響 |
-| 5 | **介面/實作分離（注入式 seam）** | `nodes/stubs.py`、`Channel` Protocol、Deep Research `search` | wiring 不動換實作；測試可 monkeypatch 單一節點/管道 |
-| 6 | **儲存分流** | `structured_store→BigQuery`、`user_store→Firestore` | 結構化財報走 BQ；個人 history/訂閱走 Firestore，前端不直連資料庫 |
-| 7 | **publish 永不對生產者拋例外** | `notifications/service.py` | 六態 `DeliveryStatus`（delivered/deduped/digested/blocked/filtered/rejected）+ channel 失敗降級記錄 |
-| 8 | **引用原文存取控制** | `PUBLIC_VIEWER` 透傳 `/ask` `/research` `/chunk`（issue #32） | `/chunk/{source_id}` 無權限/不存在皆回 404，不洩漏文件是否存在；公開身分只能展開公開文件 |
+| # | 重點                                   | 程式落點                                                              | 為什麼                                                                                                                                                                                            |
+| - | -------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | **單一切換點換後端**             | `vectorstore/factory.py` ← `VECTOR_BACKEND`                      | BigQuery（預設/共用`polaris_core`）↔ pgvector（離線 Demo），程式不動只改一個 env                                                                                                               |
+| 2 | **檢索純 3 路**                  | `retrieval/retriever.py`                                            | BM25（讀`polaris_core` 真語料 #30）+ 向量 + Cohere rerank；逐字稿缺漏時退回**法說簡報** (#23/#39)；視覺內容改在 ingestion 用 **Vision-OCR** 抽成文字，**ColPali 第 4 路退役** |
+| 3 | **合規硬約束貫穿兩條路**         | workflow`compliance` 節點 + notifications 第④關                    | 落實 NFR-031；研究答案與 user 通知都必審，被攔不外洩原文                                                                                                                                          |
+| 4 | **引用接地 = 發送前提**          | Retriever 帶`Citation` + notifications 第③關 grounding             | 沒來源的 user 事件`rejected`；Writer 壓縮 context 但 citations 不受影響                                                                                                                         |
+| 5 | **介面/實作分離（注入式 seam）** | `nodes/stubs.py`、`Channel` Protocol、Deep Research `search`    | wiring 不動換實作；測試可 monkeypatch 單一節點/管道                                                                                                                                               |
+| 6 | **儲存分流**                     | `structured_store→BigQuery`、`user_store→Firestore`             | 結構化財報走 BQ；個人 history/訂閱走 Firestore，前端不直連資料庫                                                                                                                                  |
+| 7 | **publish 永不對生產者拋例外**   | `notifications/service.py`                                          | 六態`DeliveryStatus`（delivered/deduped/digested/blocked/filtered/rejected）+ channel 失敗降級記錄                                                                                              |
+| 8 | **引用原文存取控制**             | `PUBLIC_VIEWER` 透傳 `/ask` `/research` `/chunk`（issue #32） | `/chunk/{source_id}` 無權限/不存在皆回 404，不洩漏文件是否存在；公開身分只能展開公開文件                                                                                                        |

@@ -5,7 +5,7 @@ import { historyStore } from "@/lib/historyStore";
 import { api } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 import { AlertItem } from "@/components/polaris/AlertItem";
-import { ReActTrace } from "@/components/polaris/ReActTrace";
+import { CitationList } from "@/components/polaris/CitationList";
 import { ComplianceBanner } from "@/components/polaris/ComplianceBanner";
 import { DocViewer, type DocContent } from "@/components/polaris/DocViewer";
 import { ReportModal } from "@/components/polaris/ReportModal";
@@ -19,16 +19,16 @@ import { parseQuery } from "@/lib/peer";
 import { useFinancials, type FinancialRow } from "@/hooks/useFinancials";
 import { usePeriods } from "@/hooks/usePeriods";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { fmtYoy } from "@/lib/formatters";
-import { scoreLabel, sortByRelevance, sortFinancialByRelevance, detectQueryTab } from "@/lib/queryRelevance";
+import { fmtYoy, fmtFinNum } from "@/lib/formatters";
+import { scoreLabel, sortByRelevance, sortFinancialByRelevance } from "@/lib/queryRelevance";
+import { hasValue, toLabel } from "@/lib/fieldUtils";
 import { peerCitations } from "@/lib/peer-result";
 import type { PeerCompareResult, PeerCompareTrendPoint } from "@/types/api";
-import type { ReActStepVM, CompanyVM, KpiVM, SummaryItemVM } from "@/types/viewmodel";
+import type { CompanyVM, KpiVM, SummaryItemVM, CitationTrackerVM } from "@/types/viewmodel";
+import { ViewModeToggle, type ViewMode } from "@/components/ui/ViewModeToggle";
+import { PeerGroupedBarChart, TrendLineChart } from "@/components/polaris/FinancialChart";
+import { fmtTrendValue, canLineChart, toPeerBarData } from "@/lib/chartUtils";
 
-const PEER_TABS = [
-  { id:"financial", label:"財務" }, { id:"calls", label:"法說會" },
-  { id:"news", label:"新聞" }, { id:"valuation", label:"估值" },
-];
 const PRESETS = [
   "比較台積電與聯發科毛利率",
   "台積電 vs 鴻海 法說會重點",
@@ -36,19 +36,30 @@ const PRESETS = [
 ];
 const PHASES = ["解析查詢意圖","檢索 A 公司文件","檢索 B 公司文件","交叉比對指標","生成比較摘要","合規檢查"];
 
-// ── Trend Panel ──────────────────────────────────────────────
-
-function fmtTrendValue(v: number | null, metricLabel: string): string {
-  if (v === null) return "—";
-  if (metricLabel.includes("率") || metricLabel.includes("YoY") || metricLabel.includes("%")) {
-    return `${v.toFixed(2)}%`;
-  }
-  const yi = v / 100_000;
-  return `${yi >= 100 ? yi.toFixed(0) : yi.toFixed(1)} 億`;
+// ── 數值＋單位拆分元件（保證個位數垂直對齊）─────────────────
+function PtNum({ value }: { value: string }) {
+  const m = value.match(/^([+\-]?[\d,\.]+)(.*)$/);
+  if (!m) return <>{value}</>;
+  const [, num, unit] = m;
+  return (
+    <>
+      <span className="ptcell-num">{num}</span>
+      {unit && <span className="ptcell-unit">{unit.trim()}</span>}
+    </>
+  );
 }
 
+// ── Trend Panel ──────────────────────────────────────────────
+
 function TrendPanel({ aName, bName, trend }: { aName: string; bName: string; trend: PeerCompareTrendPoint[] }) {
-  if (!trend.length) {
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const allMetrics = [...new Set(trend.map(t => t.metric))];
+  // 只保留至少一側有值（非 null）的期別；過濾後空的指標整個移除
+  const metricsWithData = allMetrics.filter(metric =>
+    trend.some(t => t.metric === metric && (t.a_value !== null || t.b_value !== null))
+  );
+  const lineChartable = canLineChart(trend);
+  if (!metricsWithData.length) {
     return (
       <div className="panel">
         <div className="panel-head">
@@ -64,7 +75,6 @@ function TrendPanel({ aName, bName, trend }: { aName: string; bName: string; tre
       </div>
     );
   }
-  const metrics = [...new Set(trend.map(t => t.metric))];
   return (
     <div className="panel">
       <div className="panel-head">
@@ -72,29 +82,41 @@ function TrendPanel({ aName, bName, trend }: { aName: string; bName: string; tre
           <Icon name="arrowUp" size={15} style={{ color: "rgb(var(--primary))", verticalAlign: "-3px", marginRight: 6 }}/>
           跨期趨勢
         </span>
-        <span className="panel-meta">{metrics.join(" / ")}</span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <span className="panel-meta" style={{ marginLeft: 0 }}>{metricsWithData.map(toLabel).join(" / ")}</span>
+          <ViewModeToggle mode={viewMode} onToggle={setViewMode} disabled={!lineChartable}/>
+        </div>
       </div>
       <div className="panel-body">
-        {metrics.map(metric => {
-          const pts = trend.filter(t => t.metric === metric).sort((a, b) => a.period.localeCompare(b.period));
-          return (
-            <div key={metric} style={{ marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>{metric}</div>
-              <table className="ptable">
-                <thead><tr><th>期間</th><th>{aName}</th><th>{bName}</th></tr></thead>
-                <tbody>
-                  {pts.map(pt => (
-                    <tr key={pt.period}>
-                      <td className="font-mono">{pt.period}</td>
-                      <td><b>{fmtTrendValue(pt.a_value, metric)}</b></td>
-                      <td>{fmtTrendValue(pt.b_value, metric)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        })}
+        {viewMode === "chart" ? (
+          <TrendLineChart trend={trend} aName={aName} bName={bName}/>
+        ) : (
+          metricsWithData.map(metric => {
+            const label = toLabel(metric);
+            const pts = trend
+              .filter(t => t.metric === metric && (t.a_value !== null || t.b_value !== null))
+              .sort((a, b) => a.period.localeCompare(b.period));
+            return (
+              <div key={metric} style={{ marginBottom: 16 }}>
+                <div className="fchart-metric-label">{label}</div>
+                <div className="ptable-wrap">
+                  <table className="ptable">
+                    <thead><tr><th>期間</th><th className="num">{aName}</th><th className="num">{bName}</th></tr></thead>
+                    <tbody>
+                      {pts.map(pt => (
+                        <tr key={pt.period}>
+                          <td className="font-mono">{pt.period}</td>
+                          <td className="num"><PtNum value={fmtTrendValue(pt.a_value, label)} /></td>
+                          <td className="num"><PtNum value={fmtTrendValue(pt.b_value, label)} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -103,7 +125,6 @@ function TrendPanel({ aName, bName, trend }: { aName: string; bName: string; tre
 // ── Peer Summary Panel ────────────────────────────────────────
 
 function PeerSummaryPanel({ summary }: { summary: string }) {
-  const lines = summary.split(/\n+/).map(s => s.trim()).filter(Boolean);
   return (
     <div className="panel">
       <div className="panel-head">
@@ -111,20 +132,9 @@ function PeerSummaryPanel({ summary }: { summary: string }) {
           <Icon name="layers" size={15} style={{ color: "rgb(var(--primary))", verticalAlign: "-3px", marginRight: 6 }}/>
           比較摘要
         </span>
-        {lines.length > 1 && <span className="panel-meta">{lines.length - 1} 項指標</span>}
       </div>
       <div className="panel-body">
-        {lines.length > 1 ? (
-          <ul className="summary">
-            {lines.map((line, i) =>
-              i === 0
-                ? <li key={i} style={{ listStyle: "none", color: "rgb(var(--muted))", fontSize: 13, marginBottom: 6 }}>{line}</li>
-                : <li key={i}><span className="sum-marker"/><span>{line}</span></li>
-            )}
-          </ul>
-        ) : (
-          <p style={{ lineHeight: 1.7 }}>{summary}</p>
-        )}
+        <p className="peer-sum-text">{summary}</p>
       </div>
     </div>
   );
@@ -139,49 +149,67 @@ function PeerKpiGridLive({ result, aName, bName, queryHint = "" }: {
   queryHint?: string;
 }) {
   const [showAll, setShowAll] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  if (!result.kpis.length) {
+  const validKpis = result.kpis.filter(k => hasValue(k.a.v) || hasValue(k.b.v));
+  if (!validKpis.length) {
     return <EmptyState message={`所選季度無財務指標資料（${result.fiscal_period}）`} style={{padding:"20px 16px"}}/>;
   }
 
-  const sorted = queryHint ? sortByRelevance(result.kpis, queryHint) : result.kpis;
-  const top = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) > 0) : sorted;
-  const rest = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) === 0) : [];
-  const showSplit = top.length > 0 && rest.length > 0;
+  const sorted = queryHint ? sortByRelevance(validKpis, queryHint) : validKpis;
+  const topByQuery = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) > 0) : [];
+  const restByQuery = queryHint ? sorted.filter(k => scoreLabel(k.label, queryHint) === 0) : [];
+  // 有關鍵字篩選時依相關性拆；否則超過5筆也折疊
+  const querySplit = topByQuery.length > 0 && restByQuery.length > 0;
+  const top = querySplit ? topByQuery : sorted.slice(0, 5);
+  const rest = querySplit ? restByQuery : sorted.slice(5);
+  const showSplit = querySplit || sorted.length > 5;
   const displayKpis = showSplit && !showAll ? top : sorted;
+  const barData = toPeerBarData(sorted.map(k => ({ label: k.label, aRaw: k.a.v, bRaw: k.b.v })));
 
   const renderRow = (kpi: typeof result.kpis[0], i: number) => (
     <tr key={i}>
       <td className="pt-metric">{kpi.label}</td>
-      <td className={`num${kpi.better === "a" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}>{kpi.a.v}</td>
-      <td className={`num${kpi.better === "b" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}>{kpi.b.v}</td>
+      <td className={`num${kpi.better === "a" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}><PtNum value={fmtFinNum(kpi.a.v)} /></td>
+      <td className={`num${kpi.better === "b" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}><PtNum value={fmtFinNum(kpi.b.v)} /></td>
       <td className="num pt-note">{kpi.diff && kpi.diff !== "—" ? `${kpi.better === "a" ? aName : bName} +${kpi.diff}` : "—"}</td>
     </tr>
   );
 
   return (
     <>
-      <table className="ptable" style={{marginBottom: 4}}>
-        <thead>
-          <tr>
-            <th>指標</th>
-            <th className="num">{aName}</th>
-            <th className="num">{bName}</th>
-            <th className="num">領先</th>
-          </tr>
-        </thead>
-        <tbody>
-          {displayKpis.map((kpi, i) => renderRow(kpi, i))}
-        </tbody>
-      </table>
-      {showSplit && (
-        <button
-          className="btn ghost"
-          style={{ fontSize: 13, padding: "3px 12px", marginTop: 2 }}
-          onClick={() => setShowAll(v => !v)}
-        >
-          {showAll ? `收起 · 顯示相關 ${top.length} 項` : `其他 ${rest.length} 項指標`}
-        </button>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+        <ViewModeToggle mode={viewMode} onToggle={setViewMode} disabled={!barData.length}/>
+      </div>
+      {viewMode === "chart" ? (
+        <PeerGroupedBarChart data={barData} aName={aName} bName={bName}/>
+      ) : (
+        <>
+          <div className="ptable-wrap">
+            <table className="ptable" style={{marginBottom: 4}}>
+              <thead>
+                <tr>
+                  <th>指標</th>
+                  <th className="num">{aName}</th>
+                  <th className="num">{bName}</th>
+                  <th className="num">領先</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayKpis.map((kpi, i) => renderRow(kpi, i))}
+              </tbody>
+            </table>
+          </div>
+          {showSplit && (
+            <button
+              className="btn ghost"
+              style={{ fontSize: 13, padding: "3px 12px", marginTop: 2 }}
+              onClick={() => setShowAll(v => !v)}
+            >
+              {showAll ? `收起 · 顯示前 ${top.length} 項` : `其他 ${rest.length} 項指標`}
+            </button>
+          )}
+        </>
       )}
     </>
   );
@@ -232,8 +260,10 @@ function FinancialBlock({ result, aName, bName, queryHint = "" }: {
   result: PeerCompareResult; aName: string; bName: string; queryHint?: string;
 }) {
   const [showAll, setShowAll] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  if (!result.financial.length) {
+  const validFinancial = result.financial.filter(f => hasValue(f.a.v) || hasValue(f.b.v));
+  if (!validFinancial.length) {
     return (
       <div className="panel">
         <div className="panel-head"><span className="panel-title">損益指標對比</span><span className="panel-meta">{result.fiscal_period}</span></div>
@@ -242,130 +272,53 @@ function FinancialBlock({ result, aName, bName, queryHint = "" }: {
     );
   }
 
-  const sorted = queryHint ? sortFinancialByRelevance(result.financial, queryHint) : result.financial;
-  const top = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) > 0) : sorted;
-  const rest = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) === 0) : [];
-  const showSplit = top.length > 0 && rest.length > 0;
+  const sorted = queryHint ? sortFinancialByRelevance(validFinancial, queryHint) : validFinancial;
+  const topByQuery = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) > 0) : [];
+  const restByQuery = queryHint ? sorted.filter(f => scoreLabel(f.metric, queryHint) === 0) : [];
+  const querySplit = topByQuery.length > 0 && restByQuery.length > 0;
+  const top = querySplit ? topByQuery : sorted.slice(0, 5);
+  const rest = querySplit ? restByQuery : sorted.slice(5);
+  const showSplit = querySplit || sorted.length > 5;
   const display = showSplit && !showAll ? top : sorted;
+  const barData = toPeerBarData(sorted.map(f => ({ label: toLabel(f.metric), aRaw: f.a.v, bRaw: f.b.v })));
 
   return (
     <div className="panel">
-      <div className="panel-head"><span className="panel-title">損益指標對比</span><span className="panel-meta">{result.fiscal_period}</span></div>
+      <div className="panel-head">
+        <span className="panel-title">損益指標對比</span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <span className="panel-meta" style={{ marginLeft: 0 }}>{result.fiscal_period}</span>
+          <ViewModeToggle mode={viewMode} onToggle={setViewMode} disabled={!barData.length}/>
+        </div>
+      </div>
       <div className="panel-body">
-        <table className="ptable">
-          <thead><tr><th>指標</th><th>{aName}</th><th>{bName}</th><th>差異</th></tr></thead>
-          <tbody>
-            {display.map((f, i) => (
-              <tr key={i}>
-                <td>{f.metric}</td>
-                <td className={f.better === "a" ? "text-[rgb(var(--primary-bright))] font-bold" : ""}>{f.a.v}</td>
-                <td className={f.better === "b" ? "text-[rgb(var(--primary-bright))] font-bold" : ""}>{f.b.v}</td>
-                <td className="opacity-60 text-sm">{f.note.replace("差異 ", "")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {showSplit && (
-          <button className="btn ghost" style={{ fontSize: 13, padding: "3px 12px", marginTop: 6 }}
-            onClick={() => setShowAll(v => !v)}>
-            {showAll ? `收起 · 顯示相關 ${top.length} 項` : `其他 ${rest.length} 項指標`}
-          </button>
+        {viewMode === "chart" ? (
+          <PeerGroupedBarChart data={barData} aName={aName} bName={bName}/>
+        ) : (
+          <>
+            <div className="ptable-wrap">
+              <table className="ptable">
+                <thead><tr><th>指標</th><th className="num">{aName}</th><th className="num">{bName}</th><th className="num">差異</th></tr></thead>
+                <tbody>
+                  {display.map((f, i) => (
+                    <tr key={i}>
+                      <td className="pt-metric">{toLabel(f.metric)}</td>
+                      <td className={`num${f.better === "a" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}><PtNum value={fmtFinNum(f.a.v)} /></td>
+                      <td className={`num${f.better === "b" ? " text-[rgb(var(--primary-bright))] font-bold" : ""}`}><PtNum value={fmtFinNum(f.b.v)} /></td>
+                      <td className="num pt-note">{f.note.replace("差異 ", "")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {showSplit && (
+              <button className="btn ghost" style={{ fontSize: 13, padding: "3px 12px", marginTop: 6 }}
+                onClick={() => setShowAll(v => !v)}>
+                {showAll ? `收起 · 顯示前 ${top.length} 項` : `其他 ${rest.length} 項指標`}
+              </button>
+            )}
+          </>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Calls Block (from /peer-compare calls) ────────────────────
-
-function CallsBlock({ result, aName, bName, onOpen }: {
-  result: PeerCompareResult; aName: string; bName: string; onOpen: (doc: DocContent) => void;
-}) {
-  const openQuote = async (name: string, quote: string, sourceId: string) => {
-    if (!sourceId) return;
-    const chunk = await api.chunk(sourceId);
-    if (chunk) { onOpen(chunk); return; }
-    onOpen({ key: sourceId, title: `${name} 法說逐字稿`, kind: "transcript", source_id: sourceId, page: "", trust: "mid", highlight: quote, body: [quote] });
-  };
-
-  if (!result.calls.length) {
-    return (
-      <div className="panel">
-        <div className="panel-head"><span className="panel-title">法說會</span><span className="panel-meta">{result.fiscal_period}</span></div>
-        <div className="panel-body"><EmptyState message="所選季度無法說會引用資料" style={{padding:"20px 16px"}} /></div>
-      </div>
-    );
-  }
-  return (
-    <div className="panel">
-      <div className="panel-head"><span className="panel-title">法說會</span><span className="panel-meta">{result.fiscal_period}</span></div>
-      <div className="panel-body">
-        <div className="cmatrix">
-          <div className="cm-head"><span>引用</span><span>{aName}</span><span>{bName}</span></div>
-          {result.calls.map((row, i) => (
-            <div key={i} className="cm-row">
-              <div className="cm-topic">#{i + 1}</div>
-              <div className="cm-cell">
-                <div className="cm-quote">
-                  {row.a.quote}
-                  {row.a.cite && (
-                    <button className="cm-cite-btn" onClick={() => openQuote(aName, row.a.quote, row.a.cite)}>
-                      <Icon name="quote" size={11}/>查看
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="cm-cell">
-                <div className="cm-quote">
-                  {row.b.quote}
-                  {row.b.cite && (
-                    <button className="cm-cite-btn" onClick={() => openQuote(bName, row.b.quote, row.b.cite)}>
-                      <Icon name="quote" size={11}/>查看
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NewsBlock({ aName, bName }: { aName:string; bName:string }) {
-  return (
-    <div className="panel">
-      <div className="panel-head"><span className="panel-title">新聞</span><span className="panel-meta">待接後端</span></div>
-      <div className="panel-body">
-        <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
-          {[aName, bName].map((name,i) => (
-            <div key={i} style={{flex:1,minWidth:180}}>
-              <div style={{fontWeight:600,marginBottom:8}}>{name}</div>
-              <div className="chart-empty" style={{padding:"16px 16px"}}><span>情緒數據待接後端</span></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ValuationBlock({ aName, bName }: { aName:string; bName:string }) {
-  const rows = [
-    { metric:"本益比 PE",    a:"—", b:"—", note:"PE/PB 目前 canonical 無資料" },
-    { metric:"股價淨值比 PB", a:"—", b:"—", note:"等 R4 ingestion 完成" },
-    { metric:"EV / EBITDA",  a:"—", b:"—", note:"" },
-    { metric:"ROE",          a:"—", b:"—", note:"" },
-  ];
-  return (
-    <div className="panel">
-      <div className="panel-head"><span className="panel-title">估值</span><span className="panel-meta">R4 資料待接</span></div>
-      <div className="panel-body">
-        <table className="ptable">
-          <thead><tr><th>指標</th><th>{aName}</th><th>{bName}</th><th>備註</th></tr></thead>
-          <tbody>{rows.map((r,i) => <tr key={i}><td>{r.metric}</td><td>{r.a}</td><td>{r.b}</td><td style={{color:"rgb(var(--muted))",fontSize:13}}>{r.note}</td></tr>)}</tbody>
-        </table>
       </div>
     </div>
   );
@@ -411,6 +364,23 @@ function CompanySlot({ company, open, search, options, placeholder, onToggle, on
   );
 }
 
+function thinkingMsgTier(sec: number): number {
+  if (sec >= 25) return 5;
+  if (sec >= 20) return 4;
+  if (sec >= 15) return 3;
+  if (sec >= 10) return 2;
+  if (sec >= 5)  return 1;
+  return 0;
+}
+function thinkingMsgText(sec: number): string {
+  if (sec >= 25) return "手滑就要重等囉~快完成了~謝謝您的等候~";
+  if (sec >= 20) return "真的快好了，別離開喔~不然又要重跑一遍~";
+  if (sec >= 15) return "絞盡腦汁中，快好了";
+  if (sec >= 10) return "正在睜大雙眼檢查數據";
+  if (sec >= 5)  return "腦袋快速翻轉跟審閱相關資料";
+  return "正在思考中";
+}
+
 // ── Page ──────────────────────────────────────────────────────
 
 export default function PeerPage() {
@@ -424,7 +394,6 @@ export default function PeerPage() {
 
   const [aId, setAId] = useState("");
   const [bId, setBId] = useState("");
-  const [tab, setTab] = useState("financial");
   const [fiscalPeriod, setFiscalPeriod] = useState("");
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
@@ -478,7 +447,7 @@ export default function PeerPage() {
   const [showReport, setShowReport] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(true);
   const [isListening, setIsListening] = useState(false);
-  const [thinkingLong, setThinkingLong] = useState(false);
+  const [thinkingSec, setThinkingSec] = useState(0);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -491,9 +460,10 @@ export default function PeerPage() {
   }, []);
 
   useEffect(() => {
-    if (phase !== "running") { setThinkingLong(false); return; }
-    const t = setTimeout(() => setThinkingLong(true), 5000);
-    return () => clearTimeout(t);
+    if (phase !== "running") { setThinkingSec(0); return; }
+    setThinkingSec(0);
+    const t = setInterval(() => setThinkingSec(s => s + 1), 1000);
+    return () => clearInterval(t);
   }, [phase]);
 
   useEffect(() => {
@@ -545,7 +515,6 @@ export default function PeerPage() {
     rec.start();
   };
 
-  const switchTab = (t: string) => setTab(t);
   const toggleSlot = (slot: "a"|"b") => { setOpenSlot(prev => prev===slot ? null : slot); setSlotSearch(""); };
   const selectCompany = (slot: "a"|"b", id: string) => {
     if (slot==="a") setAId(id); else setBId(id);
@@ -634,10 +603,6 @@ export default function PeerPage() {
     if (dynMatches[1]) setBId(dynMatches[1].id);
     else if (ok[1]) setBId(ok[1].id);
 
-    const autoTab = detectQueryTab(text);
-    if (res.tab) switchTab(res.tab);
-    else if (autoTab) switchTab(autoTab);
-
     const normPeriod = res.period.replace(/\s+/g, "");
     // 若只解析到年份（無季別），從 availablePeriods 取該年最新一季
     const yearFallback = res.year
@@ -691,18 +656,6 @@ export default function PeerPage() {
     await runQueryWith(query, aId, bId, fiscalPeriod, nextA, nextB, m);
   };
 
-  const renderBlock = () => {
-    const aName = A?.name ?? ""; const bName = B?.name ?? "";
-    if (tab === "financial") return peerResult
-      ? <FinancialBlock result={peerResult} aName={aName} bName={bName} queryHint={query}/>
-      : <div className="panel"><div className="panel-body"><div className="chart-empty" style={{padding:"20px 16px"}}><span>送出查詢後顯示財務資料</span></div></div></div>;
-    if (tab === "calls")     return peerResult
-      ? <CallsBlock result={peerResult} aName={aName} bName={bName} onOpen={(doc) => setOpenDoc(doc)}/>
-      : <div className="panel"><div className="panel-body"><div className="chart-empty" style={{padding:"20px 16px"}}><span>送出查詢後顯示法說會引用</span></div></div></div>;
-    if (tab === "news")      return <NewsBlock aName={aName} bName={bName}/>;
-    if (tab === "valuation") return <ValuationBlock aName={aName} bName={bName}/>;
-    return null;
-  };
 
   const readyToCompare = aId && bId;
   const pageTitle = A && B ? `${A.name} vs ${B.name} — 同業對比` : "同業比較";
@@ -710,12 +663,37 @@ export default function PeerPage() {
   const optionsForB = companies.filter(c => c.id !== aId);
 
   // Citations for tracker & report modal
-  const citations = peerCitations(peerResult);
+  const citations: CitationTrackerVM[] = peerCitations(peerResult).map((src, i) => ({
+    ix: String(i + 1),
+    label: src.label,
+    detail: src.detail,
+    cite: src.sourceId,
+    snippet: src.snippet,
+    period: "",
+  }));
+
+  const handleOpenDoc = async (cite: string) => {
+    if (!cite) return;
+    const chunk = await api.chunk(cite);
+    if (chunk) { setOpenDoc(chunk); return; }
+    const vm = citations.find(c => c.cite === cite);
+    if (!vm) { toast.error("查無此文件原文"); return; }
+    setOpenDoc({
+      key: cite,
+      title: vm.label,
+      kind: "citation",
+      source_id: cite,
+      page: vm.detail,
+      trust: "mid",
+      highlight: vm.snippet || vm.detail || "",
+      body: [vm.snippet || vm.detail || vm.label].filter(Boolean),
+    });
+  };
 
   // Report modal KPIs (from real response or empty)
   const reportKpis: KpiVM[] = peerResult?.kpis.flatMap(k => ([
-    { label:`${A?.name ?? peerResult.a_ticker} ${k.label}`, value: k.a.v, unit:"", delta:"", trend:"up" as const, cite: k.a.citations[0]?.src ?? "" },
-    { label:`${B?.name ?? peerResult.b_ticker} ${k.label}`, value: k.b.v, unit:"", delta:"", trend:"down" as const, cite: k.b.citations[0]?.src ?? "" },
+    { label:`${A?.name ?? peerResult.a_ticker} ${k.label}`, value: k.a.v, unit:"", delta:"", trend: k.better === "a" ? "up" as const : "down" as const, cite: k.a.citations[0]?.src ?? "" },
+    { label:`${B?.name ?? peerResult.b_ticker} ${k.label}`, value: k.b.v, unit:"", delta:"", trend: k.better === "b" ? "up" as const : "down" as const, cite: k.b.citations[0]?.src ?? "" },
   ])) ?? [];
 
   const reportSummary: SummaryItemVM[] = peerResult
@@ -732,7 +710,7 @@ export default function PeerPage() {
             <div className="page-head">
               <div className="page-eyebrow">同業比較 · peer</div>
               <h1 className="page-title">{pageTitle}</h1>
-              <p className="page-desc">選擇兩間公司後送出查詢，或直接輸入「比較 A 與 B」由系統自動解析。</p>
+              <p className="page-desc">選擇兩間公司後送出查詢，或直接輸入「比較 A 與 B」由系統解析。</p>
             </div>
 
             {/* Company Slot Toolbar */}
@@ -766,25 +744,27 @@ export default function PeerPage() {
                     <span><b>API 錯誤</b>：{apiError}</span>
                   </div>
                 )}
+                <ComplianceBanner message={
+                  peerResult
+                    ? `合規檢查：${peerResult.compliance_status === "passed" ? "通過" : peerResult.compliance_status}。以上為事實對比，非投資建議。`
+                    : "以上為事實對比，非投資建議。"
+                }/>
                 <div className="peer-l2">
                   {peerResult
                     ? <PeerKpiGridLive result={peerResult} aName={A?.name ?? ""} bName={B?.name ?? ""} queryHint={query}/>
                     : <PeerKpiGridFallback aName={A?.name??""} bName={B?.name??""} aTicker={aId} bTicker={bId} fiscalPeriod={fiscalPeriod} selectedMonth={selectedMonth}/>
                   }
                 </div>
-                {peerResult && <TrendPanel aName={A?.name??""} bName={B?.name??""} trend={peerResult.trend}/>}
-                {peerResult && <PeerSummaryPanel summary={peerResult.summary}/>}
-                <div className="news-tabs peer-tabs">
-                  {PEER_TABS.map(t => (
-                    <button key={t.id} className={"news-tab"+(t.id===tab?" active":"")} onClick={() => switchTab(t.id)}>{t.label}</button>
-                  ))}
+                <div className="rcol-stack">
+                  {peerResult && <PeerSummaryPanel summary={peerResult.summary}/>}
+                  <div className="peer-blocks">
+                    {peerResult
+                      ? <FinancialBlock result={peerResult} aName={A?.name ?? ""} bName={B?.name ?? ""} queryHint={query}/>
+                      : <div className="panel"><div className="panel-body"><div className="chart-empty" style={{padding:"20px 16px"}}><span>送出查詢後顯示財務資料</span></div></div></div>
+                    }
+                  </div>
+                  {peerResult && <TrendPanel aName={A?.name??""} bName={B?.name??""} trend={peerResult.trend}/>}
                 </div>
-                <div className="peer-blocks">{renderBlock()}</div>
-                <ComplianceBanner message={
-                  peerResult
-                    ? `合規檢查：${peerResult.compliance_status === "passed" ? "通過" : peerResult.compliance_status}。以上為事實對比，非投資建議。`
-                    : "以上為事實對比，非投資建議。"
-                }/>
               </>
             ) : (
               <div className="peer-empty">
@@ -812,12 +792,12 @@ export default function PeerPage() {
             </button>
             <div className="panel ctx-panel">
               <div className="panel-head">
-                <span className="panel-title"><Icon name="brain" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>模型思考追蹤</span>
-                <span className="panel-meta">ReAct</span>
+                <span className="panel-title"><Icon name="brain" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>思考追蹤</span>
+                <span className="panel-meta">思考追蹤</span>
               </div>
               {phase === "idle" ? (
                 <div className="chart-empty" style={{padding:"20px 16px"}}>
-                  <span>執行比較後顯示模型思考路徑</span>
+                  <span>執行比較後顯示思考路徑</span>
                 </div>
               ) : (
                 <>
@@ -828,7 +808,7 @@ export default function PeerPage() {
                   {running && (
                     <div className="thinking-pulse">
                       <div className="thinking-dots"><span/><span/><span/></div>
-                      <span>{thinkingLong ? "模型絞盡腦汁中，快好了" : "正在思考中"}</span>
+                      <span key={thinkingMsgTier(thinkingSec)} className="thinking-msg">{thinkingMsgText(thinkingSec)}</span>
                     </div>
                   )}
                 </>
@@ -836,7 +816,7 @@ export default function PeerPage() {
             </div>
             <div className="panel ctx-panel">
               <div className="panel-head">
-                <span className="panel-title"><Icon name="alert" size={14} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>監控系統警示</span>
+                <span className="panel-title"><Icon name="alert" size={14} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>監控系統</span>
               </div>
               <div className="alert-list">
                 {running
@@ -851,7 +831,6 @@ export default function PeerPage() {
                           onDoubleClick={() => { setModalAlert(a); rs.markRead(a.id); }}/>
                       ))
                     : <div className="chart-empty" style={{padding:"20px 16px"}}>
-                        <Icon name="shield" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
                         <span>{hasQueried ? "本次比較未發現異常訊號" : "執行比較後顯示相關警示"}</span>
                       </div>
                 }
@@ -860,7 +839,7 @@ export default function PeerPage() {
             {/* Citation Tracker */}
             <div className="panel ctx-panel">
               <div className="panel-head">
-                <span className="panel-title"><Icon name="quote" size={14} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>引用追蹤器</span>
+                <span className="panel-title"><Icon name="quote" size={14} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>引用資訊</span>
                 {citations.length > 0 && <span className="panel-meta">{citations.length} 筆</span>}
               </div>
               {running ? (
@@ -869,32 +848,10 @@ export default function PeerPage() {
                   <span>正在抓取資料中</span>
                 </div>
               ) : citations.length > 0 ? (
-                <div className="panel-body">
-                  {citations.map((c, i) => (
-                    <div key={c.sourceId} className="cite-item" style={{ padding: "8px 0", borderBottom: "1px solid rgb(var(--border))" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span className="font-mono" style={{ fontSize: 11, color: "rgb(var(--muted))" }}>#{i+1}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600 }}>{c.label}</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: "rgb(var(--muted))", marginTop: 2, marginLeft: 20 }}>{c.detail}</div>
-                      <button
-                        className="cm-cite-btn"
-                        style={{ marginLeft: 20, marginTop: 4 }}
-                        onClick={async () => {
-                          if (!c.sourceId) return;
-                          const chunk = await api.chunk(c.sourceId);
-                          if (chunk) setOpenDoc(chunk);
-                        }}
-                      >
-                        <Icon name="quote" size={11}/>查看原文
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <CitationList citations={citations} onOpen={handleOpenDoc}/>
               ) : (
                 <div className="chart-empty" style={{padding:"20px 16px"}}>
-                  <Icon name="quote" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
-                  <span>{hasQueried ? "後端無引用資料（需 R4 語意資料上線）" : "執行比較後顯示引用來源"}</span>
+                  <span>{hasQueried ? "本次比較無引用來源" : "執行比較後顯示引用來源"}</span>
                 </div>
               )}
             </div>
@@ -928,7 +885,7 @@ export default function PeerPage() {
           <div className="alert-modal" onClick={e => e.stopPropagation()}>
             <div className="alert-modal-head">
               <h2>{modalAlert.title}</h2>
-              <button className="alert-modal-close" onClick={() => setModalAlert(null)}><Icon name="x" size={18}/></button>
+              <button className="alert-modal-close" onClick={() => setModalAlert(null)} aria-label="關閉"><Icon name="x" size={18}/></button>
             </div>
             <div className="alert-modal-body">
               <div className="alert-modal-tag">
@@ -950,14 +907,7 @@ export default function PeerPage() {
           kpis={reportKpis}
           summary={reportSummary}
           react={[]}
-          citations={citations.map((c, i) => ({
-            ix: String(i + 1),
-            label: c.label,
-            detail: c.detail,
-            cite: c.sourceId,
-            snippet: c.detail,
-            period: "",
-          }))}
+          citations={citations}
           onClose={() => setShowReport(false)}
         />
       )}

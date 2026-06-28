@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { SpotlightButton } from "@/components/ui/SpotlightCard";
 import type { KpiVM } from "@/types/viewmodel";
+import { fmtFinNum } from "@/lib/formatters";
 
 function AnimatedNumber({ raw }: { raw: string }) {
-  const num = parseFloat(raw);
+  const num = parseFloat(raw.replace(/,/g, ""));
   const isNum = !isNaN(num);
   const dec = isNum && raw.includes(".") ? raw.length - raw.indexOf(".") - 1 : 0;
   const [v, setV] = useState(0);
@@ -24,7 +25,7 @@ function AnimatedNumber({ raw }: { raw: string }) {
   }, [raw]);
 
   if (!isNum) return <>{raw}</>;
-  return <>{v.toFixed(dec)}</>;
+  return <>{fmtFinNum(v.toFixed(dec))}</>;
 }
 
 interface KpiCardProps {

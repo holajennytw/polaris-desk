@@ -35,10 +35,10 @@ test("peerCitations exposes and de-duplicates financial and call sources", () =>
   };
 
   assert.deepEqual(peerCitations(result), [
-    { sourceId: "fin-2330-2025Q4", label: "毛利率", detail: "2025Q4" },
-    { sourceId: "fin-2454-2025Q4", label: "毛利率", detail: "2025Q4" },
-    { sourceId: "chunk-2330", label: "法說會", detail: "先進製程需求成長。" },
-    { sourceId: "chunk-2454", label: "法說會", detail: "邊緣 AI 需求成長。" },
+    { sourceId: "fin-2330-2025Q4", label: "fin-2330-2025Q4", detail: "毛利率", snippet: "毛利率　57.8%　2025Q4" },
+    { sourceId: "fin-2454-2025Q4", label: "fin-2454-2025Q4", detail: "毛利率", snippet: "毛利率　38.3%　2025Q4" },
+    { sourceId: "chunk-2330", label: "chunk-2330", detail: "法說會逐字稿", snippet: "先進製程需求成長。" },
+    { sourceId: "chunk-2454", label: "chunk-2454", detail: "法說會逐字稿", snippet: "邊緣 AI 需求成長。" },
   ]);
 });
 
@@ -52,14 +52,14 @@ test("normalizePeerCompare follows the actual FastAPI response contract", () => 
       a: { v: "57.8%", citations: [{ src: "fin-a", page: "2025Q4" }] },
       b: { v: "38.3%", citations: [{ src: "fin-b", page: "2025Q4" }] },
       diff: "19.5pp",
-      better: "a",
+      better: "a" as "a",
     }],
     financial: [],
     calls: [{
       dim: "法說會",
       topic: "毛利率",
-      a: { stance: "有相關引用", tone: "neu", quote: "A 原文", cite: "chunk-a" },
-      b: { stance: "有相關引用", tone: "neu", quote: "B 原文", cite: "chunk-b" },
+      a: { stance: "有相關引用", tone: "neu" as "neu", quote: "A 原文", cite: "chunk-a" },
+      b: { stance: "有相關引用", tone: "neu" as "neu", quote: "B 原文", cite: "chunk-b" },
     }],
     trend: [],
     valuation: [],
@@ -75,5 +75,5 @@ test("normalizePeerCompare follows the actual FastAPI response contract", () => 
 
 test("parseQuery leaves period empty unless the user explicitly supplies one", () => {
   assert.equal(parseQuery("比較台積電與聯發科毛利率").period, "");
-  assert.equal(parseQuery("比較台積電與聯發科 2025Q4 毛利率").period, "2025 Q4");
+  assert.equal(parseQuery("比較台積電與聯發科 2025Q4 毛利率").period, "2025Q4");
 });

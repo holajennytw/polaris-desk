@@ -9,6 +9,7 @@ import { useAlerts } from "@/hooks/useAlerts";
 import { useReadStore } from "@/hooks/useReadStore";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { PanelSkeleton } from "@/components/polaris/Skeleton";
 import { api } from "@/lib/api";
 import { logError } from "@/lib/logger";
 
@@ -17,7 +18,7 @@ const TAB_LABELS: Record<string, string> = { feed:"訊息通知", tracking:"追�
 
 export default function NotificationsPage() {
   const { data: notifs } = useNotifications();
-  const { data: alerts } = useAlerts();
+  const { data: alerts, isLoading: isAlertsLoading } = useAlerts();
   const rs = useReadStore();
   const allAlerts = alerts ?? [];
   const [tab, setTab] = useState<typeof TABS[number]>("feed");
@@ -82,8 +83,11 @@ export default function NotificationsPage() {
           <div className="panel" style={{marginTop:16}}>
             <div className="panel-head">
               <span className="panel-title"><Icon name="alert" size={15} style={{color:"rgb(var(--danger))",verticalAlign:"-2px",marginRight:6}}/>訊息通知</span>
-              <span className="panel-meta">{allAlerts.length} 條</span>
+              {!isAlertsLoading && <span className="panel-meta">{allAlerts.length} 條</span>}
             </div>
+            {isAlertsLoading ? (
+              <div style={{padding:"0 16px"}}><PanelSkeleton rows={4} /></div>
+            ) : (
             <div className="alert-list">
               {allAlerts.map((a)=>(
                 <AlertItem key={a.id} alert={a} read={rs.isRead(a.id)} onClick={()=>rs.markRead(a.id)}/>
@@ -96,6 +100,7 @@ export default function NotificationsPage() {
                 </div>
               )}
             </div>
+            )}
           </div>
         )}
         {tab==="tracking" && (

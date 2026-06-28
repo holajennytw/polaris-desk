@@ -51,12 +51,12 @@ const LP_MORE_NAV = [
 ];
 
 const FEATURES = [
-  { icon: "brain" as const, t: "ReAct 研究助理", d: "輸入問題，模型逐步 THINK／ACT／OBS 規劃、檢索、計算與合規檢查，全程可視。" },
-  { icon: "quote" as const, t: "100% 可溯源引用", d: "每個數字、每句摘要都掛載引用 chip，點擊即開原始財報並逐字高亮。" },
-  { icon: "scale" as const, t: "同業 Calc Grounding", d: "跨公司財務對比逐欄交叉驗證，並以 GICS 拆解解釋毛利率差異來源。" },
-  { icon: "alert" as const, t: "Watchdog 監控", d: "即時擷取 MOPS／法說／新聞，合規初篩標記風險，異動自動觸發重新索引。" },
-  { icon: "shield" as const, t: "合規保障", d: "所有 AI 輸出皆經合規引擎檢查，標示「事實摘要，非投資建議」。" },
-  { icon: "database" as const, t: "可切換資料源", d: "Mock 與真實 API 一鍵切換，前端契約穩定，後端就緒即可上線。" },
+  { icon: "brain" as const, t: "研究助理", d: "輸入問題，小助手逐步規劃、檢索、計算與檢查，全程可視。" },
+  { icon: "quote" as const, t: "可溯源引用", d: "每個數字、每句摘要均引用，點擊標籤即可查看。" },
+  { icon: "scale" as const, t: "同業比較", d: "跨公司財務對比逐欄交叉驗證，拆解解釋各項數據差異。" },
+  { icon: "alert" as const, t: "訊息通知", d: "公司有重大消息發布，即時通知使用者知悉。" },
+  { icon: "shield" as const, t: "事實摘要", d: "所有 AI 輸出皆經檢查，標示「事實摘要，非投資建議」。" },
+  { icon: "bell" as const, t: "訂閱追蹤", d: "訂閱感興趣的公司或主題，即時獲取最新資訊。" },
 ];
 
 export default function LandingPage() {
@@ -107,7 +107,7 @@ export default function LandingPage() {
             變成<span className="accent">可驗證的答案</span>
           </h1>
           <p className="lp-sub">
-            Polaris Desk 結合 ReAct 推理、逐字引用追蹤與合規檢查，讓分析師在數秒內得到有來源、可稽核的研究結論。
+            Polaris Desk 結合 AI 推理、引用與查詢，讓分析師在數秒內得到有來源、可稽核的研究結論。
           </p>
           <div className="lp-cta">
             <Link href="/research" className="btn primary xl">
@@ -171,7 +171,7 @@ export default function LandingPage() {
           <div className="lp-float">
             <div className="lf-ico"><Icon name="brain" size={16} /></div>
             <div>
-              <div className="lf-t">ReAct 推理完成</div>
+              <div className="lf-t">推理完成</div>
               <div className="lf-s">4 steps · traced</div>
             </div>
           </div>

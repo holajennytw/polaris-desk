@@ -1,13 +1,13 @@
 "use client";
-import type { ReActStepVM } from "@/types/viewmodel";
+import type { TraceStepVM } from "@/types/viewmodel";
 
-interface ReActTraceProps {
-  steps: ReActStepVM[];
+interface TracePanelProps {
+  steps: TraceStepVM[];
   activeIndex?: number;
   visibleCount?: number;
 }
 
-export function ReActTrace({ steps, activeIndex, visibleCount }: ReActTraceProps) {
+export function TracePanel({ steps, activeIndex, visibleCount }: TracePanelProps) {
   const visible = visibleCount !== undefined ? steps.slice(0, visibleCount) : steps;
 
   return (

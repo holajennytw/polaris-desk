@@ -9,11 +9,11 @@ import type {
   NewsItemRaw, NewsResponse, DocRaw, LibraryResponse,
   HistoryItemRaw, NotificationItemRaw, NotificationsResponse,
   ResolveResponse, WatchItemRaw, GroundedValue, CitationRaw,
-  ResearchResponse, ResearchCitationRaw, ResearchReActStepRaw,
+  ResearchResponse, ResearchCitationRaw, ResearchTraceStepRaw,
 } from "@/types/api";
 import type {
   AlertVM, AlertLevel, KpiVM, SummaryItemVM, ChartPointVM,
-  ReActStepVM, AskVM, CompanyVM, ComparisonVM, NewsItemVM, NewsVM,
+  TraceStepVM, AskVM, CompanyVM, ComparisonVM, NewsItemVM, NewsVM,
   DocVM, LibraryVM, HistoryItemVM, NotificationItemVM, NotificationsVM,
   ResolveVM, WatchItemVM, GroundedVM, CitationVM, CitationTrackerVM,
 } from "@/types/viewmodel";
@@ -63,11 +63,11 @@ function normalizeSummaryItem(raw: SummaryItemRaw): SummaryItemVM {
   return { text: raw.text, cite: raw.cite_key, page: raw.page };
 }
 
-function mapTraceToReact(steps: ReactStepRaw[]): ReActStepVM[] {
+function mapTraceToSteps(steps: ReactStepRaw[]): TraceStepVM[] {
   return steps.map((s) => ({ type: s.type, text: s.text, tool: s.tool }));
 }
 
-function nodeTracesToReact(traces: NodeTraceRaw[]): ReActStepVM[] {
+function nodeTracesToSteps(traces: NodeTraceRaw[]): TraceStepVM[] {
   return traces.map((t) => ({
     type: t.status === "error" ? "OBS" : "ACT",
     text: t.status === "error" && t.error_message
@@ -100,7 +100,7 @@ export function normalizeAsk(raw: AskResponse, query: string): AskVM {
     kpis: [],
     summary,
     chart: [],
-    react: nodeTracesToReact(raw.trace),
+    react: nodeTracesToSteps(raw.trace),
     citations: raw.citations.map(askCitationToTracker),
   };
 }
@@ -265,9 +265,9 @@ function citationLabel(ev: ResearchCitationRaw): string {
   return _ORIGIN_LABEL[ev.origin] ?? "文件";
 }
 
-// 每個 ReActStep 展開成 THINK / ACT / OBS 三格（空字串的格跳過）
-function expandReActStep(step: ResearchReActStepRaw): ReActStepVM[] {
-  const items: ReActStepVM[] = [];
+// 每個 trace step 展開成 THINK / ACT / OBS 三格（空字串的格跳過）
+function expandTraceStep(step: ResearchTraceStepRaw): TraceStepVM[] {
+  const items: TraceStepVM[] = [];
   if (step.thought)
     items.push({ type: "THINK", text: step.thought, tool: false });
   if (step.action && step.action !== "finish") {
@@ -329,7 +329,7 @@ export function normalizeResearch(raw: ResearchResponse, query: string): AskVM {
                : (ev.fiscal_period ?? ""),
   }));
 
-  const react: ReActStepVM[] = raw.react_steps.flatMap(expandReActStep);
+  const react: TraceStepVM[] = raw.react_steps.flatMap(expandTraceStep);
   const retrieval_degraded =
     raw.evidence.length === 0 ||
     raw.evidence.every((ev) => ev.origin === "bm25" || ev.origin === "stub");
