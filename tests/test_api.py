@@ -524,6 +524,57 @@ class TestPeerCompare:
         lines = [ln for ln in r.json()["summary"].split("\n") if ln.strip()]
         assert len(lines) >= 2  # 結構化條列：總覽 + 至少一項指標
 
+    def test_llm_summary_generated_from_calls_without_common_financials(self, client, monkeypatch):
+        """無共同財務指標、但有法說引用時，摘要仍應走 LLM 合成質性看法（不再掉回純標題行）。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+        from polaris.llm import gemini
+
+        class NoOverlapStore:
+            def list_financials(self, *, ticker=None, period=None, metric=None, limit=None):
+                rows = {
+                    "2330": [{"ticker": "2330", "fiscal_period": "2026Q1", "metric_id": "gross_margin", "value": 57.8, "unit": "%", "source_id": "fa"}],
+                    "2454": [{"ticker": "2454", "fiscal_period": "2026Q1", "metric_id": "net_margin", "value": 22.1, "unit": "%", "source_id": "fb"}],
+                }.get(ticker, [])
+                if period is not None:
+                    rows = [r for r in rows if r["fiscal_period"] == period]
+                if metric is not None:
+                    rows = [r for r in rows if r["metric_id"] == metric]
+                return rows[: limit or 200]
+
+        class FakeLLM:
+            def generate(self, prompt, flash=False, **kw):
+                return "台積電偏資料中心 AI、聯發科偏邊緣 AI。\n台積電強調 AI accelerator 營收翻倍\n聯發科聚焦手機 SoC 與邊緣 AI"
+
+        monkeypatch.setattr(api, "_structured_store", NoOverlapStore())
+        monkeypatch.setattr(api, "_search_peer_calls", lambda t, p, q: [Citation(source_id=f"c-{t}", snippet=f"{t} 法說 AI 需求原文", origin="embedding", company=t, doc_type="transcript", fiscal_period=p)])
+        monkeypatch.setattr(gemini, "active_llm", lambda: FakeLLM())
+
+        r = client.post("/peer-compare", json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q1", "question": "比較對 AI 需求的看法"})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["kpis"] == []  # 無共同財務指標
+        lines = [ln for ln in body["summary"].split("\n") if ln.strip()]
+        assert len(lines) >= 2  # 仍是多行質性摘要，而非單一標題行
+        assert "資料中心" in body["summary"]  # 來自 LLM 質性合成
+
+    def test_fallback_summary_includes_call_highlights_without_llm(self, client, monkeypatch):
+        """無 LLM 時，fallback 摘要也要帶法說質性節錄，而非純財務數字。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+        from polaris.llm import gemini
+
+        monkeypatch.setattr(api, "_structured_store", self._peer_store())
+        monkeypatch.setattr(api, "_search_peer_calls", lambda t, p, q: [Citation(source_id=f"c-{t}", snippet=f"{t} 法說提到 AI 需求強勁可望翻倍", origin="embedding", company=t, doc_type="transcript", fiscal_period=p)])
+        monkeypatch.setattr(gemini, "active_llm", lambda: None)
+
+        r = client.post("/peer-compare", json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q1", "question": "比較對 AI 需求的看法"})
+        assert r.status_code == 200
+        summary = r.json()["summary"]
+        assert "AI 需求強勁" in summary  # fallback 也含法說質性內容
+        lines = [ln for ln in summary.split("\n") if ln.strip()]
+        assert not any(ln.lstrip().startswith("・") for ln in lines)  # 不自帶 bullet 前綴
+
     def test_bulletize_summary_strips_prefixes_and_blank_lines(self):
         from polaris.api import _bulletize_summary
 

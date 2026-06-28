@@ -1187,35 +1187,48 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
             f"{kpi.label}：{req.a_ticker} {kpi.a.v} vs {req.b_ticker} {kpi.b.v}"
             f"（{better_name} 領先 {kpi.diff}）"
         )
+    # 法說質性節錄：每家取首筆引用，讓 fallback（無 LLM）摘要也帶「看法」而非純數字。
+    for ticker, side in ((req.a_ticker, "a"), (req.b_ticker, "b")):
+        quote = next(
+            (getattr(c, side).quote for c in calls if getattr(c, side).quote), ""
+        )
+        if quote:
+            summary_parts.append(f"{ticker} 法說重點：{quote[:120]}")
     raw_summary = "\n".join(summary_parts)
 
-    # LLM 生成自然語言摘要（有 GEMINI_API_KEY 才呼叫；否則沿用結構化字串）
+    # LLM 生成自然語言摘要（有 GEMINI_API_KEY 才呼叫；否則沿用結構化字串）。
+    # 觸發條件：有財務指標「或」有法說引用——後者讓「對 AI 需求的看法」這類純質性
+    # 問題（可能無共同財務指標）也能合成看法，而非掉回單一標題行。
     from polaris.llm.gemini import active_llm
 
+    has_call_quotes = any(c.a.quote or c.b.quote for c in calls)
     llm = active_llm()
-    if llm and kpis:
+    if llm and (kpis or has_call_quotes):
         kpi_lines = "\n".join(
             f"  ・{k.label}：{req.a_ticker} {k.a.v} vs {req.b_ticker} {k.b.v}"
             f"（{req.a_ticker if k.better == 'a' else req.b_ticker} 領先 {k.diff}）"
             for k in kpis
-        )
+        ) or "（無共同財務指標）"
         call_snippets = [
-            f"  ・{req.a_ticker}：{c.a.quote[:120]}"
-            for c in calls[:3]
+            f"  ・{req.a_ticker}：{c.a.quote[:300]}"
+            for c in calls[:5]
             if c.a.quote
         ] + [
-            f"  ・{req.b_ticker}：{c.b.quote[:120]}"
-            for c in calls[:3]
+            f"  ・{req.b_ticker}：{c.b.quote[:300]}"
+            for c in calls[:5]
             if c.b.quote
         ]
-        call_lines = "\n".join(call_snippets[:5]) or "（無法說引用）"
+        call_lines = "\n".join(call_snippets[:8]) or "（無法說引用）"
         prompt = (
-            f"你是台股產業研究員。請用繁體中文，根據以下財務指標與法說引用，"
+            f"你是台股產業研究員。請用繁體中文，聚焦回答『使用者問題』，"
             f"為「{req.a_ticker} vs {req.b_ticker}」（{req.fiscal_period}）寫一份同業比較摘要。\n\n"
+            f"撰寫原則：以下方『法說引用』為主軸，先合成兩家對使用者問題的看法／立場差異，"
+            f"財務數字僅作輔助佐證，不要只堆財務數字。\n\n"
             f"輸出格式（務必嚴格遵守）：\n"
-            f"第一行：一句 15-35 字的整體總覽，點出兩家最關鍵的差異。\n"
-            f"第二行起：每行一個比較重點，共 3-5 行，每行 15-45 字，直接陳述事實差異"
-            f"（可帶數字，數字需與下列指標一致）。\n"
+            f"第一行：一句 15-40 字的整體總覽，直接點出兩家對使用者問題看法的最關鍵差異。\n"
+            f"接著各一行：分別陳述 {req.a_ticker}、{req.b_ticker} 對使用者問題的看法／立場"
+            f"（依法說引用，每行 15-50 字）。\n"
+            f"最後 1-2 行：以關鍵財務數字佐證差異（數字需與下列財務指標一致；無指標則省略）。\n"
             f"每行「不要」加「・」「-」「*」等符號或數字編號（介面會自動加項目符號），"
             f"行與行之間用換行分隔，讓使用者一眼就能掃讀。\n\n"
             f"財務指標：\n{kpi_lines}\n\n"
