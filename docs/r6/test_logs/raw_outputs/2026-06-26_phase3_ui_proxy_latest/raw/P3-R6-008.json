@@ -1,0 +1,358 @@
+{
+  "test_id": "P3-R6-008",
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-web-14326813937.asia-east1.run.app/api/ask",
+    "body": {
+      "query": "2382 廣達 2025Q1 簡報中，AI server 或雲端業務提到哪些重點？"
+    }
+  },
+  "test_metadata": {
+    "test_id": "P3-R6-008",
+    "query": "2382 廣達 2025Q1 簡報中，AI server 或雲端業務提到哪些重點？",
+    "category": "vision_ocr_presentation",
+    "expected_ticker": "2382",
+    "expected_company": "廣達",
+    "expected_period": "2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_COMPANY_IR",
+    "expected_source_type": "presentation_ocr_chunk",
+    "why_included": "Phase 2 cross-company presentation comparison showed insufficient data; use single-company version to isolate recall.",
+    "phase2_reference": "R6-P2F-009",
+    "phase2_blocker_target": "presentation recall; single-company isolation.",
+    "pass_criteria": "HTTP 200; cites Quanta 2025Q1 presentation/OCR chunk; AI server/cloud business claims are snippet-supported.",
+    "needs_review_criteria": "answer has right source type but metadata is partial.",
+    "fail_criteria": "answer cannot find data; cites Hon Hai/MediaTek/other company instead.",
+    "owner_if_failed": "R4/R3",
+    "notes": "Blocker regression with lower ambiguity than cross-company prompt."
+  },
+  "http_status": 200,
+  "elapsed_sec": 22.27,
+  "headers": {
+    "content-type": "application/json",
+    "date": "Sun, 28 Jun 2026 07:35:55 GMT",
+    "server": "Google Frontend"
+  },
+  "response": {
+    "answer": "根據您提供的引用片段，關於廣達（2382）2025年第一季簡報中針對「AI Server」或「雲端業務」的具體重點說明如下：\n\n### 1. 財務表現反映業務成長\n雖然引用片段中未直接以文字描述 AI Server 的業務細節，但從 2025Q1 的財務數據可觀察到顯著成長：\n*   **營收大幅成長**：2025年第一季營業收入淨額為 4,856.72 億元，較去年同期（1Q24）成長 87.6%，較上一季（4Q24）成長 16.4% [2382-2025Q1-p003-c001]。\n*   **獲利能力提升**：營業淨利達 246 億元，年增率（YoY）達 110.3% [2382-2025Q1-p003-c001]。\n*   **存貨與應收帳款增加**：截至 2025 年 3 月 31 日，存貨金額由 2024 年底的 2,618.86 億元增加至 2,771.48 億元；應收帳款淨額則由 3,712.46 億元增加至 4,511.42 億元 [2382-2025Q1-p004-c001]。\n\n### 2. 海外產能佈局\n*   廣達代子公司 Quanta Manufacturing Nashville, LLC 公告取得租賃使用權資產 [mops_3fbc7735a502af32]。此舉通常與北美伺服器生產或組裝需求相關，但片段中未詳述具體產品線。\n\n### 3. 資料不足說明\n提供的引用片段主要為財務報表（損益表、資產負債表）與股利分派資訊 [2382-2025Q1-p003-c001, 2382-2025Q1-p004-c001, 2382-2025Q1-p005-c001]，**並未包含**簡報中關於 AI Server 產品規格（如 Blackwell 平台進度）、雲端服務供應商（CSP）客戶展望或具體出貨比例等定性描述文字。\n\n**結論：** 根據現有資料，僅能從營收年增 87.6% 與 Nashville 子公司取得資產等財務事實推論業務擴張，但簡報中關於 AI Server 或雲端業務的具體策略重點，因資料不足無法詳述。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "2382-2025Q1-p001-c001",
+        "snippet": "廣達電腦 Quanta Computer Inc. (2382.TW/2382.TT) 114年第一季財務暨營運報告，發布日期為 May 14, 2025。",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2382",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2382-2025Q1-p004-c001",
+        "snippet": "合併資產負債表\n資產總計 (2025.03.31): 1043896百萬元\n資產總計 (2024.12.31): 932446百萬元\n負債總計 (2025.03.31): 843200百萬元\n負債總計 (2024.12.31): 702141百萬元\n歸屬於母公司業主權益 (2025.03.31): 192864百萬元\n歸屬於母公司業主權益 (2024.12.31): 222286百萬元\n| 新台幣百萬元 | 2025.03.31 | 2024.12.31 |\n| :----------- | :--------- | :--------- |\n| 現金及短期投資 | 214604     | 201099     |\n| 應收帳款淨額 | 451142     | 371246     |\n| 存貨         | 277148     | 261886     |\n| 資產總計     | 1043896    | 932446     |\n| 應付帳款     | 302105     | 282782     |\n| 流動負債     | 787469     | 638699     |\n| 負債總計     | 843200     | 702141     |\n| 歸屬於母公司業主權益 | 192864     | 222286     |",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2382",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_135e213be0207ef0",
+        "snippet": "公告本公司董事會通過113年度財務報告",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2382",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2382-2025Q1-p005-c001",
+        "snippet": "股東會及股利分派\n| 年度 | 每股盈餘 | 現金股利 | 股票股利 | 配發比率 |\n|---|---|---|---|---|\n| 2024 | 15.49 | 13.00 | 0 | 84% |\n| 2023 | 10.29 | 9.00 | 0 | 87% |\n| 2022 | 7.51 | 6.00 | 0 | 80% |\n| 2021 | 8.73 | 6.60 | 0 | 76% |\n| 2020 | 6.57 | 5.20 | 0 | 79% |",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2382",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_5470c32d1caaa80b",
+        "snippet": "本公司受邀參加BofA Securities所舉辦之\"2025 Asia Tech Conference \"投資論壇",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "ticker": "2382",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_3fbc7735a502af32",
+        "snippet": "本公司代子公司Quanta Manufacturing Nashville,\nLLC公告取得租賃使用權資產",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "ticker": "2382",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2382-2025Q1-p003-c001",
+        "snippet": "Quanta Computer Inc. 1Q25 合併綜合損益表。以上財務數字均以台灣 IFRSs為編製基礎。基本每股盈餘之設算以加權平均在外流通股數3,854,519仟股計算之。\n| 項目 (新台幣百萬元) | 1Q25 | % | 4Q24 | % | QoQ | 1Q24 | % | YoY |\n|---|---|---|---|---|---|---|---|---|\n| 營業收入淨額 | 485672 | | 417313 | | 16.4% | 258939 | | 87.6% |\n| 營業毛利 | 38483 | 7.92 | 31077 | 7.45 | 23.8% | 21950 | 8.48 | 75.3% |\n| 營業淨利 | 24600 | 5.07 | 15159 | 3.63 | 62.3% | 11698 | 4.52 | 110.3% |\n| 營業外收入及支出 | 669 | | 2598 | | | 2833 | | |\n| 利息淨額 | -1001 | | 290 | | | 1008 | | |\n| 匯兌淨額 | 2075 | | 1766 | | | 1286 | | |\n| 其它 | -406 | | 542 | | | 539 | | |\n| 稅前淨利 | 25269 | 5.20 | 17757 | 4.26 | 42.3% | 14531 | 5.61 | 73.9% |\n| 所得稅費用 | -5572 | | -1711 | | | -2301 | | |\n| 本期淨利 (歸屬於母公司業主) | 19498 | 4.01 | 15873 | 3.80 | 22.8% | 12068 | 4.66 | 61.6% |\n| 基本每股盈餘 (新台幣元) | 5.06 | | 4.12 | | | 3.13 | | |",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2382",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_bf1d01e706a9560c",
+        "snippet": "113年度財務報告董事會預計召開日期為114年02月27日",
+        "origin": "rerank",
+        "company": "廣達",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2382",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3957
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1515
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 12565
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4086
+      }
+    ]
+  },
+  "error": null,
+  "analysis": {
+    "test_id": "P3-R6-008",
+    "query": "2382 廣達 2025Q1 簡報中，AI server 或雲端業務提到哪些重點？",
+    "category": "vision_ocr_presentation",
+    "expected_ticker": "2382",
+    "expected_company": "廣達",
+    "expected_period": "2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_COMPANY_IR",
+    "expected_source_type": "presentation_ocr_chunk",
+    "why_included": "Phase 2 cross-company presentation comparison showed insufficient data; use single-company version to isolate recall.",
+    "phase2_reference": "R6-P2F-009",
+    "phase2_blocker_target": "presentation recall; single-company isolation.",
+    "pass_criteria": "HTTP 200; cites Quanta 2025Q1 presentation/OCR chunk; AI server/cloud business claims are snippet-supported.",
+    "needs_review_criteria": "answer has right source type but metadata is partial.",
+    "fail_criteria": "answer cannot find data; cites Hon Hai/MediaTek/other company instead.",
+    "owner_if_failed": "R4/R3",
+    "notes": "presentation/OCR evidence present but traceability/support partial",
+    "http_status": 200,
+    "elapsed_sec": 22.27,
+    "error": null,
+    "answer_exists": true,
+    "answer_insufficient_data": true,
+    "citation_count": 8,
+    "citation_origins": [
+      "rerank"
+    ],
+    "source_ids": [
+      "2382-2025Q1-p001-c001",
+      "2382-2025Q1-p004-c001",
+      "mops_135e213be0207ef0",
+      "2382-2025Q1-p005-c001",
+      "mops_5470c32d1caaa80b",
+      "mops_3fbc7735a502af32",
+      "2382-2025Q1-p003-c001",
+      "mops_bf1d01e706a9560c"
+    ],
+    "metadata_has": {
+      "ticker": true,
+      "company": true,
+      "doc_type": true,
+      "fiscal_period": true,
+      "page_num": false,
+      "source_file": false,
+      "event_key": true,
+      "source_key": true,
+      "published_yyyymm": true
+    },
+    "financial_metric_evidence": false,
+    "monthly_revenue_numeric_evidence": false,
+    "presentation_ocr_chunk": true,
+    "p_anchor": true,
+    "citation_supports_answer": true,
+    "company_mismatch": false,
+    "period_mismatch": false,
+    "event_source_mismatch": false,
+    "unsupported_number": true,
+    "hallucination": false,
+    "nfr_031_violation": false,
+    "compliance_behavior": null,
+    "grounding_quality": null,
+    "source_mix": {
+      "earnings_call_transcript": 0,
+      "presentation_ocr_chunk": 4,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 4,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_mix": {
+      "earnings_call_transcript": 0,
+      "presentation_ocr_chunk": 3,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 1,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_ids": [
+      "2382-2025Q1-p004-c001",
+      "2382-2025Q1-p005-c001",
+      "mops_3fbc7735a502af32",
+      "2382-2025Q1-p003-c001"
+    ],
+    "answer_preview": "根據您提供的引用片段，關於廣達（2382）2025年第一季簡報中針對「AI Server」或「雲端業務」的具體重點說明如下：\n\n### 1. 財務表現反映業務成長\n雖然引用片段中未直接以文字描述 AI Server 的業務細節，但從 2025Q1 的財務數據可觀察到顯著成長：\n*   **營收大幅成長**：2025年第一季營業收入淨額為 4,856.72 億元，較去年同期（1Q24）成長 87.6%，較上一季（4Q24）成長 16.4% [2382-2025Q1-p003-c001]。\n*   **獲利能力提升**：營業淨利達 246 億元，年增率（YoY）達 110.3% [2382-2025Q1-p003-c001]。\n*   **存貨與應收帳款增加**：截至 2025 年 3 月 31 日，存貨金額由 2024 年底的 2,618.86 億元增加至 2,771.48 億元；應收帳款淨額則由 3,712.46 億元增加至 4,511.42 億元 [2382-2025Q1-p004-c001]。\n\n### 2. 海外產能佈局\n*   廣達代子公司 Quanta Manufacturing Nashville, LLC 公告取得租賃使用權資產 [mops_3fbc7735a502af32]。此舉通常與北美伺服器生產或組裝需求相關，但片段中未詳述具體產品線。\n\n### 3. 資料不足說明\n提供的引用片段主要為財務報表（損益表、資產負債表）與股利分派資訊 [2382-2025Q1-p003-c001, 2382-2025Q1-p004-c001, 2382-2025Q1-p005-c001]，**並未包含**簡報中關於 AI Server 產品規格（如 Blackwell 平台進度）、雲端服務供應商（CSP）客戶展望或具體出貨比例等定性描述文字。\n\n**結論：** 根據現有資料，僅能從營收年增 87.6% 與 Nashville 子公司取得資產等財務事實推論業務擴張，但簡報中關於 AI Server 或雲端業務的具體策略重點，因資料不足無法詳述。",
+    "first_citation": {
+      "source_id": "2382-2025Q1-p001-c001",
+      "snippet": "廣達電腦 Quanta Computer Inc. (2382.TW/2382.TT) 114年第一季財務暨營運報告，發布日期為 May 14, 2025。",
+      "origin": "rerank",
+      "company": "廣達",
+      "event_key": "earnings_call",
+      "source_key": "PRIMARY_COMPANY_IR",
+      "published_yyyymm": 202505,
+      "ticker": "2382",
+      "doc_type": "presentation",
+      "fiscal_period": "2025Q1",
+      "page_num": null,
+      "source_file": null,
+      "published_at": null
+    },
+    "original_verdict": "Needs Review",
+    "reviewed_verdict": "Needs Review",
+    "owner_to_fix": "R4/R3"
+  }
+}

@@ -1,0 +1,358 @@
+{
+  "test_id": "P3-R6-005",
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-web-14326813937.asia-east1.run.app/api/ask",
+    "body": {
+      "query": "2308 台達電 2025Q1 簡報中，資料中心或電源相關業務有哪些營運重點？"
+    }
+  },
+  "test_metadata": {
+    "test_id": "P3-R6-005",
+    "query": "2308 台達電 2025Q1 簡報中，資料中心或電源相關業務有哪些營運重點？",
+    "category": "vision_ocr_presentation",
+    "expected_ticker": "2308",
+    "expected_company": "台達電",
+    "expected_period": "2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_COMPANY_IR",
+    "expected_source_type": "presentation_ocr_chunk",
+    "why_included": "Phase 2 台達電 presentation 題曾 data insufficient / source mix 不穩，Phase 3 必測。",
+    "phase2_reference": "R6-P2F-004; R6-P2F-016",
+    "phase2_blocker_target": "Vision-OCR recall; presentation chunk traceability.",
+    "pass_criteria": "HTTP 200; cites Delta 2025Q1 presentation/OCR chunk; source_id or chunk_id contains page/chunk anchor or enough source traceability; claims about data center/power are snippet-supported.",
+    "needs_review_criteria": "presentation source found but page_num/source_file missing; `pXXX-cXXX` anchor sufficient for manual trace.",
+    "fail_criteria": "answer data insufficient; cites MOPS/news only; wrong company or period.",
+    "owner_if_failed": "R4/R3",
+    "notes": "Blocker regression."
+  },
+  "http_status": 200,
+  "elapsed_sec": 31.52,
+  "headers": {
+    "content-type": "application/json",
+    "date": "Sun, 28 Jun 2026 07:34:50 GMT",
+    "server": "Google Frontend"
+  },
+  "response": {
+    "answer": "根據提供的引用片段，台達電（2308）2025年第一季在電源及基礎設施相關業務的營運重點與財務表現如下：\n\n### 一、 電源及零組件（Power Electronics）營運表現\n此部門為台達電最主要的營收來源，2025Q1 的營運數據顯示其維持成長態勢：\n*   **營收規模**：2025Q1 營收為新台幣 59,777 百萬元，較去年同期（Y/Y）成長 28%，較上季（Q/Q）成長 1% [2308-2025Q1-p006-c001]。\n*   **獲利能力**：2025Q1 部門利潤為新台幣 10,194 百萬元，年增 39%，季增 14% [2308-2025Q1-p006-c001]。\n*   **營收佔比**：該部門佔 2025Q1 總營收比重為 50%，較 2024Q1 的 51% 略微下降，但仍是公司核心業務 [2308-2025Q1-p006-c001]。\n\n### 二、 基礎設施（Infrastructure）營運表現\n資料中心相關業務通常歸類於此部門，其 2025Q1 表現如下：\n*   **營收規模**：2025Q1 營收為新台幣 34,704 百萬元 [2308-2025Q1-p006-c001]。\n*   **營收佔比**：該部門佔 2025Q1 總營收比重為 12%，與 2024Q4 持平，較 2024Q1 的 13% 略降 [2308-2025Q1-p006-c001]。\n\n### 三、 全球設施建置與子公司動態\n台達電透過子公司進行實驗室與廠房擴建，可能與電源或基礎設施業務的研發與產能相關：\n*   **美國佈局**：子公司 Delta Electronics (USA) Inc. 決議建置 FWT 實驗室、興建 F2 廠及辦公大樓 [mops_78c67a65baeffe2c]。\n*   **泰國與歐洲佈局**：子公司 Delta Electronics (Thailand) (DETH) 董事會決議擬增資 DETH [mops_a0f6687e673b6ffd]，並擬增資 Delta Electronics (Slovakia), s.r.o. [mops_ffba51fa0574a526]。\n\n### 資料不足說明\n引用片段中未明確列出「資料中心」單一業務的具體營收數字或質性營運重點（如特定產品技術突破或客戶訂單狀況），僅提供包含該業務的「電源及零組件」與「基礎設施」部門之財務數據 [2308-2025Q1-p006-c001]。此外，基礎設施部門的年增率（Y/Y）與季增率（Q/Q）數據在引用片段中遭到截斷，無法提供確切增減幅 [2308-2025Q1-p006-c001]。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "mops_e3e6c5b9aea602ce",
+        "snippet": "本公司代子公司Delta Electronics (Thailand) Public\nCompany Limited公告決議召集2025年股東常會",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_a0f6687e673b6ffd",
+        "snippet": "本公司代子公司Delta Electronics (Thailand) Public Company\nLimited公告董事會決議擬增資DETH",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2308-2025Q1-p006-c001",
+        "snippet": "Performance by Segment 主要部門表現\nSales% 營收佔比（stacked_bar_chart）: Others (1Q24): 24%、Infrastructure (1Q24): 13%、Automation (1Q24): 12%、Mobility (1Q24): 12%、Power Electronics (1Q24): 51%、Others (4Q24): 27%、Infrastructure (4Q24): 12%、Automation (4Q24): 9%、Mobility (4Q24): 9%、Power Electronics (4Q24): 52%、Others (1Q25): 29%、Infrastructure (1Q25): 12%、Automation (1Q25): 9%、Mobility (1Q25): 9%、Power Electronics (1Q25): 50%\n| NT$ million 新台幣百萬元 | Sales | Y/Y | Q/Q | Profits | Y/Y | Q/Q |\n| :----------------------- | :---- | :-- | :-- | :------ | :-- | :-- |\n| Power Electronics 電源及零組件 | 59,777 | +28% | +1% | 10,194 | +39% | +14% |\n| Mobility 交通 | 10,623 | +1% | +1% | -266 | n.m. (turned to loss) | +59% |\n| Automation 自動化 | 13,697 | +16% | +1% | 462 | +984% | +507% |\n| Infrastructure 基礎設施 | 34,704 | +",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "ticker": "2308",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_da034c95f2255626",
+        "snippet": "本公司代子公司DELTA ELECTRONICS (NORWAY) AS公告2025年\n股東常會重要決議事項",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_2abc1adaf2e7670c",
+        "snippet": "本公司代子公司DELTA ELECTRONICS (NORWAY) AS公告決議\n召集2025年股東常會",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_78c67a65baeffe2c",
+        "snippet": "補充公告本公司代子公司Delta Electronics (USA) Inc.公告\n決議建置FWT實驗室、興建F2廠及辦公大樓相關事宜",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_ffba51fa0574a526",
+        "snippet": "本公司代子公司DETH公告董事會決議擬增資Delta Electronics\n(Slovakia), s.r.o.",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_bdf149a5f2c1faf8",
+        "snippet": "本公司代子公司Delta Electronics (USA) Inc.公告擬取得預售\n不動產",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 6700
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 2950
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 18691
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3031
+      }
+    ]
+  },
+  "error": null,
+  "analysis": {
+    "test_id": "P3-R6-005",
+    "query": "2308 台達電 2025Q1 簡報中，資料中心或電源相關業務有哪些營運重點？",
+    "category": "vision_ocr_presentation",
+    "expected_ticker": "2308",
+    "expected_company": "台達電",
+    "expected_period": "2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_COMPANY_IR",
+    "expected_source_type": "presentation_ocr_chunk",
+    "why_included": "Phase 2 台達電 presentation 題曾 data insufficient / source mix 不穩，Phase 3 必測。",
+    "phase2_reference": "R6-P2F-004; R6-P2F-016",
+    "phase2_blocker_target": "Vision-OCR recall; presentation chunk traceability.",
+    "pass_criteria": "HTTP 200; cites Delta 2025Q1 presentation/OCR chunk; source_id or chunk_id contains page/chunk anchor or enough source traceability; claims about data center/power are snippet-supported.",
+    "needs_review_criteria": "presentation source found but page_num/source_file missing; `pXXX-cXXX` anchor sufficient for manual trace.",
+    "fail_criteria": "answer data insufficient; cites MOPS/news only; wrong company or period.",
+    "owner_if_failed": "R4/R3",
+    "notes": "presentation/OCR evidence present but traceability/support partial",
+    "http_status": 200,
+    "elapsed_sec": 31.52,
+    "error": null,
+    "answer_exists": true,
+    "answer_insufficient_data": true,
+    "citation_count": 8,
+    "citation_origins": [
+      "rerank"
+    ],
+    "source_ids": [
+      "mops_e3e6c5b9aea602ce",
+      "mops_a0f6687e673b6ffd",
+      "2308-2025Q1-p006-c001",
+      "mops_da034c95f2255626",
+      "mops_2abc1adaf2e7670c",
+      "mops_78c67a65baeffe2c",
+      "mops_ffba51fa0574a526",
+      "mops_bdf149a5f2c1faf8"
+    ],
+    "metadata_has": {
+      "ticker": true,
+      "company": true,
+      "doc_type": true,
+      "fiscal_period": true,
+      "page_num": false,
+      "source_file": false,
+      "event_key": true,
+      "source_key": true,
+      "published_yyyymm": true
+    },
+    "financial_metric_evidence": false,
+    "monthly_revenue_numeric_evidence": false,
+    "presentation_ocr_chunk": true,
+    "p_anchor": true,
+    "citation_supports_answer": true,
+    "company_mismatch": false,
+    "period_mismatch": false,
+    "event_source_mismatch": false,
+    "unsupported_number": false,
+    "hallucination": false,
+    "nfr_031_violation": false,
+    "compliance_behavior": null,
+    "grounding_quality": null,
+    "source_mix": {
+      "earnings_call_transcript": 0,
+      "presentation_ocr_chunk": 1,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 7,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_mix": {
+      "earnings_call_transcript": 0,
+      "presentation_ocr_chunk": 1,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 3,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_ids": [
+      "mops_a0f6687e673b6ffd",
+      "2308-2025Q1-p006-c001",
+      "mops_78c67a65baeffe2c",
+      "mops_ffba51fa0574a526"
+    ],
+    "answer_preview": "根據提供的引用片段，台達電（2308）2025年第一季在電源及基礎設施相關業務的營運重點與財務表現如下：\n\n### 一、 電源及零組件（Power Electronics）營運表現\n此部門為台達電最主要的營收來源，2025Q1 的營運數據顯示其維持成長態勢：\n*   **營收規模**：2025Q1 營收為新台幣 59,777 百萬元，較去年同期（Y/Y）成長 28%，較上季（Q/Q）成長 1% [2308-2025Q1-p006-c001]。\n*   **獲利能力**：2025Q1 部門利潤為新台幣 10,194 百萬元，年增 39%，季增 14% [2308-2025Q1-p006-c001]。\n*   **營收佔比**：該部門佔 2025Q1 總營收比重為 50%，較 2024Q1 的 51% 略微下降，但仍是公司核心業務 [2308-2025Q1-p006-c001]。\n\n### 二、 基礎設施（Infrastructure）營運表現\n資料中心相關業務通常歸類於此部門，其 2025Q1 表現如下：\n*   **營收規模**：2025Q1 營收為新台幣 34,704 百萬元 [2308-2025Q1-p006-c001]。\n*   **營收佔比**：該部門佔 2025Q1 總營收比重為 12%，與 2024Q4 持平，較 2024Q1 的 13% 略降 [2308-2025Q1-p006-c001]。\n\n### 三、 全球設施建置與子公司動態\n台達電透過子公司進行實驗室與廠房擴建，可能與電源或基礎設施業務的研發與產能相關：\n*   **美國佈局**：子公司 Delta Electronics (USA) Inc. 決議建置 FWT 實驗室、興建 F2 廠及辦公大樓 [mops_78c67a65baeffe2c]。\n*   **泰國與歐洲佈局**：子公司 Delta Electronics (Thailand) (DETH) 董事會決議擬增資 DETH [mops_a0f6687e673b6ffd]，並擬增資 Delta Electronics (Slovakia), s.r.o. [mops_ffba51fa0574a526]。\n\n### 資料不足說明\n引用片段中未明確列出「資料中心」單一業務的具體營收數字或質性營運重點（如特定產品技術突破或客戶訂單狀況），僅提供包含該業務的「電源及零組件」與「基礎設施」部門之財務數據 [2308-2025Q1-p006-c001]。此外，基礎設施部門的年增率（Y/Y）與季增率（Q/Q）數據在引用片段中遭到截斷，無法提供確切增減幅 [2308-2025Q1-p006-c001]。",
+    "first_citation": {
+      "source_id": "mops_e3e6c5b9aea602ce",
+      "snippet": "本公司代子公司Delta Electronics (Thailand) Public\nCompany Limited公告決議召集2025年股東常會",
+      "origin": "rerank",
+      "company": "台達電",
+      "event_key": "major_news.others",
+      "source_key": "PRIMARY_MOPS",
+      "published_yyyymm": 202502,
+      "ticker": "2308",
+      "doc_type": "major_news",
+      "fiscal_period": "2025Q1",
+      "page_num": null,
+      "source_file": null,
+      "published_at": null
+    },
+    "original_verdict": "Needs Review",
+    "reviewed_verdict": "Needs Review",
+    "owner_to_fix": "R4/R3"
+  }
+}

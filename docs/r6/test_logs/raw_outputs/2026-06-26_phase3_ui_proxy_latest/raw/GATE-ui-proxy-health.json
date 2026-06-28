@@ -1,0 +1,15 @@
+{
+  "backend_direct_health": {
+    "url": "https://polaris-api-14326813937.asia-east1.run.app/health",
+    "http_status": 404,
+    "content_type": "text/html; charset=UTF-8",
+    "body_preview": "\n<html><head>\n<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\">\n<title>404 Page not found</title>\n</head>\n<body text=#000000 bgcolor=#ffffff>\n<h1>Error: Page not found</h1>\n<h2>The requested URL was not found on this server.</h2>\n<h2></h2>\n</body></html>\n"
+  },
+  "frontend_research": {
+    "url": "https://polaris-web-14326813937.asia-east1.run.app/research",
+    "http_status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "body_bytes": 23238,
+    "body_preview": "<!DOCTYPE html><html lang=\"zh-Hant\" class=\"dm_sans_b8fe6eb5-module__lthqva__variable syne_e0bfa415-module__nO3xYa__variable jetbrains_mono_1bc3c230-module__q2kx-a__variable\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"preload\" href=\"/_next/static/media/051742360c26797e-s.p.1bkzbscqrt8rl.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"preload\" href=\"/_next/static/media/0c795a286deabae8-s.p.3vm0tq4e-zz_5.woff2\" as=\"font"
+  }
+}

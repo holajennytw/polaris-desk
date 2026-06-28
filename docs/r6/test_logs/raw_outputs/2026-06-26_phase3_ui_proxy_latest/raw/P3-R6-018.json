@@ -1,0 +1,360 @@
+{
+  "test_id": "P3-R6-018",
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-web-14326813937.asia-east1.run.app/api/ask",
+    "body": {
+      "query": "台達電 2025Q1 至 2026Q1 期間，在資料中心電源、散熱或海外布局上有哪些新聞或重大訊息？"
+    }
+  },
+  "test_metadata": {
+    "test_id": "P3-R6-018",
+    "query": "台達電 2025Q1 至 2026Q1 期間，在資料中心電源、散熱或海外布局上有哪些新聞或重大訊息？",
+    "category": "news_major_news",
+    "expected_ticker": "2308",
+    "expected_company": "台達電",
+    "expected_period": "2025Q1-2026Q1",
+    "expected_event_key": "major_news;news",
+    "expected_source_key": "PRIMARY_MOPS;SECONDARY_NEWS_MEDIA;PRIMARY_COMPANY_IR",
+    "expected_source_type": "mops_major_news;news;company_ir",
+    "why_included": "Adds third news regression company and overlaps with demo-relevant data-center theme.",
+    "phase2_reference": "new",
+    "phase2_blocker_target": "news source selection; company-specific retrieval.",
+    "pass_criteria": "HTTP 200; cites Delta-relevant news/major news/IR from 2025Q1-2026Q1 or the closest database-available source; topic matches data center power/cooling/overseas expansion.",
+    "needs_review_criteria": "correct company but source mix includes presentation or transcript as supplemental evidence.",
+    "fail_criteria": "cites unrelated company; no answer; hallucinated news.",
+    "owner_if_failed": "R3/R4",
+    "notes": "Good demo-adjacent regression if supported by inventory. Timeframe is narrowed to reduce period-mismatch ambiguity; if database coverage is limited, reviewer may accept clearly labeled \"截至目前資料庫可查資料\" evidence."
+  },
+  "http_status": 200,
+  "elapsed_sec": 19.47,
+  "headers": {
+    "content-type": "application/json",
+    "date": "Sun, 28 Jun 2026 07:39:53 GMT",
+    "server": "Google Frontend"
+  },
+  "response": {
+    "answer": "根據提供的引用片段，台達電（2308）在 2025 年至 2026 年期間於海外布局與資本運作之相關重大訊息整理如下：\n\n### 一、 海外布局與建設\n*   **美國地區：** 子公司 Delta Electronics (USA) Inc. 決議建置 FWT 實驗室、興建 F2 廠及辦公大樓 [mops_168f2cd9584667f3]。此外，該子公司亦公告擬取得預售不動產 [mops_bdf149a5f2c1faf8]。\n*   **泰國與斯洛伐克：** 台達電代子公司 Delta Electronics (Thailand) Public Company Limited（下稱 DETH）公告董事會決議擬增資 DETH [mops_a0f6687e673b6ffd]。同時，DETH 亦計畫增資其子公司 Delta Electronics (Slovakia), s.r.o. [mops_ffba51fa0574a526]。\n*   **挪威：** 子公司 DELTA ELECTRONICS (NORWAY) AS 已決議召集 2025 年股東常會 [mops_2abc1adaf2e7670c]。\n\n### 二、 資本運作與財務安排\n*   **海外可交換公司債：** 台達電代子公司 DIH 公告，董事會決議發行以其持有之 DETH 股份作為交換標的之海外可交換公司債，該債券預計於民國 119 年（2030 年）到期 [mops_8264364943ad45c8]。\n\n### 三、 資料不足說明\n針對使用者詢問之「資料中心電源」與「散熱」相關進展，現有引用片段中僅提及美國實驗室與廠房之建置，並未具體說明是否涉及資料中心電源或散熱產品之技術細節或訂單狀況，資料不足以針對此兩項特定領域進行回覆。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "mops_a0f6687e673b6ffd",
+        "snippet": "本公司代子公司Delta Electronics (Thailand) Public Company\nLimited公告董事會決議擬增資DETH",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_168f2cd9584667f3",
+        "snippet": "補充公告本公司代子公司Delta Electronics (USA) Inc.公告\n決議建置FWT實驗室、興建F2廠及辦公大樓相關事宜",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_9513b7b3fcc36fe2",
+        "snippet": "補充公告本公司代子公司Delta Electronics (USA) Inc.公告\n決議建置FWT實驗室、興建F2廠及辦公大樓相關事宜",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_78c67a65baeffe2c",
+        "snippet": "補充公告本公司代子公司Delta Electronics (USA) Inc.公告\n決議建置FWT實驗室、興建F2廠及辦公大樓相關事宜",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_2abc1adaf2e7670c",
+        "snippet": "本公司代子公司DELTA ELECTRONICS (NORWAY) AS公告決議\n召集2025年股東常會",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_8264364943ad45c8",
+        "snippet": "代子公司DIH公告董事會決議發行以所持有之Delta\nElectronics (Thailand) PCL.股份作為交換標的之於119年到期\n之海外可交換公司債（下稱“本次可交換債”）",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202501,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_ffba51fa0574a526",
+        "snippet": "本公司代子公司DETH公告董事會決議擬增資Delta Electronics\n(Slovakia), s.r.o.",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_bdf149a5f2c1faf8",
+        "snippet": "本公司代子公司Delta Electronics (USA) Inc.公告擬取得預售\n不動產",
+        "origin": "rerank",
+        "company": "台達電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2308",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4815
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1631
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 9002
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3863
+      }
+    ]
+  },
+  "error": null,
+  "analysis": {
+    "test_id": "P3-R6-018",
+    "query": "台達電 2025Q1 至 2026Q1 期間，在資料中心電源、散熱或海外布局上有哪些新聞或重大訊息？",
+    "category": "news_major_news",
+    "expected_ticker": "2308",
+    "expected_company": "台達電",
+    "expected_period": "2025Q1-2026Q1",
+    "expected_event_key": "major_news;news",
+    "expected_source_key": "PRIMARY_MOPS;SECONDARY_NEWS_MEDIA;PRIMARY_COMPANY_IR",
+    "expected_source_type": "mops_major_news;news;company_ir",
+    "why_included": "Adds third news regression company and overlaps with demo-relevant data-center theme.",
+    "phase2_reference": "new",
+    "phase2_blocker_target": "news source selection; company-specific retrieval.",
+    "pass_criteria": "HTTP 200; cites Delta-relevant news/major news/IR from 2025Q1-2026Q1 or the closest database-available source; topic matches data center power/cooling/overseas expansion.",
+    "needs_review_criteria": "correct company but source mix includes presentation or transcript as supplemental evidence.",
+    "fail_criteria": "cites unrelated company; no answer; hallucinated news.",
+    "owner_if_failed": "R3/R4",
+    "notes": "source mix not ideal but answer present",
+    "http_status": 200,
+    "elapsed_sec": 19.47,
+    "error": null,
+    "answer_exists": true,
+    "answer_insufficient_data": true,
+    "citation_count": 8,
+    "citation_origins": [
+      "rerank"
+    ],
+    "source_ids": [
+      "mops_a0f6687e673b6ffd",
+      "mops_168f2cd9584667f3",
+      "mops_9513b7b3fcc36fe2",
+      "mops_78c67a65baeffe2c",
+      "mops_2abc1adaf2e7670c",
+      "mops_8264364943ad45c8",
+      "mops_ffba51fa0574a526",
+      "mops_bdf149a5f2c1faf8"
+    ],
+    "metadata_has": {
+      "ticker": true,
+      "company": true,
+      "doc_type": true,
+      "fiscal_period": true,
+      "page_num": false,
+      "source_file": false,
+      "event_key": true,
+      "source_key": true,
+      "published_yyyymm": true
+    },
+    "financial_metric_evidence": false,
+    "monthly_revenue_numeric_evidence": false,
+    "presentation_ocr_chunk": false,
+    "p_anchor": false,
+    "citation_supports_answer": true,
+    "company_mismatch": false,
+    "period_mismatch": false,
+    "event_source_mismatch": false,
+    "unsupported_number": true,
+    "hallucination": false,
+    "nfr_031_violation": false,
+    "compliance_behavior": null,
+    "grounding_quality": null,
+    "source_mix": {
+      "earnings_call_transcript": 0,
+      "presentation_ocr_chunk": 0,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 8,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_mix": {
+      "earnings_call_transcript": 0,
+      "presentation_ocr_chunk": 0,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 6,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_ids": [
+      "mops_a0f6687e673b6ffd",
+      "mops_168f2cd9584667f3",
+      "mops_2abc1adaf2e7670c",
+      "mops_8264364943ad45c8",
+      "mops_ffba51fa0574a526",
+      "mops_bdf149a5f2c1faf8"
+    ],
+    "answer_preview": "根據提供的引用片段，台達電（2308）在 2025 年至 2026 年期間於海外布局與資本運作之相關重大訊息整理如下：\n\n### 一、 海外布局與建設\n*   **美國地區：** 子公司 Delta Electronics (USA) Inc. 決議建置 FWT 實驗室、興建 F2 廠及辦公大樓 [mops_168f2cd9584667f3]。此外，該子公司亦公告擬取得預售不動產 [mops_bdf149a5f2c1faf8]。\n*   **泰國與斯洛伐克：** 台達電代子公司 Delta Electronics (Thailand) Public Company Limited（下稱 DETH）公告董事會決議擬增資 DETH [mops_a0f6687e673b6ffd]。同時，DETH 亦計畫增資其子公司 Delta Electronics (Slovakia), s.r.o. [mops_ffba51fa0574a526]。\n*   **挪威：** 子公司 DELTA ELECTRONICS (NORWAY) AS 已決議召集 2025 年股東常會 [mops_2abc1adaf2e7670c]。\n\n### 二、 資本運作與財務安排\n*   **海外可交換公司債：** 台達電代子公司 DIH 公告，董事會決議發行以其持有之 DETH 股份作為交換標的之海外可交換公司債，該債券預計於民國 119 年（2030 年）到期 [mops_8264364943ad45c8]。\n\n### 三、 資料不足說明\n針對使用者詢問之「資料中心電源」與「散熱」相關進展，現有引用片段中僅提及美國實驗室與廠房之建置，並未具體說明是否涉及資料中心電源或散熱產品之技術細節或訂單狀況，資料不足以針對此兩項特定領域進行回覆。",
+    "first_citation": {
+      "source_id": "mops_a0f6687e673b6ffd",
+      "snippet": "本公司代子公司Delta Electronics (Thailand) Public Company\nLimited公告董事會決議擬增資DETH",
+      "origin": "rerank",
+      "company": "台達電",
+      "event_key": "major_news.others",
+      "source_key": "PRIMARY_MOPS",
+      "published_yyyymm": 202502,
+      "ticker": "2308",
+      "doc_type": "major_news",
+      "fiscal_period": "2025Q1",
+      "page_num": null,
+      "source_file": null,
+      "published_at": null
+    },
+    "original_verdict": "Needs Review",
+    "reviewed_verdict": "Needs Review",
+    "owner_to_fix": "R3/R4"
+  }
+}
