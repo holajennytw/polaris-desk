@@ -77,3 +77,24 @@ test("parseQuery leaves period empty unless the user explicitly supplies one", (
   assert.equal(parseQuery("比較台積電與聯發科毛利率").period, "");
   assert.equal(parseQuery("比較台積電與聯發科 2025Q4 毛利率").period, "2025Q4");
 });
+
+test("parseQuery recognizes 全年 / 年度 / 年 as a year (no explicit quarter)", () => {
+  // 「2025全年」曾因 /(\d{4})年/ 只認「2025年」而漏掉，導致回退到最新季 → 答非所問
+  assert.equal(parseQuery("2025全年 EPS").year, 2025);
+  assert.equal(parseQuery("2025全年 EPS").period, "");
+  assert.equal(parseQuery("2025年度毛利率").year, 2025);
+  assert.equal(parseQuery("2025年毛利率").year, 2025);
+});
+
+test("parseQuery does not mistake a 4-digit ticker for a year", () => {
+  // 「2330」是股號不是年份；沒有 年/全年/年度 後綴就不該當年份
+  assert.equal(parseQuery("比較 2330 與 2317 EPS").year, null);
+});
+
+test("parseQuery extracts the requested metric id when named", () => {
+  assert.equal(parseQuery("2025全年 EPS").metric, "eps");
+  assert.equal(parseQuery("比較台積電與聯發科毛利率").metric, "gross_margin");
+  assert.equal(parseQuery("淨利率比較").metric, "net_margin");
+  // 沒有指名特定指標時為 null
+  assert.equal(parseQuery("比較鴻海與台達電").metric, null);
+});
