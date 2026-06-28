@@ -9,11 +9,17 @@
 """
 from __future__ import annotations
 
+import functools
+import logging
 import re
 
 from polaris.graph.state import PeriodSpec
 
-#: 相對期間（最近 N 季）的解析基準。佔位值，待 R4 提供 DB 最新季別後動態帶入。
+logger = logging.getLogger(__name__)
+
+#: 相對期間（最近 N 季）的 fallback 基準：無憑證（CI / 本地無 GCP）時用。其值刻意
+#: 對齊 stub 語料最新季（2025Q1），讓無 DB 環境下的相對期間解析保持確定性、測試穩定。
+#: **有憑證的真實環境改走 :func:`active_anchor`（DB 最新已公布季）**，不再凍結於此值。
 DEFAULT_ANCHOR = "2025Q1"
 
 _CN_NUM = {"一": 1, "二": 2, "兩": 2, "三": 3, "四": 4}
@@ -54,6 +60,46 @@ def _fiscal_year(year: int) -> list[str]:
     return [_fmt(year, q) for q in (1, 2, 3, 4)]
 
 
+def _latest_reported_quarter() -> str:
+    """DB 最新『已公布財報』季別；無憑證或查詢失敗 → :data:`DEFAULT_ANCHOR`。
+
+    閘控訊號沿用 :func:`polaris.llm.gemini.available`（與
+    :func:`~polaris.retrieval.retriever.active_bm25_corpus` 一致）：prod 憑證俱在
+    → 查 canonical 表；CI 無金鑰 → 不外呼、回 fallback（對齊 stub 語料最新季）。
+    任何例外都吞成 fallback——anchor 解析絕不可中斷 planner。
+    """
+    from polaris.llm.gemini import available
+
+    if not available():
+        return DEFAULT_ANCHOR
+    try:
+        from polaris.config import settings
+        from polaris.structured_store import StructuredStore
+
+        latest = StructuredStore(settings).latest_reported_quarter()
+        return latest or DEFAULT_ANCHOR
+    except Exception:  # noqa: BLE001 — 解析 anchor 失敗不可中斷查詢，退 fallback（記 warning）
+        logger.warning(
+            "latest reported quarter lookup failed; using DEFAULT_ANCHOR", exc_info=True
+        )
+        return DEFAULT_ANCHOR
+
+
+@functools.lru_cache(maxsize=1)
+def _cached_anchor() -> str:
+    """整個 process 只解析一次（app 啟動載入一次，非每查詢打 DB）。"""
+    return _latest_reported_quarter()
+
+
+def active_anchor() -> str:
+    """相對期間（最近 N 季）的動態解析基準＝DB 最新已公布季（快取一次）。
+
+    供 planner 注入 :func:`parse_period` 的 ``anchor``，取代凍結的
+    :data:`DEFAULT_ANCHOR`——這正是「最近一季」曾固定回 2025Q1 的根因修補。
+    """
+    return _cached_anchor()
+
+
 def parse_period(query: str, *, anchor: str = DEFAULT_ANCHOR) -> PeriodSpec:
     """解析期間語句 → PeriodSpec。比對不到回 kind='none'。"""
     text = query or ""
@@ -89,4 +135,4 @@ def parse_period(query: str, *, anchor: str = DEFAULT_ANCHOR) -> PeriodSpec:
     return PeriodSpec(hint="", kind="none", quarters=[])
 
 
-__all__ = ["parse_period", "DEFAULT_ANCHOR"]
+__all__ = ["parse_period", "active_anchor", "DEFAULT_ANCHOR"]

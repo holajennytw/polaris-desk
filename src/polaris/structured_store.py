@@ -136,6 +136,22 @@ class StructuredStore:
         rows = self._run_query(sql, {})
         return [r["fiscal_period"] for r in rows if r.get("fiscal_period")]
 
+    def latest_reported_quarter(self) -> str | None:
+        """最新『已完整公布財報』的季別，供 Temporal Anchoring 動態 anchor 用。
+
+        以 ``eps`` 是否存在為「已公布季」判準：季底剛過時，當季僅有月營收 / 新聞
+        （如 2026-06 時的 2026Q2 只有月營收與重大訊息、無 EPS），不算已公布季——
+        若拿它當「最近一季」，EPS / 法說類問題會落到沒資料的季別。``fiscal_period``
+        為 ``YYYYQn`` 格式，字典序即時間序，故直接取 ``MAX``。查無 → ``None``。
+        """
+        sql = f"""
+        SELECT MAX(fiscal_period) AS q
+        FROM `{self._dataset()}.financial_metrics`
+        WHERE metric_id = 'eps' AND value IS NOT NULL AND fiscal_period LIKE '%Q%'
+        """
+        rows = self._run_query(sql, {})
+        return rows[0]["q"] if rows and rows[0].get("q") else None
+
     # ── events（events 事實表 — 事件流 / 時間軸）───────────────────────────
 
     def list_events(
