@@ -437,6 +437,18 @@ export default function PeerPage() {
   const [hasQueried, setHasQueried] = useState(false);
   const [peerResult, setPeerResult] = useState<PeerCompareResult | null>(null);
   const [parseMsg, setParseMsg] = useState({ ignored:[] as string[], unknown:[] as string[] });
+  // 使用者在查詢中指名的指標（如「EPS」）；若該指標於解析出的期別無資料，顯示提示而非靜默退回月營收
+  const [requestedMetric, setRequestedMetric] = useState<{ id: string; label: string } | null>(null);
+  // 指名指標在當前結果期別是否雙方皆無資料（如 EPS 於本季——季報尚未公布）。
+  // 同業比較只取雙方交集，任一方缺即無法比較 → 提示而非靜默顯示其他指標。
+  const metricNotice = (() => {
+    if (!requestedMetric || !peerResult) return null;
+    const period = peerResult.fiscal_period;
+    const aHas = aFinRows.some(r => r.fiscal_period === period && r.metric_id === requestedMetric.id);
+    const bHas = bFinRows.some(r => r.fiscal_period === period && r.metric_id === requestedMetric.id);
+    if (aHas && bHas) return null;
+    return `「${requestedMetric.label}」於 ${period} 尚無資料（季報未公布），以下顯示該期可得指標。`;
+  })();
   const [selectedAlertIdx, setSelectedAlertIdx] = useState<number|null>(null);
   const [modalAlert, setModalAlert] = useState<any>(null);
   const [openDoc, setOpenDoc] = useState<DocContent|null>(null);
@@ -582,8 +594,9 @@ export default function PeerPage() {
 
   const runQuery = async (q?: string) => {
     const text = q ?? query;
-    // parseQuery 只取 period / tab / year
+    // parseQuery 取 period / tab / year / metric
     const res = parseQuery(text);
+    setRequestedMetric(res.metric ? { id: res.metric, label: res.metricLabel ?? res.metric } : null);
 
     // 動態公司辨識：比對 BQ company_dim 的 ticker、company_name、aliases（涵蓋全部 20 家）
     const dynMatches = companies.filter(c =>
@@ -742,6 +755,12 @@ export default function PeerPage() {
                   <div className="mock-note" style={{ borderColor: "rgb(var(--danger))" }}>
                     <Icon name="alert" size={15}/>
                     <span><b>API 錯誤</b>：{apiError}</span>
+                  </div>
+                )}
+                {metricNotice && (
+                  <div className="mock-note" style={{ borderColor: "rgb(var(--warning))" }}>
+                    <Icon name="alert" size={15}/>
+                    <span>{metricNotice}</span>
                   </div>
                 )}
                 <ComplianceBanner message={
