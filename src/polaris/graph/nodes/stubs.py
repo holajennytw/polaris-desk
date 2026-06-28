@@ -70,7 +70,9 @@ def planner(state: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("empty query")
     return {
         "plan": planner_agent.make_plan(query, active_llm()),
-        "period": temporal.parse_period(query),  # W2 D6 Temporal Anchoring
+        # W2 D6 Temporal Anchoring；anchor 走 DB 最新已公布季（修「最近一季」凍結於
+        # 2025Q1 的根因），無憑證時 active_anchor 退回 DEFAULT_ANCHOR、CI 確定性不變。
+        "period": temporal.parse_period(query, anchor=temporal.active_anchor()),
     }
 
 
