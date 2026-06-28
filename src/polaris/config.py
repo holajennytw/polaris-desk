@@ -71,6 +71,12 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     top_k: int = 8
 
+    # --- app 層限流（security review #4：匿名成本型 DoS 護欄）---
+    # /ask /research 每「來源 key」（XFF / 對端 IP）每 60s 上限。**只在
+    # app_env=="cloud" 生效**（local / CI / demo 不限流，保 token-free 開發）；
+    # 設 0 = 關閉。配合 Cloud Run --max-instances → 全域成本天花板有界。
+    rate_limit_per_min: int = 20
+
     # --- Vision-OCR ingestion（圖表/掃描頁→文字，spec 2026-06-23）---
     # 預設關：active_vision_extractor() 回 None → CI 0 外呼、不 import genai/pymupdf。
     # 設 VISION_EXTRACTION=1 + 裝 .[vision] 才啟用（離線 ingestion 用）。

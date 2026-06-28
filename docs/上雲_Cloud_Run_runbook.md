@@ -163,7 +163,57 @@ make serve-api          # python -m polaris.api，另開終端 curl localhost:80
 - [x] ~~接 `/ask` 產品端點~~ → **已完成**：`polaris/api.py`（`/ask` + `/research` + `/healthz`），`Dockerfile` `CMD` 已改 `python -m polaris.api`。
 - [ ] **R4 ingestion 完成**：`polaris_core` 真有 chunks + 向量索引後，雲端才能跑出有引用的答案（目前 fallback 語料）。
 - [ ] **G4（D24）**：4 場景**在雲端**可重現（本 runbook 是其前置）。
-- [ ] 成本護欄：Cloud Run min-instances=0（閒置不計費）、設並行與記憶體上限；對齊 R4 SOP §3.5 預算告警。
+- [ ] 成本護欄：Cloud Run min-instances=0（閒置不計費）、設並行與記憶體上限；對齊 R4 SOP §3.5 預算告警。見 §8。
+
+---
+
+## 8. 成本護欄（匿名濫用 / 成本型 DoS）
+
+威脅：匿名請求打 `/ask` `/research` 觸發 LLM + 檢索，燒 Gemini / Vertex 配額。三層防護：
+
+### 8.1 後端收口 internal（Phase 0；擋「直連 api」）
+
+把 `polaris-api` 收成內部 ingress，配前端用 VPC connector server-to-server 連入——公網
+打不到後端的 `*.run.app`。前端（`polaris-web`）仍是唯一公開前門，經 `next.config.ts` 的
+`rewrites()` proxy `/api/*`（`/api/auth` 留前端給 NextAuth）。
+
+```bash
+PROJ=polaris-desk-team; REGION=asia-east1
+gcloud services enable vpcaccess.googleapis.com
+# /28 網段別撞到現有 subnet（這是唯一要你決策的數字）
+gcloud compute networks vpc-access connectors create polaris-connector \
+  --region $REGION --network default --range 10.8.0.0/28
+# 後端收口（用 update，不碰 env/secret；設 internal-and-cloud-load-balancing 讓日後接 ALB 免再改）
+gcloud run services update polaris-api --region $REGION \
+  --ingress internal-and-cloud-load-balancing
+# 前端掛 connector + 全 egress（讓 web→api 的 run.app 呼叫被視為 VPC 內部）
+gcloud run services update polaris-web --region $REGION \
+  --vpc-connector polaris-connector --vpc-egress all-traffic
+# 驗收：公網應打不到後端，瀏覽器走 web /api proxy 仍正常
+API=$(gcloud run services describe polaris-api --region $REGION --format='value(status.url)')
+curl -sS -o /dev/null -w "%{http_code}\n" "$API/health"   # 期望 403/連不上
+```
+
+### 8.2 app 層限流（擋「匿名經 web /api/* 代轉」這條缺口）
+
+§8.1 只擋直連；匿名仍可經公開的 `polaris-web` `/api/ask` 代轉燒配額（後端 `current_user`
+可選、匿名放行）。`polaris/ratelimit.py` 的固定視窗限流器補上：`/ask` `/research` 每來源
+（XFF / 對端 IP）每 60s ≤ `RATE_LIMIT_PER_MIN`。**只在 `APP_ENV=cloud` 生效**（local/CI/demo
+不限流，保 token-free）；設 `0` 關閉。超限 → 429 + `Retry-After: 60`。
+
+```bash
+gcloud run services update polaris-api --region $REGION \
+  --max-instances 5 \
+  --update-env-vars RATE_LIMIT_PER_MIN=20
+```
+
+> ⚠️ 限流是**單一進程內存**：多 instance 時各自計數，全域上限 ≈ `RATE_LIMIT_PER_MIN × instances`，
+> **所以一定要搭 `--max-instances`** 才得到有界的成本天花板。要嚴格全域限流需改 Redis/Firestore。
+> XFF 可偽造，此處作「成本分桶」非身分驗證；要更硬可由 web proxy 注入受信 header 當 key。
+
+### 8.3 預算天花板（鈍器，兜底）
+
+`--max-instances` 封住並行 instance 數 → 封住花費上界；另設 GCP 預算告警（R4 SOP §3.5）。
 
 ---
 

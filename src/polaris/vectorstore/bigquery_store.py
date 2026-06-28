@@ -18,12 +18,20 @@
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from .base import Document, SearchResult, VectorStore
 
+logger = logging.getLogger(__name__)
+
 #: 共用 canonical dataset —— 預設唯讀（憲法 III）。
 _CORE_DATASET = "polaris_core"
+
+#: financial_metrics 合成語料的安全上限：防 runaway 查詢，但遠高於可預見規模
+#: （20 公司 × 16 指標 × ~10 季 ≈ 2k 列，每年僅 +4 季）。撞到上限會記 warning，
+#: 讓截斷可見而非無聲掉資料。需要時調這個常數即可。
+_FINANCIAL_CORPUS_LIMIT = 50_000
 
 #: 介面 filter 鍵 → canonical 欄名（SOP §4 cluster 欄優先：ticker / doc_type）。
 _FILTER_COLUMNS = {
@@ -250,10 +258,18 @@ class BigQueryStore(VectorStore):
         WHERE fm.fiscal_period IS NOT NULL
           AND fm.metric_id IN UNNEST(@metrics)
         ORDER BY fm.fiscal_period DESC, fm.ticker, fm.metric_id
-        LIMIT 2000
+        LIMIT @limit
         """
         metrics = list(self._METRIC_LABELS.keys())
-        rows = self._run_query(sql, {"metrics": metrics})
+        rows = self._run_query(sql, {"metrics": metrics, "limit": _FINANCIAL_CORPUS_LIMIT})
+        if len(rows) >= _FINANCIAL_CORPUS_LIMIT:
+            # 撞到上限＝可能截斷（ORDER BY DESC 會先丟最舊季）。記 warning 讓掉資料看得見，
+            # 不再像舊 LIMIT 2000（< 2078 實際列）那樣無聲漏掉最舊季的財務語料。
+            logger.warning(
+                "financial corpus hit LIMIT %d; oldest-period metrics may be truncated — "
+                "raise _FINANCIAL_CORPUS_LIMIT",
+                _FINANCIAL_CORPUS_LIMIT,
+            )
         results: list[SearchResult] = []
         for row in rows:
             ticker = row.get("ticker") or ""
