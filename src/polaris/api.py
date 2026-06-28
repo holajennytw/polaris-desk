@@ -966,12 +966,37 @@ def _metric_diff(a_row: dict, b_row: dict) -> tuple[str, Literal["a", "b"]]:
     return f"{abs(difference):.2f}", better
 
 
+# 法說語氣關鍵詞（描述「發言語氣」而非投資建議——NFR-031 不涉買賣方向）。
+_TONE_POSITIVE = (
+    "成長", "強勁", "翻倍", "創新高", "看好", "增長", "提升", "樂觀", "擴產",
+    "需求強", "上修", "加速", "領先", "動能", "優於", "回升", "新高",
+)
+_TONE_NEGATIVE = (
+    "衰退", "下滑", "疲弱", "保守", "修正", "不確定", "逆風", "壓力", "下修",
+    "放緩", "庫存調整", "挑戰", "風險", "低於", "疲軟", "謹慎",
+)
+_TONE_STANCE = {"pos": "偏正面", "neu": "中性陳述", "neg": "偏保守"}
+
+
+def _infer_call_tone(snippet: str) -> Literal["pos", "neu", "neg"]:
+    """以關鍵詞數判讀法說「發言語氣」；正負相抵或皆無 → 中性。token-free、可測。"""
+    text = snippet or ""
+    pos = sum(text.count(k) for k in _TONE_POSITIVE)
+    neg = sum(text.count(k) for k in _TONE_NEGATIVE)
+    if pos > neg:
+        return "pos"
+    if neg > pos:
+        return "neg"
+    return "neu"
+
+
 def _call_side(citation: Citation | None) -> _PeerCallSide:
     if citation is None:
         return _PeerCallSide(stance="資料不足", tone="neu", quote="", cite="")
+    tone = _infer_call_tone(citation.snippet)
     return _PeerCallSide(
-        stance="有相關引用",
-        tone="neu",
+        stance=_TONE_STANCE[tone],
+        tone=tone,
         quote=citation.snippet,
         cite=citation.source_id,
     )

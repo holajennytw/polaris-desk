@@ -23,7 +23,7 @@ import { fmtYoy, fmtFinNum } from "@/lib/formatters";
 import { scoreLabel, sortByRelevance, sortFinancialByRelevance } from "@/lib/queryRelevance";
 import { hasValue, toLabel } from "@/lib/fieldUtils";
 import { peerCitations } from "@/lib/peer-result";
-import type { PeerCompareResult, PeerCompareTrendPoint } from "@/types/api";
+import type { PeerCompareResult, PeerCompareTrendPoint, PeerCallNorm } from "@/types/api";
 import type { CompanyVM, KpiVM, SummaryItemVM, CitationTrackerVM } from "@/types/viewmodel";
 import { ViewModeToggle, type ViewMode } from "@/components/ui/ViewModeToggle";
 import { PeerGroupedBarChart, TrendLineChart } from "@/components/polaris/FinancialChart";
@@ -135,6 +135,51 @@ function PeerSummaryPanel({ summary }: { summary: string }) {
       </div>
       <div className="panel-body">
         <p className="peer-sum-text">{summary}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── 法說會看法矩陣（主題 × 兩家立場／語氣；資料來自 /peer-compare calls）──
+
+function PeerCallCell({ side }: { side: PeerCallNorm["a"] }) {
+  const tone = side.tone === "pos" || side.tone === "neg" ? side.tone : "neu";
+  return (
+    <div className="cm-cell">
+      <span className={`stance ${tone}`}>{side.stance}</span>
+      <p className="cm-quote">{side.quote || "—"}</p>
+    </div>
+  );
+}
+
+function PeerCallMatrix({ result, aName, bName }: { result: PeerCompareResult; aName: string; bName: string }) {
+  const rows = result.calls.filter(c => c.a.quote || c.b.quote);
+  if (!rows.length) return null;
+  const aLabel = aName || result.a_ticker;
+  const bLabel = bName || result.b_ticker;
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <span className="panel-title">
+          <Icon name="quote" size={14} style={{ color: "rgb(var(--primary))", verticalAlign: "-2px", marginRight: 6 }}/>
+          法說會看法
+        </span>
+      </div>
+      <div className="panel-body">
+        <div className="cmatrix">
+          <div className="cm-row cm-headrow">
+            <div className="cm-th">主題</div>
+            <div className="cm-th">{aLabel}</div>
+            <div className="cm-th">{bLabel}</div>
+          </div>
+          {rows.map((c, i) => (
+            <div className="cm-row" key={i}>
+              <div className="cm-topic">{c.topic}</div>
+              <PeerCallCell side={c.a}/>
+              <PeerCallCell side={c.b}/>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -776,6 +821,7 @@ export default function PeerPage() {
                 </div>
                 <div className="rcol-stack">
                   {peerResult && <PeerSummaryPanel summary={peerResult.summary}/>}
+                  {peerResult && <PeerCallMatrix result={peerResult} aName={A?.name ?? ""} bName={B?.name ?? ""}/>}
                   <div className="peer-blocks">
                     {peerResult
                       ? <FinancialBlock result={peerResult} aName={A?.name ?? ""} bName={B?.name ?? ""} queryHint={query}/>

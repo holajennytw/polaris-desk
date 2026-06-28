@@ -575,6 +575,39 @@ class TestPeerCompare:
         lines = [ln for ln in summary.split("\n") if ln.strip()]
         assert not any(ln.lstrip().startswith("・") for ln in lines)  # 不自帶 bullet 前綴
 
+    def test_call_side_infers_positive_tone_from_snippet(self):
+        from polaris.api import _call_side
+        from polaris.graph.state import Citation
+
+        side = _call_side(Citation(source_id="s1", snippet="AI 需求強勁，營收可望翻倍成長", origin="embedding"))
+        assert side.tone == "pos"
+        assert side.stance == "偏正面"
+        assert side.cite == "s1"
+
+    def test_call_side_infers_negative_tone_from_snippet(self):
+        from polaris.api import _call_side
+        from polaris.graph.state import Citation
+
+        side = _call_side(Citation(source_id="s2", snippet="受庫存調整影響，本季需求疲弱、展望保守", origin="embedding"))
+        assert side.tone == "neg"
+        assert side.stance == "偏保守"
+
+    def test_call_side_neutral_when_no_sentiment_keywords(self):
+        from polaris.api import _call_side
+        from polaris.graph.state import Citation
+
+        side = _call_side(Citation(source_id="s3", snippet="本季合併營收為新台幣 1000 億元。", origin="embedding"))
+        assert side.tone == "neu"
+        assert side.stance == "中性陳述"
+
+    def test_call_side_none_is_insufficient_data(self):
+        from polaris.api import _call_side
+
+        side = _call_side(None)
+        assert side.stance == "資料不足"
+        assert side.tone == "neu"
+        assert side.quote == ""
+
     def test_bulletize_summary_strips_prefixes_and_blank_lines(self):
         from polaris.api import _bulletize_summary
 
