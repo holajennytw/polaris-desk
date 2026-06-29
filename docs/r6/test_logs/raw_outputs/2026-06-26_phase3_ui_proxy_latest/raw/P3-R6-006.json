@@ -1,0 +1,359 @@
+{
+  "test_id": "P3-R6-006",
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-web-14326813937.asia-east1.run.app/api/ask",
+    "body": {
+      "query": "2357 華碩 2025Q1 簡報中，AI PC 或營運展望有哪些重點？"
+    }
+  },
+  "test_metadata": {
+    "test_id": "P3-R6-006",
+    "query": "2357 華碩 2025Q1 簡報中，AI PC 或營運展望有哪些重點？",
+    "category": "vision_ocr_presentation",
+    "expected_ticker": "2357",
+    "expected_company": "華碩",
+    "expected_period": "2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_COMPANY_IR",
+    "expected_source_type": "presentation_ocr_chunk",
+    "why_included": "Phase 2 flagged possible company/period/event/source mismatch; should be rechecked.",
+    "phase2_reference": "R6-P2F-005",
+    "phase2_blocker_target": "company/period/source mismatch; presentation traceability.",
+    "pass_criteria": "HTTP 200; answer uses ASUS 2025Q1 IR presentation/OCR chunks; AI PC or operating outlook claims directly supported.",
+    "needs_review_criteria": "correct ASUS presentation but metadata incomplete.",
+    "fail_criteria": "cites non-ASUS source; mixes periods; answer unsupported or data insufficient.",
+    "owner_if_failed": "R4/R3",
+    "notes": "Blocker regression."
+  },
+  "http_status": 200,
+  "elapsed_sec": 18.35,
+  "headers": {
+    "content-type": "application/json",
+    "date": "Sun, 28 Jun 2026 07:35:09 GMT",
+    "server": "Google Frontend"
+  },
+  "response": {
+    "answer": "根據華碩（2357）2025年第1季法說會簡報資料，關於 AI PC 及營運展望之重點摘要如下：\n\n### 一、 AI PC 與產品創新動態\n*   **系統事業群（System Business Group）**：華碩表示在 AI PC 領域正取得強勁的成長動能 [2357-2025Q1-p016-c001]。\n*   **AIoT 事業群**：推出 ASUS Ascent GX10 超小型超級電腦，並開發用於重症護理的 AI 突發死亡預測系統 [2357-2025Q1-p018-c001]。\n*   **開放平台事業群（Open Platform Business Group）**：RTX 50 系列產品已佔其產品組合 50% 以上，華碩認為這將加速次世代升級週期，並帶動營收與獲利成長 [2357-2025Q1-p017-c001]。\n\n### 二、 營運表現與展望\n*   **2025年第2季展望**：零組件與伺服器（Component & Server）業務預計季增（QoQ）10% [2357-2025Q1-p009-c001]。\n*   **2025年第1季各事業群表現**：\n    *   **系統事業群**：PC 出貨量年增（YoY）10-15%，優於市場整體 5% 的成長率；商用 PC 營收年增達 30-40% [2357-2025Q1-p016-c001]。\n    *   **AIoT 事業群**：營收年增 10-15% [2357-2025Q1-p018-c001]。\n*   **營收結構（2025Q1）**：\n    *   **事業群佔比**：系統事業群 53%、開放平台事業群 44%、AIoT 3% [2357-2025Q1-p008-c001]。\n    *   **地區佔比**：亞洲 47%、歐洲 31%、美洲 22% [2357-2025Q1-p008-c001]。\n\n資料來源中未提及 2025Q2 系統事業群（PC 業務）的具體百分比展望數值。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "2357-2025Q1-p016-c001",
+        "snippet": "The System Business Group's 2025 Q1 performance highlights include strong growth in PC shipments and commercial PC revenue. ASUS PC shipments grew by 10-15% YoY, outperforming the market's 5% growth. Commercial PC revenue saw a significant increase of 30-40% YoY, driven by customer base expansion. ASUS is also gaining strong momentum in the AI PC segment.\nMarket PC Shipments Growth YoY: 5%\nSuperior Market Shipment Growth(YoY)（bar）: Market: 5%",
+        "origin": "rerank",
+        "company": "華碩",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2357",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2357-2025Q1-p018-c001",
+        "snippet": "The slide presents the AloT Business Group's 2025 Q1 Performance and Business Highlights. 25Q1 Revenue shows a +10~15% YoY growth. Key products and innovations include the ASUS Ascent GX10 Ultra-small Supercomputer and AI Innovation for Critical Care, specifically an AI Sudden Death Prediction System that won Gold at the Edison Awards. Business highlights detail the capabilities of the ASUS Ascent GX10 and the collaboration with NTU for the early warning system.",
+        "origin": "rerank",
+        "company": "華碩",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2357",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2357-2025Q1-p017-c001",
+        "snippet": "Open Platform Business Group 2025 Q1 Performance. Business Highlights include sustaining a dominant position in the motherboard and VGA industries, powering significant display revenue gains in gaming and creator categories, and ASUS's RTX 50 series representing over 50% of the product mix, accelerating next-gen upgrade cycles and fueling revenue and profit growth.",
+        "origin": "rerank",
+        "company": "華碩",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2357",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2357-2025Q1-p008-c001",
+        "snippet": "2025年第1季營收組合\nBusiness Group（pie）: Open Platform: 44%、System: 53%、AIOT: 3%\nRegion（pie）: ASIA: 47%、EURP: 31%、America: 22%",
+        "origin": "rerank",
+        "company": "華碩",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2357",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2357-2025Q1-p009-c001",
+        "snippet": "2025年第2季營運展望\nComponent & Server QoQ: 10%",
+        "origin": "rerank",
+        "company": "華碩",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2357",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2357-2025Q1-p003-c001",
+        "snippet": "議程: 2025年第1季財務結果, 策略與展望, 問與答",
+        "origin": "rerank",
+        "company": "華碩",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2357",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_37ba94b4e036bac0",
+        "snippet": "代子公司ASUS INTERNATIONAL LIMITED公告\n通過年度財報",
+        "origin": "rerank",
+        "company": "華碩",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "ticker": "2357",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_8fd96592def43869",
+        "snippet": "公告本公司董事會通過114年對「財團法人華碩文教基金會」\n之捐贈",
+        "origin": "rerank",
+        "company": "華碩",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202501,
+        "ticker": "2357",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4104
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1671
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 9082
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 3339
+      }
+    ]
+  },
+  "error": null,
+  "analysis": {
+    "test_id": "P3-R6-006",
+    "query": "2357 華碩 2025Q1 簡報中，AI PC 或營運展望有哪些重點？",
+    "category": "vision_ocr_presentation",
+    "expected_ticker": "2357",
+    "expected_company": "華碩",
+    "expected_period": "2025Q1",
+    "expected_event_key": "earnings_call",
+    "expected_source_key": "PRIMARY_COMPANY_IR",
+    "expected_source_type": "presentation_ocr_chunk",
+    "why_included": "Phase 2 flagged possible company/period/event/source mismatch; should be rechecked.",
+    "phase2_reference": "R6-P2F-005",
+    "phase2_blocker_target": "company/period/source mismatch; presentation traceability.",
+    "pass_criteria": "HTTP 200; answer uses ASUS 2025Q1 IR presentation/OCR chunks; AI PC or operating outlook claims directly supported.",
+    "needs_review_criteria": "correct ASUS presentation but metadata incomplete.",
+    "fail_criteria": "cites non-ASUS source; mixes periods; answer unsupported or data insufficient.",
+    "owner_if_failed": "R4/R3",
+    "notes": "presentation/OCR evidence with MVP traceability",
+    "http_status": 200,
+    "elapsed_sec": 18.35,
+    "error": null,
+    "answer_exists": true,
+    "answer_insufficient_data": false,
+    "citation_count": 8,
+    "citation_origins": [
+      "rerank"
+    ],
+    "source_ids": [
+      "2357-2025Q1-p016-c001",
+      "2357-2025Q1-p018-c001",
+      "2357-2025Q1-p017-c001",
+      "2357-2025Q1-p008-c001",
+      "2357-2025Q1-p009-c001",
+      "2357-2025Q1-p003-c001",
+      "mops_37ba94b4e036bac0",
+      "mops_8fd96592def43869"
+    ],
+    "metadata_has": {
+      "ticker": true,
+      "company": true,
+      "doc_type": true,
+      "fiscal_period": true,
+      "page_num": false,
+      "source_file": false,
+      "event_key": true,
+      "source_key": true,
+      "published_yyyymm": true
+    },
+    "financial_metric_evidence": false,
+    "monthly_revenue_numeric_evidence": false,
+    "presentation_ocr_chunk": true,
+    "p_anchor": true,
+    "citation_supports_answer": true,
+    "company_mismatch": false,
+    "period_mismatch": false,
+    "event_source_mismatch": false,
+    "unsupported_number": false,
+    "hallucination": false,
+    "nfr_031_violation": false,
+    "compliance_behavior": null,
+    "grounding_quality": null,
+    "source_mix": {
+      "earnings_call_transcript": 0,
+      "presentation_ocr_chunk": 6,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 2,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_mix": {
+      "earnings_call_transcript": 0,
+      "presentation_ocr_chunk": 5,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 0,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_ids": [
+      "2357-2025Q1-p016-c001",
+      "2357-2025Q1-p018-c001",
+      "2357-2025Q1-p017-c001",
+      "2357-2025Q1-p008-c001",
+      "2357-2025Q1-p009-c001"
+    ],
+    "answer_preview": "根據華碩（2357）2025年第1季法說會簡報資料，關於 AI PC 及營運展望之重點摘要如下：\n\n### 一、 AI PC 與產品創新動態\n*   **系統事業群（System Business Group）**：華碩表示在 AI PC 領域正取得強勁的成長動能 [2357-2025Q1-p016-c001]。\n*   **AIoT 事業群**：推出 ASUS Ascent GX10 超小型超級電腦，並開發用於重症護理的 AI 突發死亡預測系統 [2357-2025Q1-p018-c001]。\n*   **開放平台事業群（Open Platform Business Group）**：RTX 50 系列產品已佔其產品組合 50% 以上，華碩認為這將加速次世代升級週期，並帶動營收與獲利成長 [2357-2025Q1-p017-c001]。\n\n### 二、 營運表現與展望\n*   **2025年第2季展望**：零組件與伺服器（Component & Server）業務預計季增（QoQ）10% [2357-2025Q1-p009-c001]。\n*   **2025年第1季各事業群表現**：\n    *   **系統事業群**：PC 出貨量年增（YoY）10-15%，優於市場整體 5% 的成長率；商用 PC 營收年增達 30-40% [2357-2025Q1-p016-c001]。\n    *   **AIoT 事業群**：營收年增 10-15% [2357-2025Q1-p018-c001]。\n*   **營收結構（2025Q1）**：\n    *   **事業群佔比**：系統事業群 53%、開放平台事業群 44%、AIoT 3% [2357-2025Q1-p008-c001]。\n    *   **地區佔比**：亞洲 47%、歐洲 31%、美洲 22% [2357-2025Q1-p008-c001]。\n\n資料來源中未提及 2025Q2 系統事業群（PC 業務）的具體百分比展望數值。",
+    "first_citation": {
+      "source_id": "2357-2025Q1-p016-c001",
+      "snippet": "The System Business Group's 2025 Q1 performance highlights include strong growth in PC shipments and commercial PC revenue. ASUS PC shipments grew by 10-15% YoY, outperforming the market's 5% growth. Commercial PC revenue saw a significant increase of 30-40% YoY, driven by customer base expansion. ASUS is also gaining strong momentum in the AI PC segment.\nMarket PC Shipments Growth YoY: 5%\nSuperior Market Shipment Growth(YoY)（bar）: Market: 5%",
+      "origin": "rerank",
+      "company": "華碩",
+      "event_key": "earnings_call",
+      "source_key": "PRIMARY_COMPANY_IR",
+      "published_yyyymm": 202505,
+      "ticker": "2357",
+      "doc_type": "presentation",
+      "fiscal_period": "2025Q1",
+      "page_num": null,
+      "source_file": null,
+      "published_at": null
+    },
+    "original_verdict": "Pass",
+    "reviewed_verdict": "Pass",
+    "owner_to_fix": ""
+  }
+}

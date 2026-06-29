@@ -1,0 +1,359 @@
+{
+  "test_id": "P3-R6-016",
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-web-14326813937.asia-east1.run.app/api/ask",
+    "body": {
+      "query": "請摘要台積電 2025Q1 至 2026Q1 期間，與先進製程或海外設廠相關的重大新聞。"
+    }
+  },
+  "test_metadata": {
+    "test_id": "P3-R6-016",
+    "query": "請摘要台積電 2025Q1 至 2026Q1 期間，與先進製程或海外設廠相關的重大新聞。",
+    "category": "news_major_news",
+    "expected_ticker": "2330",
+    "expected_company": "台積電",
+    "expected_period": "2025Q1-2026Q1",
+    "expected_event_key": "major_news;news",
+    "expected_source_key": "PRIMARY_MOPS;SECONDARY_NEWS_MEDIA;PRIMARY_COMPANY_IR",
+    "expected_source_type": "mops_major_news;news;company_ir",
+    "why_included": "Phase 2 news題 source mix weak; keep original blocker regression.",
+    "phase2_reference": "R6-P2F-014",
+    "phase2_blocker_target": "news / major_news source selection; avoid transcript domination.",
+    "pass_criteria": "HTTP 200; cites major news/news/IR from 2025Q1-2026Q1 or the closest database-available source relevant to overseas fab or advanced process; no transcript-only answer unless clearly appropriate.",
+    "needs_review_criteria": "mixes IR/transcript with news but no hallucination.",
+    "fail_criteria": "cannot find relevant source; cites unrelated earnings call facts as news; wrong company.",
+    "owner_if_failed": "R3/R4",
+    "notes": "Blocker regression. Timeframe is narrowed to reduce period-mismatch ambiguity; if database coverage is limited, reviewer may accept clearly labeled \"截至目前資料庫可查資料\" evidence."
+  },
+  "http_status": 200,
+  "elapsed_sec": 25.84,
+  "headers": {
+    "content-type": "application/json",
+    "date": "Sun, 28 Jun 2026 07:39:10 GMT",
+    "server": "Google Frontend"
+  },
+  "response": {
+    "answer": "根據提供的引用片段，台積電在 2025 年第一季及相關期間於先進製程與海外設廠之重大動態摘要如下：\n\n### 一、 先進製程發展與營收結構\n*   **營收佔比：** 2025 年第一季銷售分析顯示，先進製程（7 奈米及以下）為主要營收來源。其中 5 奈米佔 36%、3 奈米佔 22%、7 奈米佔 15% [2330-2025Q1-p005-c001]。\n*   **量產進度：** 位於美國亞利桑那州的第一座晶圓廠已於 2024 年第四季利用 N4（4 奈米）製程技術成功進入量產 [97b553cd-56e9-41a8-a7c8-108dd04e4a87]。\n*   **未來產能規劃：** 預計在相關計畫完成後，台積電約有 30% 的 2 奈米及更先進製程產能將位於美國亞利桑那州 [d485a4f8-cc26-4f68-a4d3-a5f25951e168]。\n\n### 二、 海外（美國）設廠與投資擴張\n*   **投資金額增加：** 台積電宣布有意將在美投資總額提升至 1,650 億美元 [mops_a1c0f002b99cd114, 2330-2025Q1-p011-c001]。\n*   **設施擴建計畫：** 該投資計畫除了先前宣布的亞利桑那州三座晶圓廠外，還包括額外增建 3 座晶圓廠、2 座先進封裝廠以及 1 座主要的研發中心 [97b553cd-56e9-41a8-a7c8-108dd04e4a87]。\n*   **技術自主性：** 公司表示在亞利桑那州的領先產能擴張計畫中，並未與其他公司進行任何合資、技術授權、技術轉移或分享的討論 [d485a4f8-cc26-4f68-a4d3-a5f25951e168]。\n\n### 三、 其他重大財務與營運事件\n*   **地震損失認列：** 台積電初步估計將於 2025 年第一季認列扣除保險理賠後之相關地震損失，金額約為 53 億新台幣 [2330-2025Q1-p011-c001]。\n*   **股利政策：** 董事會核准 2024 年第四季每股現金股利為 4.5 元 [2330-2025Q1-p011-c001]。\n\n**資料不足說明：**\n提供的引用片段中，未包含 2025 年第二季至 2026 年第一季的具體新聞或進度更新，亦無提及美國以外地區（如日本、歐洲）的海外設廠細節。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "2330-2025Q1-p005-c001",
+        "snippet": "2025年第一季銷售分析-製程別\n2025年第一季銷售分析-製程別（pie）: 5奈米: 36%、3奈米: 22%、7奈米: 15%、16/20奈米: 7%、28奈米: 7%、40/45奈米: 4%、90奈米: 3%、0.15/0.18微米: 3%、0.11/0.13微米: 2%、65奈米: 1%、0.25微米及以上: 0%\n7奈米及以下營業收入（stacked_bar）: 1Q22 - 7奈米: 130新台幣十億元、1Q22 - 5奈米: 90新台幣十億元、1Q22 - 3奈米: 0新台幣十億元、2Q22 - 7奈米: 140新台幣十億元、2Q22 - 5奈米: 110新台幣十億元、2Q22 - 3奈米: 0新台幣十億元、3Q22 - 7奈米: 150新台幣十億元、3Q22 - 5奈米: 150新台幣十億元、3Q22 - 3奈米: 0新台幣十億元、4Q22 - 7奈米: 120新台幣十億元、4Q22 - 5奈米: 150新台幣十億元、4Q22 - 3奈米: 0新台幣十億元、1Q23 - 7奈米: 100新台幣十億元、1Q23 - 5奈米: 100新台幣十億元、1Q23 - 3奈米: 0新台幣十億元、2Q23 - 7奈米: 110新台幣十億元、2Q23 - 5奈米: 100新台幣十億元、2Q23 - 3奈米: 0新台幣十億元、3Q23 - 7奈米: 120新台幣十億元、3Q23 - 5奈米: 120新台幣十億元、3Q23 - 3奈米: 10新台幣十億元、4Q23 - 7奈米: 130新台幣十億元、4Q23 - 5奈米: 150新台幣十億元、4Q23 - 3奈米: 30新台幣十億元、1Q24 - 7奈米: 130新台幣十億元、1Q24 - 5奈米: 160新台幣十億元、1Q24 - 3奈米: 40新台幣十億元、2Q24 - 7奈米: 140新台幣十億元、2Q24 - 5奈米:",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "ticker": "2330",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "d485a4f8-cc26-4f68-a4d3-a5f25951e168",
+        "snippet": "customers in smartphone, AI, and HPC applications.\nWith this additional USD100 billion investment plan to expand our leading-edge capacity in Arizona, I would also like to mention that TSMC is not\nengaged in any discussions with other companies regarding any joint venture, technology licensing, or technology transfer and sharing.\nAfter completion, around 30% of our 2-nanometer and more advanced capacity will be located in Arizona, creating an independent leading\nsemiconductor manufac",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "ticker": "2330",
+        "doc_type": "transcript",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_a1c0f002b99cd114",
+        "snippet": "台積公司宣布有意增加在美投資金額至1,650億美元\n以驅動人工智慧未來",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "ticker": "2330",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_af86502735e10d2e",
+        "snippet": "台積公司2025年2月營收報告",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202503,
+        "ticker": "2330",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "97b553cd-56e9-41a8-a7c8-108dd04e4a87",
+        "snippet": "States.\nThis expansion includes plans for three additional wafer manufacturing fabs, two advanced packaging fabs, and a major R&D center. Combined\nwith our previously announced plan to build three advanced semiconductor manufacturing fabs in Arizona, this brings our total investment in the\nUS to USD165 billion to support the strong multi-year demand from our customers.\nOur first fab in Arizona has already successfully entered high-volume production in 4Q ‘24, utilizing N4 process technology",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202504,
+        "ticker": "2330",
+        "doc_type": "transcript",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2330-2025Q1-p011-c001",
+        "snippet": "近期重要事件摘要\n台積公司宣布有意增加在美投資金額: 1650億美元\n台積公司董事會核准2024年第四季之每股現金股利: 4.5元\n台積公司說明地震影響,初步估計將於2025年第一季認列扣除保險理賠後之相關地震損失: 53億元",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202504,
+        "ticker": "2330",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_a6d8ae1a3d97e831",
+        "snippet": "台積公司2025年1月營收報告與地震影響說明",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202502,
+        "ticker": "2330",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "mops_6a73a66c96ad9f08",
+        "snippet": "台積公司2024年12月營收報告",
+        "origin": "rerank",
+        "company": "台積電",
+        "event_key": "major_news.others",
+        "source_key": "PRIMARY_MOPS",
+        "published_yyyymm": 202501,
+        "ticker": "2330",
+        "doc_type": "major_news",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 6631
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1548
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 14731
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 2779
+      }
+    ]
+  },
+  "error": null,
+  "analysis": {
+    "test_id": "P3-R6-016",
+    "query": "請摘要台積電 2025Q1 至 2026Q1 期間，與先進製程或海外設廠相關的重大新聞。",
+    "category": "news_major_news",
+    "expected_ticker": "2330",
+    "expected_company": "台積電",
+    "expected_period": "2025Q1-2026Q1",
+    "expected_event_key": "major_news;news",
+    "expected_source_key": "PRIMARY_MOPS;SECONDARY_NEWS_MEDIA;PRIMARY_COMPANY_IR",
+    "expected_source_type": "mops_major_news;news;company_ir",
+    "why_included": "Phase 2 news題 source mix weak; keep original blocker regression.",
+    "phase2_reference": "R6-P2F-014",
+    "phase2_blocker_target": "news / major_news source selection; avoid transcript domination.",
+    "pass_criteria": "HTTP 200; cites major news/news/IR from 2025Q1-2026Q1 or the closest database-available source relevant to overseas fab or advanced process; no transcript-only answer unless clearly appropriate.",
+    "needs_review_criteria": "mixes IR/transcript with news but no hallucination.",
+    "fail_criteria": "cannot find relevant source; cites unrelated earnings call facts as news; wrong company.",
+    "owner_if_failed": "R3/R4",
+    "notes": "source mix not ideal but answer present",
+    "http_status": 200,
+    "elapsed_sec": 25.84,
+    "error": null,
+    "answer_exists": true,
+    "answer_insufficient_data": true,
+    "citation_count": 8,
+    "citation_origins": [
+      "rerank"
+    ],
+    "source_ids": [
+      "2330-2025Q1-p005-c001",
+      "d485a4f8-cc26-4f68-a4d3-a5f25951e168",
+      "mops_a1c0f002b99cd114",
+      "mops_af86502735e10d2e",
+      "97b553cd-56e9-41a8-a7c8-108dd04e4a87",
+      "2330-2025Q1-p011-c001",
+      "mops_a6d8ae1a3d97e831",
+      "mops_6a73a66c96ad9f08"
+    ],
+    "metadata_has": {
+      "ticker": true,
+      "company": true,
+      "doc_type": true,
+      "fiscal_period": true,
+      "page_num": false,
+      "source_file": false,
+      "event_key": true,
+      "source_key": true,
+      "published_yyyymm": true
+    },
+    "financial_metric_evidence": false,
+    "monthly_revenue_numeric_evidence": true,
+    "presentation_ocr_chunk": true,
+    "p_anchor": true,
+    "citation_supports_answer": true,
+    "company_mismatch": false,
+    "period_mismatch": false,
+    "event_source_mismatch": false,
+    "unsupported_number": false,
+    "hallucination": false,
+    "nfr_031_violation": false,
+    "compliance_behavior": null,
+    "grounding_quality": null,
+    "source_mix": {
+      "earnings_call_transcript": 2,
+      "presentation_ocr_chunk": 2,
+      "mops_monthly_revenue": 3,
+      "mops_major_news": 1,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_mix": {
+      "earnings_call_transcript": 2,
+      "presentation_ocr_chunk": 2,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 1,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_ids": [
+      "2330-2025Q1-p005-c001",
+      "d485a4f8-cc26-4f68-a4d3-a5f25951e168",
+      "mops_a1c0f002b99cd114",
+      "97b553cd-56e9-41a8-a7c8-108dd04e4a87",
+      "2330-2025Q1-p011-c001"
+    ],
+    "answer_preview": "根據提供的引用片段，台積電在 2025 年第一季及相關期間於先進製程與海外設廠之重大動態摘要如下：\n\n### 一、 先進製程發展與營收結構\n*   **營收佔比：** 2025 年第一季銷售分析顯示，先進製程（7 奈米及以下）為主要營收來源。其中 5 奈米佔 36%、3 奈米佔 22%、7 奈米佔 15% [2330-2025Q1-p005-c001]。\n*   **量產進度：** 位於美國亞利桑那州的第一座晶圓廠已於 2024 年第四季利用 N4（4 奈米）製程技術成功進入量產 [97b553cd-56e9-41a8-a7c8-108dd04e4a87]。\n*   **未來產能規劃：** 預計在相關計畫完成後，台積電約有 30% 的 2 奈米及更先進製程產能將位於美國亞利桑那州 [d485a4f8-cc26-4f68-a4d3-a5f25951e168]。\n\n### 二、 海外（美國）設廠與投資擴張\n*   **投資金額增加：** 台積電宣布有意將在美投資總額提升至 1,650 億美元 [mops_a1c0f002b99cd114, 2330-2025Q1-p011-c001]。\n*   **設施擴建計畫：** 該投資計畫除了先前宣布的亞利桑那州三座晶圓廠外，還包括額外增建 3 座晶圓廠、2 座先進封裝廠以及 1 座主要的研發中心 [97b553cd-56e9-41a8-a7c8-108dd04e4a87]。\n*   **技術自主性：** 公司表示在亞利桑那州的領先產能擴張計畫中，並未與其他公司進行任何合資、技術授權、技術轉移或分享的討論 [d485a4f8-cc26-4f68-a4d3-a5f25951e168]。\n\n### 三、 其他重大財務與營運事件\n*   **地震損失認列：** 台積電初步估計將於 2025 年第一季認列扣除保險理賠後之相關地震損失，金額約為 53 億新台幣 [2330-2025Q1-p011-c001]。\n*   **股利政策：** 董事會核准 2024 年第四季每股現金股利為 4.5 元 [2330-2025Q1-p011-c001]。\n\n**資料不足說明：**\n提供的引用片段中，未包含 2025 年第二季至 2026 年第一季的具體新聞或進度更新，亦無提及美國以外地區（如日本、歐洲）的海外設廠細節。",
+    "first_citation": {
+      "source_id": "2330-2025Q1-p005-c001",
+      "snippet": "2025年第一季銷售分析-製程別\n2025年第一季銷售分析-製程別（pie）: 5奈米: 36%、3奈米: 22%、7奈米: 15%、16/20奈米: 7%、28奈米: 7%、40/45奈米: 4%、90奈米: 3%、0.15/0.18微米: 3%、0.11/0.13微米: 2%、65奈米: 1%、0.25微米及以上: 0%\n7奈米及以下營業收入（stacked_bar）: 1Q22 - 7奈米: 130新台幣十億元、1Q22 - 5奈米: 90新台幣十億元、1Q22 - 3奈米: 0新台幣十億元、2Q22 - 7奈米: 140新台幣十億元、2Q22 - 5奈米: 110新台幣十億元、2Q22 - 3奈米: 0新台幣十億元、3Q22 - 7奈米: 150新台幣十億元、3Q22 - 5奈米: 150新台幣十億元、3Q22 - 3奈米: 0新台幣十億元、4Q22 - 7奈米: 120新台幣十億元、4Q22 - 5奈米: 150新台幣十億元、4Q22 - 3奈米: 0新台幣十億元、1Q23 - 7奈米: 100新台幣十億元、1Q23 - 5奈米: 100新台幣十億元、1Q23 - 3奈米: 0新台幣十億元、2Q23 - 7奈米: 110新台幣十億元、2Q23 - 5奈米: 100新台幣十億元、2Q23 - 3奈米: 0新台幣十億元、3Q23 - 7奈米: 120新台幣十億元、3Q23 - 5奈米: 120新台幣十億元、3Q23 - 3奈米: 10新台幣十億元、4Q23 - 7奈米: 130新台幣十億元、4Q23 - 5奈米: 150新台幣十億元、4Q23 - 3奈米: 30新台幣十億元、1Q24 - 7奈米: 130新台幣十億元、1Q24 - 5奈米: 160新台幣十億元、1Q24 - 3奈米: 40新台幣十億元、2Q24 - 7奈米: 140新台幣十億元、2Q24 - 5奈米:",
+      "origin": "rerank",
+      "company": "台積電",
+      "event_key": "earnings_call",
+      "source_key": "PRIMARY_COMPANY_IR",
+      "published_yyyymm": 202504,
+      "ticker": "2330",
+      "doc_type": "presentation",
+      "fiscal_period": "2025Q1",
+      "page_num": null,
+      "source_file": null,
+      "published_at": null
+    },
+    "original_verdict": "Needs Review",
+    "reviewed_verdict": "Needs Review",
+    "owner_to_fix": "R3/R4"
+  }
+}

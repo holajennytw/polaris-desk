@@ -1,0 +1,361 @@
+{
+  "test_id": "P3-R6-017",
+  "request": {
+    "method": "POST",
+    "url": "https://polaris-web-14326813937.asia-east1.run.app/api/ask",
+    "body": {
+      "query": "鴻海 2025Q1 至 2026Q1 期間，在 AI 伺服器或電動車布局上有哪些新聞或重大訊息？"
+    }
+  },
+  "test_metadata": {
+    "test_id": "P3-R6-017",
+    "query": "鴻海 2025Q1 至 2026Q1 期間，在 AI 伺服器或電動車布局上有哪些新聞或重大訊息？",
+    "category": "news_major_news",
+    "expected_ticker": "2317",
+    "expected_company": "鴻海",
+    "expected_period": "2025Q1-2026Q1",
+    "expected_event_key": "major_news;news",
+    "expected_source_key": "PRIMARY_MOPS;SECONDARY_NEWS_MEDIA;PRIMARY_COMPANY_IR",
+    "expected_source_type": "mops_major_news;news;company_ir",
+    "why_included": "Phase 2 flagged possible company/period/event/source mismatch.",
+    "phase2_reference": "R6-P2F-015",
+    "phase2_blocker_target": "event/source mismatch; news relevance.",
+    "pass_criteria": "HTTP 200; cites Hon Hai news/major news/IR from 2025Q1-2026Q1 or the closest database-available source related to AI server or EV; answer separates source types where possible.",
+    "needs_review_criteria": "uses earnings call support plus some major news/IR source, but no hallucination.",
+    "fail_criteria": "wrong company; no recent source; unrelated transcript-only answer.",
+    "owner_if_failed": "R3/R4",
+    "notes": "Blocker regression. Timeframe is narrowed to reduce period-mismatch ambiguity; if database coverage is limited, reviewer may accept clearly labeled \"截至目前資料庫可查資料\" evidence."
+  },
+  "http_status": 200,
+  "elapsed_sec": 24.18,
+  "headers": {
+    "content-type": "application/json",
+    "date": "Sun, 28 Jun 2026 07:39:34 GMT",
+    "server": "Google Frontend"
+  },
+  "response": {
+    "answer": "根據提供的引用片段，鴻海（2317）在 2025 年第一季至 2025 年下半年於 AI 伺服器與電動車領域的重大訊息與布局摘要如下：\n\n### 一、 AI 伺服器布局\n*   **營收表現與展望：** 2025 年第一季，AI 伺服器與通用伺服器營收年增（YoY）超過 50% [2317-2025Q1-p014-c001, 41bf5a15-e89c-4174-95dd-482081e63cb1]。公司預期 2025 年 AI 伺服器營收將實現新台幣兆元以上的規模，佔整體伺服器營收比重將超過 50% [029ea89c-bc98-47bb-a0db-cf158b154331]。\n*   **產品量產與研發：** \n    *   GB 系列伺服器於 2025 年第一季底進入大量生產階段，大部分產品預計於第二季交貨 [41bf5a15-e89c-4174-95dd-482081e63cb1]。\n    *   於 NVIDIA GTC 大會發表最新一代 GB300 AI 伺服器 [a760d3a9-5c7f-412a-a9a5-9e14299a3ca1]。\n    *   已與數家雲端服務供應商（CSP）共同開發 ASIC 架構 AI 伺服器並陸續出貨 [41bf5a15-e89c-4174-95dd-482081e63cb1]。\n*   **技術導入：** 積極導入 Agentic AI 智慧管理技術，以提升工廠營運效率與數據整合能力 [ff61aa12-3ea5-436d-ad91-3b418d8d67c7]。\n*   **中東布局：** 在沙烏地阿拉伯已布局多年，於 ICT 方面已有合作案進行中，並與 AI 伺服器產業鏈上下游建立穩固合作關係 [99b44d4d-49cd-47ba-a335-dca729b654da]。\n\n### 二、 電動車（EV）布局\n*   **國際合作：** 與三菱汽車正式展開合作，預計協助其在大洋洲銷售由鴻海設計開發的車型 [ff61aa12-3ea5-436d-ad91-3b418d8d67c7]。\n*   **產品量產時程：** MODEL B 跨界休旅車預計於 2025 年下半年正式開始量產 [ff61aa12-3ea5-436d-ad91-3b418d8d67c7]。\n*   **電池與零組件：** \n    *   和發廠已具備量產能力，產品已提供客戶測試，後續將配合國內電動巴士與商用車需求 [ff61aa12-3ea5-436d-ad91-3b418d8d67c7]。\n    *   於台北國際車電展展示電動車、車用零組件及國產化電池 [2317-2025Q1-p025-c001, a760d3a9-5c7f-412a-a9a5-9e14299a3ca1]。\n*   **中東布局：** 與沙烏地阿拉伯主權基金（PIF）合資設立電動車公司 CEER；鴻騰精密（FIT）亦與當地企業合作開發 EV 充電裝置 [99b44d4d-49cd-47ba-a335-dca729b654da]。\n\n### 三、 資料不足說明\n提供的資料主要涵蓋 2025 年第一季的表現及 2025 年全年的展望與計畫，並未提及 2026 年第一季的具體重大訊息或布局規劃。",
+    "compliance_status": "passed",
+    "citations": [
+      {
+        "source_id": "2317-2025Q1-p025-c001",
+        "snippet": "本投影片介紹了鴻海近期重大事件與參展項目。左側圖片展示鴻海在GTC發布次世代AI伺服器，並分享三大智慧平台最新運用。右側圖片則顯示鴻海在台北國際車電展上展示電動車、車用零組件及國產化電池。\nPage: 25/29",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2317",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "ff61aa12-3ea5-436d-ad91-3b418d8d67c7",
+        "snippet": "| 官網 : https://www.honhai.com/zh-tw/\n位孿生技術，這幫助我們提升了生產效率和設施規劃能力。在GenAI 方面，我們也積極導入\nAgentic AI 的智慧管理技術，希望能提升工廠的營運效率，以及數據整合的能力。\n在EV 的部分，相信大家上週都收到了我們跟三菱汽車正式展開合作的好消息。在未來，我們\n預計將協助他們在大洋洲銷售我們設計開發的車型，這也呼應了我之前提到的EV 三大指標之\n一：取得傳統車廠的訂單。我們正一步一步地實現我們EV 事業的目標。上個月，我們在東京\n首度舉辦了電動車布局三大策略的發表會，吸引了數百位來自日本汽車產業的人士參與，他們\n對我們委託製造服務（CMS）和委託設計製造服務（CDMS）的模式，以及垂直整合、全球布\n局的策略都很感興趣。我們希望這次和三菱的合作，能夠引領我們未來跟更多國際車廠，包括\n日本傳統車廠的合作機會。另外，大家期待已久的MODEL B 跨界休旅車，也預計在今年下半\n年正式開始量產。而電池方面，和發廠已經具備量產能力，並且已經提供產品給客戶測試。後\n續我們會配合國內電動巴士和商用車客",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "ticker": "2317",
+        "doc_type": "transcript",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "99b44d4d-49cd-47ba-a335-dca729b654da",
+        "snippet": "公司債新台幣 298.5 億元，以及海外可轉換公司債美金 7 億元的發行，這些都是\n我們既有規劃的一部分。\n劉揚偉 Young Liu 鴻海精密工業股份有限公司—董事長\n有關中東的 AI 佈局問題，由我來回答。這一題可以從兩個面向來看，首先我們在沙烏地已經\n布局多年。大家都知道在EV 方面，從先前跟 PIF 合資設立電動車Joint Venture CEER、之後\nFIT也與當地知名企業合作開發EV 充電裝置。\n在 ICT 方面，我們也已經有合作案在當地進行。同時，我們在 AI 伺服器產業鏈中，已經與上\n游晶片業者、下游重要客戶建立穩固的合作關係，加上鴻海本身垂直整合與技術能力，以及全\n10\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n球四成的佔有率。從上游到下游的參與者，都已經有密切的合作。我們相信在這些重大的專案\n上，鴻海都會參與其中。\n巫俊毅 James Wu 鴻海精密工業股份有限公司—發言人\n下一題我們請凱基證券的Angela提問，Angela請。\nAngela Hsiang KGI—分析師\n我這邊想請問一下",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "ticker": "2317",
+        "doc_type": "transcript",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "a760d3a9-5c7f-412a-a9a5-9e14299a3ca1",
+        "snippet": "\n個獎項，鼓勵來自全球各廠區的員工以及供應商，發揮創意，以實際行動推動 ESG。\n在近期的參展活動方面，今年的NVIDIA GTC 大會上，我們發表了最新一代的GB300 AI伺服\n器，並同步分享了三大智慧平台的最新應用，展現我們在 AI 基礎建設的研發能量與整合能力。\n此外，我們也參加了台北國際車電展，並且展示了在電動車、車用零組件、以及國產化電池的\n最新進展。\n最後，在下一週的COMPUTEX，我們也有參與展出，歡迎各位蒞臨參觀，一同欣賞最新一代\n的AI 伺服器機櫃，以及機器人在三大智慧平台的應用。\n6\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n問答時間\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n謝謝James，那接下來，我們進入法說會的第二個階段，問答時間，我們先針對大家會前的提\n問，彙整跟各位報告，之後就開放自由提問。\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n第一題：關稅：全球關稅政策多變，請問董事長如何評估對於公司的影響？包含像",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "ticker": "2317",
+        "doc_type": "transcript",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "41bf5a15-e89c-4174-95dd-482081e63cb1",
+        "snippet": "的看法？以及今年整體AI 伺服器營收展望是否改變？\n劉揚偉 Young Liu 鴻海精密工業股份有限公司—董事長\n我們第一季受惠於算力需求持續成長，以及新平台推動，AI 伺服器與通用型伺服器出貨表現\n皆顯著提升，營收年增都超過 50%、但沒有達到一倍。主要是因為 GB 系列第一季底進入大量\n生產的階段，所以大部分產品都是在第二季交貨。以市場來看，主要北美 CSP 客戶除了持續\n擴大AI 伺服器部署外，也同步增加通用型伺服器採購，支撐整體出貨成長。\n展望第二季，我們預期整體伺服器業務將持續成長，營收季增及年增都可望達到高雙位數增長。\n在AI 伺服器方面，GB 系列量產能力持續改善；另外，我們已經跟幾家CSP 客戶共同開發ASIC\n架構 AI 伺服器，並也陸續出貨；再加上 HGX 需求進一步擴張，所以 AI 伺服器的出貨量已經\n在加速當中，預計會有將近倍數的成長。\n8\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n在大語言模型持續更迭優化的帶動下，市場對 AI 基礎設施，以及本地部署解決方案的需求明\n顯提升。基於目前訂單能",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "ticker": "2317",
+        "doc_type": "transcript",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "2317-2025Q1-p014-c001",
+        "snippet": "AI伺服器業務\n2025年 第一季 AI 伺服器與通用伺服器 營收 YoY 成長 >: 50%",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_COMPANY_IR",
+        "published_yyyymm": 202505,
+        "ticker": "2317",
+        "doc_type": "presentation",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "029ea89c-bc98-47bb-a0db-cf158b154331",
+        "snippet": "型持續更迭優化的帶動下，市場對 AI 基礎設施，以及本地部署解決方案的需求明\n顯提升。基於目前訂單能見度，以及主要客戶對 AI 的需求預測，2025 年我們對 AI 伺服器營\n收成長非常有信心，將實現兆元以上的營收規模，佔整體伺服器比重會超過50%。\n方文妍 Kristen Fang 鴻海精密工業股份有限公司—投資人關係資深經理\n我們現在開放給線上的法人與媒體自由提問。 Now we will move to Q-and-A session.\nEnglish question is also welcome. （中文翻譯：我們現在進入問答環節，歡迎用英文提問）\n巫俊毅 James Wu 鴻海精密工業股份有限公司—發言人\n第一題我們請Morgan Stanley分析師 Sharon提問。\nSharon Shih Morgan Stanley—分析師\n劉董、財務長、James你們好，我是Sharon。我這裡有兩個問題想請教，第一個問題是關於\n我們在印度生產旗艦手機的更新。我們的大客戶在最近的電話會議裡面也提到，印度生產的智\n能手機，未來可以滿足美國市場的需求。是不是可以請董事長跟我們提點一",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "ticker": "2317",
+        "doc_type": "transcript",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      },
+      {
+        "source_id": "93767102-64d8-4b45-b084-ba681cb59a84",
+        "snippet": "法說會逐字稿\n鴻海精密工業股份有限公司 2025 年第一季法人說明會\n會議日期及時間 ：2025 年 5 月14 日 台北時間下午3 點\n郵箱 : ir@foxconn.com | 官網 : https://www.honhai.com/zh-tw/\n鴻海精密工業股份有限公司\n2025 年第一季法人說明會\n公司與會者\n劉揚偉 Young Liu 鴻海精密工業股份有限公司 董事長\n黃德才 David Huang 鴻海精密工業股份有限公司 財務長\n巫俊毅 James Wu 鴻海精密工業股份有限公司 發言人\n方文妍 Kristen Fang 鴻海精密工業股份有限公司 投資人關係資深經理\n法說會提問者\nSharon Shih Morgan Stanley-分析師\nAngela Hsiang 凱基投顧-分析師\nCarrie Liu Citi-分析師\n方昱翔 三立財經-記者\n謝佩穎 TVBS新聞網-記者\nAlbert Hong J.P. Morgan-分析師\nArthur Liao 富邦投顧-分析師\nKaylin Tsai Macquarie-分析師\n1\n郵箱 : ir@foxconn.com |",
+        "origin": "rerank",
+        "company": "鴻海",
+        "event_key": "earnings_call",
+        "source_key": "PRIMARY_EC_TRANSCRIPT",
+        "published_yyyymm": 202505,
+        "ticker": "2317",
+        "doc_type": "transcript",
+        "fiscal_period": "2025Q1",
+        "page_num": null,
+        "source_file": null,
+        "published_at": null
+      }
+    ],
+    "trace": [
+      {
+        "node_name": "planner",
+        "status": "ok",
+        "input_keys": [
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "period",
+          "plan"
+        ],
+        "error_message": null,
+        "elapsed_ms": 5612
+      },
+      {
+        "node_name": "retriever",
+        "status": "ok",
+        "input_keys": [
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "contexts"
+        ],
+        "error_message": null,
+        "elapsed_ms": 1696
+      },
+      {
+        "node_name": "calculator",
+        "status": "ok",
+        "input_keys": [
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "calculations"
+        ],
+        "error_message": null,
+        "elapsed_ms": 0
+      },
+      {
+        "node_name": "writer",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "contexts",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "citations",
+          "draft"
+        ],
+        "error_message": null,
+        "elapsed_ms": 11844
+      },
+      {
+        "node_name": "compliance",
+        "status": "ok",
+        "input_keys": [
+          "calculations",
+          "citations",
+          "contexts",
+          "draft",
+          "period",
+          "plan",
+          "query",
+          "trace",
+          "viewer"
+        ],
+        "output_keys": [
+          "answer",
+          "compliance_status"
+        ],
+        "error_message": null,
+        "elapsed_ms": 4887
+      }
+    ]
+  },
+  "error": null,
+  "analysis": {
+    "test_id": "P3-R6-017",
+    "query": "鴻海 2025Q1 至 2026Q1 期間，在 AI 伺服器或電動車布局上有哪些新聞或重大訊息？",
+    "category": "news_major_news",
+    "expected_ticker": "2317",
+    "expected_company": "鴻海",
+    "expected_period": "2025Q1-2026Q1",
+    "expected_event_key": "major_news;news",
+    "expected_source_key": "PRIMARY_MOPS;SECONDARY_NEWS_MEDIA;PRIMARY_COMPANY_IR",
+    "expected_source_type": "mops_major_news;news;company_ir",
+    "why_included": "Phase 2 flagged possible company/period/event/source mismatch.",
+    "phase2_reference": "R6-P2F-015",
+    "phase2_blocker_target": "event/source mismatch; news relevance.",
+    "pass_criteria": "HTTP 200; cites Hon Hai news/major news/IR from 2025Q1-2026Q1 or the closest database-available source related to AI server or EV; answer separates source types where possible.",
+    "needs_review_criteria": "uses earnings call support plus some major news/IR source, but no hallucination.",
+    "fail_criteria": "wrong company; no recent source; unrelated transcript-only answer.",
+    "owner_if_failed": "R3/R4",
+    "notes": "source mix not ideal but answer present",
+    "http_status": 200,
+    "elapsed_sec": 24.18,
+    "error": null,
+    "answer_exists": true,
+    "answer_insufficient_data": true,
+    "citation_count": 8,
+    "citation_origins": [
+      "rerank"
+    ],
+    "source_ids": [
+      "2317-2025Q1-p025-c001",
+      "ff61aa12-3ea5-436d-ad91-3b418d8d67c7",
+      "99b44d4d-49cd-47ba-a335-dca729b654da",
+      "a760d3a9-5c7f-412a-a9a5-9e14299a3ca1",
+      "41bf5a15-e89c-4174-95dd-482081e63cb1",
+      "2317-2025Q1-p014-c001",
+      "029ea89c-bc98-47bb-a0db-cf158b154331",
+      "93767102-64d8-4b45-b084-ba681cb59a84"
+    ],
+    "metadata_has": {
+      "ticker": true,
+      "company": true,
+      "doc_type": true,
+      "fiscal_period": true,
+      "page_num": false,
+      "source_file": false,
+      "event_key": true,
+      "source_key": true,
+      "published_yyyymm": true
+    },
+    "financial_metric_evidence": false,
+    "monthly_revenue_numeric_evidence": false,
+    "presentation_ocr_chunk": true,
+    "p_anchor": true,
+    "citation_supports_answer": true,
+    "company_mismatch": false,
+    "period_mismatch": false,
+    "event_source_mismatch": false,
+    "unsupported_number": false,
+    "hallucination": false,
+    "nfr_031_violation": false,
+    "compliance_behavior": null,
+    "grounding_quality": null,
+    "source_mix": {
+      "earnings_call_transcript": 6,
+      "presentation_ocr_chunk": 2,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 0,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_mix": {
+      "earnings_call_transcript": 5,
+      "presentation_ocr_chunk": 2,
+      "mops_monthly_revenue": 0,
+      "mops_major_news": 0,
+      "financial_metric": 0,
+      "news": 0,
+      "unknown": 0
+    },
+    "answer_used_source_ids": [
+      "2317-2025Q1-p025-c001",
+      "ff61aa12-3ea5-436d-ad91-3b418d8d67c7",
+      "99b44d4d-49cd-47ba-a335-dca729b654da",
+      "a760d3a9-5c7f-412a-a9a5-9e14299a3ca1",
+      "41bf5a15-e89c-4174-95dd-482081e63cb1",
+      "2317-2025Q1-p014-c001",
+      "029ea89c-bc98-47bb-a0db-cf158b154331"
+    ],
+    "answer_preview": "根據提供的引用片段，鴻海（2317）在 2025 年第一季至 2025 年下半年於 AI 伺服器與電動車領域的重大訊息與布局摘要如下：\n\n### 一、 AI 伺服器布局\n*   **營收表現與展望：** 2025 年第一季，AI 伺服器與通用伺服器營收年增（YoY）超過 50% [2317-2025Q1-p014-c001, 41bf5a15-e89c-4174-95dd-482081e63cb1]。公司預期 2025 年 AI 伺服器營收將實現新台幣兆元以上的規模，佔整體伺服器營收比重將超過 50% [029ea89c-bc98-47bb-a0db-cf158b154331]。\n*   **產品量產與研發：** \n    *   GB 系列伺服器於 2025 年第一季底進入大量生產階段，大部分產品預計於第二季交貨 [41bf5a15-e89c-4174-95dd-482081e63cb1]。\n    *   於 NVIDIA GTC 大會發表最新一代 GB300 AI 伺服器 [a760d3a9-5c7f-412a-a9a5-9e14299a3ca1]。\n    *   已與數家雲端服務供應商（CSP）共同開發 ASIC 架構 AI 伺服器並陸續出貨 [41bf5a15-e89c-4174-95dd-482081e63cb1]。\n*   **技術導入：** 積極導入 Agentic AI 智慧管理技術，以提升工廠營運效率與數據整合能力 [ff61aa12-3ea5-436d-ad91-3b418d8d67c7]。\n*   **中東布局：** 在沙烏地阿拉伯已布局多年，於 ICT 方面已有合作案進行中，並與 AI 伺服器產業鏈上下游建立穩固合作關係 [99b44d4d-49cd-47ba-a335-dca729b654da]。\n\n### 二、 電動車（EV）布局\n*   **國際合作：** 與三菱汽車正式展開合作，預計協助其在大洋洲銷售由鴻海設計開發的車型 [ff61aa12-3ea5-436d-ad91-3b418d8d67c7]。\n*   **產品量產時程：** MODEL B 跨界休旅車預計於 2025 年下半年正式開始量產 [ff61aa12-3ea5-436d-ad91-3b418d8d67c7]。\n*   **電池與零組件：** \n    *   和發廠已具備量產能力，產品已提供客戶測試，後續將配合國內電動巴士與商用車需求 [ff61aa12-3ea5-436d-ad91-3b418d8d67c7]。\n    *   於台北國際車電展展示電動車、車用零組件及國產化電池 [2317-2025Q1-p025-c001, a760d3a9-5c7f-412a-a9a5-9e14299a3ca1]。\n*   **中東布局：** 與沙烏地阿拉伯主權基金（PIF）合資設立電動車公司 CEER；鴻騰精密（FIT）亦與當地企業合作開發 EV 充電裝置 [99b44d4d-49cd-47ba-a335-dca729b654da]。\n\n### 三、 資料不足說明\n提供的資料主要涵蓋 2025 年第一季的表現及 2025 年全年的展望與計畫，並未提及 2026 年第一季的具體重大訊息或布局規劃。",
+    "first_citation": {
+      "source_id": "2317-2025Q1-p025-c001",
+      "snippet": "本投影片介紹了鴻海近期重大事件與參展項目。左側圖片展示鴻海在GTC發布次世代AI伺服器，並分享三大智慧平台最新運用。右側圖片則顯示鴻海在台北國際車電展上展示電動車、車用零組件及國產化電池。\nPage: 25/29",
+      "origin": "rerank",
+      "company": "鴻海",
+      "event_key": "earnings_call",
+      "source_key": "PRIMARY_COMPANY_IR",
+      "published_yyyymm": 202505,
+      "ticker": "2317",
+      "doc_type": "presentation",
+      "fiscal_period": "2025Q1",
+      "page_num": null,
+      "source_file": null,
+      "published_at": null
+    },
+    "original_verdict": "Needs Review",
+    "reviewed_verdict": "Needs Review",
+    "owner_to_fix": "R3/R4"
+  }
+}
