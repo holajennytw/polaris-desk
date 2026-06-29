@@ -799,8 +799,8 @@ def events(
 _VALUATION_METRICS = {"pe_ratio", "pb_ratio", "ps_ratio"}
 
 
-def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation]:
-    """法說 RAG 搜尋：優先逐字稿，無逐字稿時退回法說簡報。注入 seam for tests.
+def _search_peer_calls_in_period(ticker: str, period: str, question: str) -> list[Citation]:
+    """單一季別的法說 RAG：優先逐字稿，無逐字稿時退回法說簡報。注入 seam for tests.
 
     台股多數公司不提供法說逐字稿（目前僅 4/20 家入庫），但全 20 家都有法說簡報
     （presentation）。逐字稿查空時退回簡報，避免那些公司的同業比較回空引用。
@@ -815,6 +815,29 @@ def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation
         cites = search(question)
         if cites:
             return cites
+    return []
+
+
+def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation]:
+    """法說 RAG：先查請求季，查不到時退回最新『已公布』季再查一次。
+
+    季底剛過的季（如 2026-06 時的 2026Q2）只有月營收 / 重大訊息、**尚無法說**
+    （逐字稿 / 簡報都還沒開），但法說質性內容（資本支出指引、產能策略、毛利展望等）
+    落在最新已公布季（如 2026Q1）。若不退回，問「2026 資本支出」這類題目時整段
+    法說看法會落空（issue：同業比較查不到資本支出）。
+
+    僅在「請求季比最新已公布季新」時退回——避免拿較新季的法說混充某個真的無法說
+    的歷史季（那種情況誠實回空）。
+    """
+    cites = _search_peer_calls_in_period(ticker, period, question)
+    if cites:
+        return cites
+
+    from polaris.graph.temporal import active_anchor
+
+    anchor = active_anchor()
+    if anchor and period > anchor:
+        return _search_peer_calls_in_period(ticker, anchor, question)
     return []
 
 
@@ -887,6 +910,10 @@ class PeerCompareResponse(BaseModel):
     kpis: list[_PeerKpi]
     financial: list[_PeerFinancialRow]
     calls: list[_PeerCall]
+    # 法說實際來源季：請求季尚無法說、_search_peer_calls 退回最新已公布季時 ≠ fiscal_period
+    # （如請求 2026Q2、法說退回 2026Q1）；與請求季相同或無法說 → None。前端據此明示
+    # 「法說看法來自 {calls_period}」，避免使用者誤以為法說也是請求季。
+    calls_period: str | None = None
     trend: list[_PeerTrendRow]
     valuation: list[_PeerValuationRow]
     summary: str
@@ -966,12 +993,37 @@ def _metric_diff(a_row: dict, b_row: dict) -> tuple[str, Literal["a", "b"]]:
     return f"{abs(difference):.2f}", better
 
 
+# 法說語氣關鍵詞（描述「發言語氣」而非投資建議——NFR-031 不涉買賣方向）。
+_TONE_POSITIVE = (
+    "成長", "強勁", "翻倍", "創新高", "看好", "增長", "提升", "樂觀", "擴產",
+    "需求強", "上修", "加速", "領先", "動能", "優於", "回升", "新高",
+)
+_TONE_NEGATIVE = (
+    "衰退", "下滑", "疲弱", "保守", "修正", "不確定", "逆風", "壓力", "下修",
+    "放緩", "庫存調整", "挑戰", "風險", "低於", "疲軟", "謹慎",
+)
+_TONE_STANCE = {"pos": "偏正面", "neu": "中性陳述", "neg": "偏保守"}
+
+
+def _infer_call_tone(snippet: str) -> Literal["pos", "neu", "neg"]:
+    """以關鍵詞數判讀法說「發言語氣」；正負相抵或皆無 → 中性。token-free、可測。"""
+    text = snippet or ""
+    pos = sum(text.count(k) for k in _TONE_POSITIVE)
+    neg = sum(text.count(k) for k in _TONE_NEGATIVE)
+    if pos > neg:
+        return "pos"
+    if neg > pos:
+        return "neg"
+    return "neu"
+
+
 def _call_side(citation: Citation | None) -> _PeerCallSide:
     if citation is None:
         return _PeerCallSide(stance="資料不足", tone="neu", quote="", cite="")
+    tone = _infer_call_tone(citation.snippet)
     return _PeerCallSide(
-        stance="有相關引用",
-        tone="neu",
+        stance=_TONE_STANCE[tone],
+        tone=tone,
         quote=citation.snippet,
         cite=citation.source_id,
     )
@@ -1121,6 +1173,16 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
     a_cites = _search_peer_calls(req.a_ticker, req.fiscal_period, req.question)
     b_cites = _search_peer_calls(req.b_ticker, req.fiscal_period, req.question)
 
+    # 法說退回偵測：_search_peer_calls 在請求季無法說時會退回最新已公布季，引用因此標的
+    # 是「實際來源季」而非請求季。若所有法說引用同屬一個 ≠ 請求季的季別 → 標記 calls_period，
+    # 讓前端明示「法說看法來自 {calls_period}」（如請求 2026Q2、法說退回 2026Q1）。
+    call_periods = {c.fiscal_period for c in (*a_cites, *b_cites) if c.fiscal_period}
+    calls_period = (
+        next(iter(call_periods))
+        if len(call_periods) == 1 and req.fiscal_period not in call_periods
+        else None
+    )
+
     calls: list[_PeerCall] = []
     for index in range(max(len(a_cites), len(b_cites))):
         ac = a_cites[index] if index < len(a_cites) else None
@@ -1187,35 +1249,48 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
             f"{kpi.label}：{req.a_ticker} {kpi.a.v} vs {req.b_ticker} {kpi.b.v}"
             f"（{better_name} 領先 {kpi.diff}）"
         )
+    # 法說質性節錄：每家取首筆引用，讓 fallback（無 LLM）摘要也帶「看法」而非純數字。
+    for ticker, side in ((req.a_ticker, "a"), (req.b_ticker, "b")):
+        quote = next(
+            (getattr(c, side).quote for c in calls if getattr(c, side).quote), ""
+        )
+        if quote:
+            summary_parts.append(f"{ticker} 法說重點：{quote[:120]}")
     raw_summary = "\n".join(summary_parts)
 
-    # LLM 生成自然語言摘要（有 GEMINI_API_KEY 才呼叫；否則沿用結構化字串）
+    # LLM 生成自然語言摘要（有 GEMINI_API_KEY 才呼叫；否則沿用結構化字串）。
+    # 觸發條件：有財務指標「或」有法說引用——後者讓「對 AI 需求的看法」這類純質性
+    # 問題（可能無共同財務指標）也能合成看法，而非掉回單一標題行。
     from polaris.llm.gemini import active_llm
 
+    has_call_quotes = any(c.a.quote or c.b.quote for c in calls)
     llm = active_llm()
-    if llm and kpis:
+    if llm and (kpis or has_call_quotes):
         kpi_lines = "\n".join(
             f"  ・{k.label}：{req.a_ticker} {k.a.v} vs {req.b_ticker} {k.b.v}"
             f"（{req.a_ticker if k.better == 'a' else req.b_ticker} 領先 {k.diff}）"
             for k in kpis
-        )
+        ) or "（無共同財務指標）"
         call_snippets = [
-            f"  ・{req.a_ticker}：{c.a.quote[:120]}"
-            for c in calls[:3]
+            f"  ・{req.a_ticker}：{c.a.quote[:300]}"
+            for c in calls[:5]
             if c.a.quote
         ] + [
-            f"  ・{req.b_ticker}：{c.b.quote[:120]}"
-            for c in calls[:3]
+            f"  ・{req.b_ticker}：{c.b.quote[:300]}"
+            for c in calls[:5]
             if c.b.quote
         ]
-        call_lines = "\n".join(call_snippets[:5]) or "（無法說引用）"
+        call_lines = "\n".join(call_snippets[:8]) or "（無法說引用）"
         prompt = (
-            f"你是台股產業研究員。請用繁體中文，根據以下財務指標與法說引用，"
+            f"你是台股產業研究員。請用繁體中文，聚焦回答『使用者問題』，"
             f"為「{req.a_ticker} vs {req.b_ticker}」（{req.fiscal_period}）寫一份同業比較摘要。\n\n"
+            f"撰寫原則：以下方『法說引用』為主軸，先合成兩家對使用者問題的看法／立場差異，"
+            f"財務數字僅作輔助佐證，不要只堆財務數字。\n\n"
             f"輸出格式（務必嚴格遵守）：\n"
-            f"第一行：一句 15-35 字的整體總覽，點出兩家最關鍵的差異。\n"
-            f"第二行起：每行一個比較重點，共 3-5 行，每行 15-45 字，直接陳述事實差異"
-            f"（可帶數字，數字需與下列指標一致）。\n"
+            f"第一行：一句 15-40 字的整體總覽，直接點出兩家對使用者問題看法的最關鍵差異。\n"
+            f"接著各一行：分別陳述 {req.a_ticker}、{req.b_ticker} 對使用者問題的看法／立場"
+            f"（依法說引用，每行 15-50 字）。\n"
+            f"最後 1-2 行：以關鍵財務數字佐證差異（數字需與下列財務指標一致；無指標則省略）。\n"
             f"每行「不要」加「・」「-」「*」等符號或數字編號（介面會自動加項目符號），"
             f"行與行之間用換行分隔，讓使用者一眼就能掃讀。\n\n"
             f"財務指標：\n{kpi_lines}\n\n"
@@ -1248,6 +1323,7 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         kpis=kpis,
         financial=financial,
         calls=calls,
+        calls_period=calls_period,
         trend=trend,
         valuation=[],
         summary=final_summary,

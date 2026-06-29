@@ -10,7 +10,20 @@
 from __future__ import annotations
 
 import os
+import sys
+import types
 from dataclasses import dataclass, field
+
+# ragas<=0.4.x imports ChatVertexAI from langchain_community.chat_models.vertexai,
+# which was removed in langchain_community>=0.3. Shim it from the standalone package.
+if "langchain_community.chat_models.vertexai" not in sys.modules:
+    try:
+        from langchain_google_vertexai import ChatVertexAI as _ChatVertexAI  # type: ignore[import-untyped]
+        _shim = types.ModuleType("langchain_community.chat_models.vertexai")
+        _shim.ChatVertexAI = _ChatVertexAI  # type: ignore[attr-defined]
+        sys.modules["langchain_community.chat_models.vertexai"] = _shim
+    except ImportError:
+        pass
 
 from polaris.eval.runner import EvalRecord
 from polaris.graph.compliance import BUYSELL_KEYWORDS
@@ -98,33 +111,46 @@ def ragas_score(records: list[EvalRecord]) -> dict[str, float] | None:
     - ``uv pip install -e '.[eval]'``（ragas + langchain-google-genai + datasets）
     - 環境變數 ``GEMINI_API_KEY`` 或 ``GOOGLE_API_KEY``
 
-    模型：``RAGAS_JUDGE_MODEL`` env（預設 ``gemini-2.0-flash``）。
+    模型：``RAGAS_JUDGE_MODEL`` env（預設 ``gemini-3-flash-preview``）。
     任何異常（網路、quota、schema 不符）都回 None，絕不假分。
     """
     if not ragas_available():
         return None
 
-    # GEMINI_API_KEY 可為逗號分隔多把（client 端 429 輪替用）；Ragas judge 不輪替，
-    # 取第一把即可——別把整串 "k1,k2" 當成單一金鑰傳給 ChatGoogleGenerativeAI。
+    # GEMINI_API_KEY 可為逗號分隔多把（client 端 429 輪替用）；Ragas judge 不輪替。
+    # 優先挑 AIzaSy* 標準 AI Studio 金鑰——AQ.* OAuth token 在 ragas async 路徑會超時。
     raw_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    api_key = raw_key.split(",")[0].strip() if raw_key else None
+    all_keys = [k.strip() for k in raw_key.split(",") if k.strip()] if raw_key else []
+    api_key = next((k for k in all_keys if k.startswith("AIzaSy")), all_keys[0] if all_keys else None)
     if not api_key:
         return None
 
     try:
-        from langchain_google_genai import ChatGoogleGenerativeAI
+        from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
         from ragas import EvaluationDataset, SingleTurnSample, evaluate
+        from ragas.embeddings import LangchainEmbeddingsWrapper
         from ragas.llms import LangchainLLMWrapper
         from ragas.metrics import AnswerRelevancy, ContextPrecision, Faithfulness
+        from ragas.run_config import RunConfig
 
-        model = os.environ.get("RAGAS_JUDGE_MODEL", "gemini-2.0-flash")
+        model = os.environ.get("RAGAS_JUDGE_MODEL", "gemini-3-flash-preview")
         evaluator_llm = LangchainLLMWrapper(
             ChatGoogleGenerativeAI(model=model, google_api_key=api_key)
+        )
+        # AnswerRelevancy needs an embedder to compute question similarity;
+        # pin to Gemini so it never falls back to OPENAI_API_KEY.
+        evaluator_emb = LangchainEmbeddingsWrapper(
+            GoogleGenerativeAIEmbeddings(
+                model="models/gemini-embedding-2",
+                google_api_key=api_key,
+            )
         )
         metrics = [
             ContextPrecision(llm=evaluator_llm),
             Faithfulness(llm=evaluator_llm),
-            AnswerRelevancy(llm=evaluator_llm),
+            # strictness=1: generate 1 question per sample instead of 3;
+            # gemini-3-flash-preview rejects candidate_count>1 (INVALID_ARGUMENT).
+            AnswerRelevancy(llm=evaluator_llm, embeddings=evaluator_emb, strictness=1),
         ]
         samples = [
             SingleTurnSample(
@@ -139,11 +165,19 @@ def ragas_score(records: list[EvalRecord]) -> dict[str, float] | None:
         result = evaluate(
             dataset=EvaluationDataset(samples=samples),
             metrics=metrics,
+            run_config=RunConfig(timeout=600, max_retries=2),
         )
+        import math
+
+        def _safe(v: float) -> float | None:
+            return None if math.isnan(v) else v
+
+        # result[key] returns per-sample list in ragas 0.4.x; use to_pandas() for means.
+        df = result.to_pandas()
         return {
-            "context_precision": float(result["context_precision"]),
-            "faithfulness": float(result["faithfulness"]),
-            "answer_relevancy": float(result["answer_relevancy"]),
+            "context_precision": _safe(float(df["context_precision"].mean())),
+            "faithfulness": _safe(float(df["faithfulness"].mean())),
+            "answer_relevancy": _safe(float(df["answer_relevancy"].mean())),
         }
     except Exception:  # noqa: BLE001 — Ragas / network 任何失敗都誠實回 None
         return None

@@ -486,6 +486,55 @@ class TestPeerCompare:
 
         return _Store()
 
+    def test_calls_period_flags_law_call_fallback_quarter(self, client, monkeypatch):
+        """法說退回時（請求 2026Q2，季底剛過無法說 → 退回 2026Q1），回應帶 calls_period
+        標示法說實際來源季，讓前端明示『法說看法來自 2026Q1』、不誤導為請求季。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+
+        monkeypatch.setattr(api, "_structured_store", self._peer_store())
+        # 模擬 _search_peer_calls 內部已退回：請求 2026Q2，回傳的引用卻是 2026Q1。
+        monkeypatch.setattr(
+            api,
+            "_search_peer_calls",
+            lambda t, p, q: [
+                Citation(
+                    source_id=f"c-{t}",
+                    snippet="資本支出指引",
+                    origin="embedding",
+                    company=t,
+                    doc_type="transcript",
+                    fiscal_period="2026Q1",
+                )
+            ],
+        )
+        r = client.post(
+            "/peer-compare",
+            json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q2", "question": "資本支出"},
+        )
+        assert r.status_code == 200
+        assert r.json()["calls_period"] == "2026Q1"
+
+    def test_calls_period_none_when_law_call_matches_requested(self, client, monkeypatch):
+        """法說就是請求季時 calls_period 為 None（前端不顯示退回提示）。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+
+        monkeypatch.setattr(api, "_structured_store", self._peer_store())
+        monkeypatch.setattr(
+            api,
+            "_search_peer_calls",
+            lambda t, p, q: [
+                Citation(source_id=f"c-{t}", snippet="原文", origin="embedding", company=t, doc_type="transcript", fiscal_period=p)
+            ],
+        )
+        r = client.post(
+            "/peer-compare",
+            json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q1", "question": "比較毛利率"},
+        )
+        assert r.status_code == 200
+        assert r.json()["calls_period"] is None
+
     def test_llm_summary_normalized_to_clean_bullets(self, client, monkeypatch):
         """LLM 即使回傳帶「・」前綴的多行，後端會去前綴並保留多行（前端自加項目符號）。"""
         from polaris import api
@@ -523,6 +572,90 @@ class TestPeerCompare:
         assert r.status_code == 200
         lines = [ln for ln in r.json()["summary"].split("\n") if ln.strip()]
         assert len(lines) >= 2  # 結構化條列：總覽 + 至少一項指標
+
+    def test_llm_summary_generated_from_calls_without_common_financials(self, client, monkeypatch):
+        """無共同財務指標、但有法說引用時，摘要仍應走 LLM 合成質性看法（不再掉回純標題行）。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+        from polaris.llm import gemini
+
+        class NoOverlapStore:
+            def list_financials(self, *, ticker=None, period=None, metric=None, limit=None):
+                rows = {
+                    "2330": [{"ticker": "2330", "fiscal_period": "2026Q1", "metric_id": "gross_margin", "value": 57.8, "unit": "%", "source_id": "fa"}],
+                    "2454": [{"ticker": "2454", "fiscal_period": "2026Q1", "metric_id": "net_margin", "value": 22.1, "unit": "%", "source_id": "fb"}],
+                }.get(ticker, [])
+                if period is not None:
+                    rows = [r for r in rows if r["fiscal_period"] == period]
+                if metric is not None:
+                    rows = [r for r in rows if r["metric_id"] == metric]
+                return rows[: limit or 200]
+
+        class FakeLLM:
+            def generate(self, prompt, flash=False, **kw):
+                return "台積電偏資料中心 AI、聯發科偏邊緣 AI。\n台積電強調 AI accelerator 營收翻倍\n聯發科聚焦手機 SoC 與邊緣 AI"
+
+        monkeypatch.setattr(api, "_structured_store", NoOverlapStore())
+        monkeypatch.setattr(api, "_search_peer_calls", lambda t, p, q: [Citation(source_id=f"c-{t}", snippet=f"{t} 法說 AI 需求原文", origin="embedding", company=t, doc_type="transcript", fiscal_period=p)])
+        monkeypatch.setattr(gemini, "active_llm", lambda: FakeLLM())
+
+        r = client.post("/peer-compare", json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q1", "question": "比較對 AI 需求的看法"})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["kpis"] == []  # 無共同財務指標
+        lines = [ln for ln in body["summary"].split("\n") if ln.strip()]
+        assert len(lines) >= 2  # 仍是多行質性摘要，而非單一標題行
+        assert "資料中心" in body["summary"]  # 來自 LLM 質性合成
+
+    def test_fallback_summary_includes_call_highlights_without_llm(self, client, monkeypatch):
+        """無 LLM 時，fallback 摘要也要帶法說質性節錄，而非純財務數字。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+        from polaris.llm import gemini
+
+        monkeypatch.setattr(api, "_structured_store", self._peer_store())
+        monkeypatch.setattr(api, "_search_peer_calls", lambda t, p, q: [Citation(source_id=f"c-{t}", snippet=f"{t} 法說提到 AI 需求強勁可望翻倍", origin="embedding", company=t, doc_type="transcript", fiscal_period=p)])
+        monkeypatch.setattr(gemini, "active_llm", lambda: None)
+
+        r = client.post("/peer-compare", json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q1", "question": "比較對 AI 需求的看法"})
+        assert r.status_code == 200
+        summary = r.json()["summary"]
+        assert "AI 需求強勁" in summary  # fallback 也含法說質性內容
+        lines = [ln for ln in summary.split("\n") if ln.strip()]
+        assert not any(ln.lstrip().startswith("・") for ln in lines)  # 不自帶 bullet 前綴
+
+    def test_call_side_infers_positive_tone_from_snippet(self):
+        from polaris.api import _call_side
+        from polaris.graph.state import Citation
+
+        side = _call_side(Citation(source_id="s1", snippet="AI 需求強勁，營收可望翻倍成長", origin="embedding"))
+        assert side.tone == "pos"
+        assert side.stance == "偏正面"
+        assert side.cite == "s1"
+
+    def test_call_side_infers_negative_tone_from_snippet(self):
+        from polaris.api import _call_side
+        from polaris.graph.state import Citation
+
+        side = _call_side(Citation(source_id="s2", snippet="受庫存調整影響，本季需求疲弱、展望保守", origin="embedding"))
+        assert side.tone == "neg"
+        assert side.stance == "偏保守"
+
+    def test_call_side_neutral_when_no_sentiment_keywords(self):
+        from polaris.api import _call_side
+        from polaris.graph.state import Citation
+
+        side = _call_side(Citation(source_id="s3", snippet="本季合併營收為新台幣 1000 億元。", origin="embedding"))
+        assert side.tone == "neu"
+        assert side.stance == "中性陳述"
+
+    def test_call_side_none_is_insufficient_data(self):
+        from polaris.api import _call_side
+
+        side = _call_side(None)
+        assert side.stance == "資料不足"
+        assert side.tone == "neu"
+        assert side.quote == ""
 
     def test_bulletize_summary_strips_prefixes_and_blank_lines(self):
         from polaris.api import _bulletize_summary
@@ -600,6 +733,55 @@ class TestPeerCompare:
         result = api._search_peer_calls("2891", "2026Q1", "比較毛利率")
         assert result == presentation
         assert seen == ["transcript", "presentation"]  # 先逐字稿、空了才退簡報
+
+    def test_peer_call_falls_back_to_latest_reported_quarter_for_unreported_period(
+        self, monkeypatch
+    ):
+        """季底剛過的季（如 2026Q2 只有月營收/新聞、尚無法說）查不到法說時，退回最新
+        已公布季（2026Q1）再查——避免同業比較『法說質性看法』整段落空（如查不到資本支出）。"""
+        from polaris import api
+        from polaris.graph import temporal
+        from polaris.graph.state import Citation
+        from polaris.retrieval import retriever as retriever_module
+
+        monkeypatch.setattr(temporal, "active_anchor", lambda: "2026Q1")
+        q1_cite = [
+            Citation(
+                source_id="call-2317-q1",
+                snippet="資本支出預計仍將較去年增加三成以上",
+                origin="embedding",
+                fiscal_period="2026Q1",
+            )
+        ]
+
+        def fake_factory(*, viewer, filters):  # noqa: ARG001
+            # 只有 2026Q1 逐字稿有料；請求季 2026Q2 兩種 doc_type 都查空。
+            if filters["period"] == "2026Q1" and filters["doc_type"] == "transcript":
+                return lambda _q: q1_cite
+            return lambda _q: []
+
+        monkeypatch.setattr(retriever_module, "make_retriever_search_fn", fake_factory)
+
+        assert api._search_peer_calls("2317", "2026Q2", "資本支出") == q1_cite
+
+    def test_peer_call_no_fallback_when_period_not_newer_than_anchor(self, monkeypatch):
+        """請求季不比最新已公布季新（如查歷史季 2025Q4 真的無法說）→ 不退回較新季、回空，
+        不拿較新季的法說混充舊季。"""
+        from polaris import api
+        from polaris.graph import temporal
+        from polaris.retrieval import retriever as retriever_module
+
+        monkeypatch.setattr(temporal, "active_anchor", lambda: "2026Q1")
+        seen_periods: list[str] = []
+
+        def fake_factory(*, viewer, filters):  # noqa: ARG001
+            seen_periods.append(filters["period"])
+            return lambda _q: []
+
+        monkeypatch.setattr(retriever_module, "make_retriever_search_fn", fake_factory)
+
+        assert api._search_peer_calls("2317", "2025Q4", "資本支出") == []
+        assert "2026Q1" not in seen_periods  # 不會退回比請求季新的季
 
 
 class TestRouting:

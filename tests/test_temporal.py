@@ -140,6 +140,18 @@ class TestTemporalAnchoringE2E:
         assert result["contexts"] == []
         assert "資料不足" in result["answer"]
 
+    def test_unreported_next_quarter_pivots_to_anchor_with_note(self, monkeypatch):
+        """顯式問『剛結束、財報尚未公布的下一季』（已公布到 2025Q1 時問 2025Q2）→
+        補退回最新已公布季檢索 + period_note 誠實說明，而非乾回『資料不足』。"""
+        monkeypatch.setattr(temporal, "active_anchor", lambda: "2025Q1")
+        result = self._run("台積電 2025Q2 每股盈餘")
+        note = result.get("period_note", "")
+        assert "2025Q2" in note and "尚未公布" in note and "2025Q1" in note
+        # 退回季別（最新已公布季）有被加入檢索
+        assert "2025Q1" in {c["period"] for c in result["contexts"]}
+        # 答案誠實提到尚未公布（fallback 草稿帶 note；CI 無金鑰走 fallback）
+        assert "尚未公布" in result["answer"]
+
     def test_no_temporal_phrase_returns_default_context(self):
         result = self._run("台積電毛利率為什麼下滑")
         assert len(result["contexts"]) >= 1

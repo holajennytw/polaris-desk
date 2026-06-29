@@ -68,9 +68,28 @@ def stub_search(query: str) -> list[Citation]:
     ]
 
 
+#: 台股代號：4 碼數字。用於偵測「比較型」問題（≥2 檔）並逐檔檢索。
+_TICKER_RE = re.compile(r"\d{4}")
+
+
+def _extract_tickers(question: str) -> list[str]:
+    """從問題抽出去重保序的 4 碼代號清單（≥2 檔 → 視為比較型問題）。"""
+    out: list[str] = []
+    for code in _TICKER_RE.findall(question or ""):
+        if code not in out:
+            out.append(code)
+    return out
+
+
 def _deterministic_action(question: str, state: dict, min_citations: int) -> ReActAction:
     if len(state["evidence"]) >= min_citations:
         return ReActAction(tool="finish", tool_input="", is_finish=True)
+    tickers = _extract_tickers(question)
+    if len(tickers) >= 2:
+        # 比較型：輪流為每檔做檢索（代號前綴偏置 retriever），確保兩家都有證據、
+        # 不會一面倒；保留原問題語意（如「AI 需求」）而非換成 _FACETS。
+        ticker = tickers[state["iteration"] % len(tickers)]
+        return ReActAction(tool="search", tool_input=f"{ticker} {question}", is_finish=False)
     facet = _FACETS[state["iteration"] % len(_FACETS)]
     return ReActAction(tool="search", tool_input=f"{question} {facet}", is_finish=False)
 
@@ -98,10 +117,59 @@ def _summarize(found: Sequence[Citation]) -> str:
     return "取得引用：" + "、".join(c.source_id for c in found)
 
 
+def _belongs_to_ticker(citation: Citation, ticker: str) -> bool:
+    """引用是否歸屬某檔：優先 company 欄；退而求其次 source_id / snippet 內含代號。
+
+    真實 retriever 會帶 ``company``；stub / 部分來源無 company，故以代號子字串補強。
+    """
+    if (citation.company or "") == ticker:
+        return True
+    return ticker in (citation.source_id or "") or ticker in (citation.snippet or "")
+
+
+def _synthesize_comparison(
+    question: str, evidence: Sequence[Citation], tickers: Sequence[str], *, exhausted: bool
+) -> str:
+    """比較型收尾：依公司分組逐點列出，讓研究助理「帶出」兩家對比而非無差別清單。
+
+    每條列仍帶（來源：sid）→ 句句可溯源 by construction（D16）；區段標題 / 註記非
+    ``- `` 開頭，豁免於 ``is_fully_traceable`` 的條列檢查。
+    """
+    sections: list[str] = []
+    claimed: set[int] = set()
+    for ticker in tickers:
+        items = [c for c in evidence if _belongs_to_ticker(c, ticker)]
+        for c in items:
+            claimed.add(id(c))
+        if items:
+            points = "\n".join(f"- {c.snippet}（來源：{c.source_id}）" for c in items)
+            sections.append(f"{ticker}：\n{points}")
+        else:
+            sections.append(f"{ticker}：（無可溯源引用，資料不足）")
+    others = [c for c in evidence if id(c) not in claimed]
+    if others:
+        points = "\n".join(f"- {c.snippet}（來源：{c.source_id}）" for c in others)
+        sections.append(f"其他：\n{points}")
+    text = (
+        f"關於「{question}」的同業比較（依據 {len(evidence)} 條引用）：\n"
+        + "\n".join(sections)
+        + "\n本回答僅描述事實與來源，不提供買賣建議。"
+    )
+    if exhausted and len(evidence) < 3:
+        text += "\n（註：引用不足 3 條，結論暫定、待補證據。）"
+    return text
+
+
 def _synthesize(question: str, evidence: Sequence[Citation], *, exhausted: bool = False) -> str:
-    """確定性收尾結論（不含買賣建議；引用不足誠實標註）。"""
+    """確定性收尾結論（不含買賣建議；引用不足誠實標註）。
+
+    偵測到比較型問題（≥2 檔代號）→ 改走依公司分組的同業比較格式。
+    """
     if not evidence:
         return f"關於「{question}」目前找不到可溯源的引用，資料不足、無法形成結論。"
+    tickers = _extract_tickers(question)
+    if len(tickers) >= 2:
+        return _synthesize_comparison(question, evidence, tickers, exhausted=exhausted)
     # 逐點：一條 evidence 一個 bullet + 來源標記 → 句句可溯源 by construction（D16）。
     points = "\n".join(f"- {c.snippet}（來源：{c.source_id}）" for c in evidence)
     text = (

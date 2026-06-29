@@ -194,3 +194,46 @@ class TestViewerParam:
         )
         assert r.status in {"answered", "exhausted"}
         assert all(v == "analyst_A" for v in captured_viewer)
+
+
+class TestComparisonMode:
+    """比較型問題（≥2 檔代號）：逐檔檢索 + 依公司分組的同業比較合成。"""
+
+    def test_extract_tickers_finds_distinct_codes_in_order(self):
+        assert ag._extract_tickers("比較 2330 與 2454 對 AI 需求的看法") == ["2330", "2454"]
+        assert ag._extract_tickers("2330 2330 體質") == ["2330"]  # 去重保序
+        assert ag._extract_tickers("台積電體質如何") == []
+
+    def test_comparison_question_groups_evidence_by_ticker(self):
+        import re
+
+        def search(q):
+            m = re.search(r"\d{4}", q)
+            t = m.group(0) if m else "x"
+            return [Citation(source_id=f"c-{t}", snippet=f"{t} 對 AI 需求看好", origin="stub", company=t)]
+
+        r = ag.run_deep_research(
+            "比較 2330 與 2454 對 AI 需求的看法", search=search, min_citations=2
+        )
+        assert "同業比較" in r.final_answer
+        assert "2330：" in r.final_answer
+        assert "2454：" in r.final_answer
+        # 兩家證據各自歸組（grounded by construction：每條列帶來源）
+        assert "（來源：c-2330）" in r.final_answer
+        assert "（來源：c-2454）" in r.final_answer
+
+    def test_comparison_deterministic_searches_each_ticker(self):
+        seen_queries: list[str] = []
+
+        def search(q):
+            seen_queries.append(q)
+            return [Citation(source_id=f"s-{len(seen_queries)}", snippet="片段", origin="stub")]
+
+        ag.run_deep_research("比較 2330 與 2454 的展望", search=search, min_citations=4)
+        assert any("2330" in q for q in seen_queries)
+        assert any("2454" in q for q in seen_queries)
+
+    def test_single_ticker_question_uses_plain_summary(self):
+        r = ag.run_deep_research("台積電 2025Q1 體質", search=ag.stub_search)
+        assert "同業比較" not in r.final_answer
+        assert "研究摘要" in r.final_answer
