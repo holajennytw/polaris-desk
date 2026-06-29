@@ -60,5 +60,5 @@ frontend/.next/dev/logs/
 .claude/worktrees/
 
 # Log / Error / Debug
-echo "*.log"
-echo "*.log.err"
+*.log
+*.log.err
