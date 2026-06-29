@@ -154,6 +154,9 @@ class ResearchState(TypedDict, total=False):
     # 各節點輸出
     plan: list[str]
     period: PeriodSpec
+    # 時間性提醒：請求季為最新已公布季的「下一季」（剛結束、財報未出）時，retriever 退回
+    # 最新已公布季檢索並在此記說明，由 writer 帶進答案（誠實告知該季尚未公布）。空字串＝無。
+    period_note: str
     contexts: list[dict[str, Any]]
     calculations: dict[str, Any]
     draft: str
