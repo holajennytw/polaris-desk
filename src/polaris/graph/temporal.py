@@ -47,6 +47,19 @@ def _prev(year: int, quarter: int) -> tuple[int, int]:
     return (year - 1, 4) if quarter == 1 else (year, quarter - 1)
 
 
+def _next(year: int, quarter: int) -> tuple[int, int]:
+    return (year + 1, 1) if quarter == 4 else (year, quarter + 1)
+
+
+def next_quarter(period: str) -> str:
+    """``"2026Q1"`` → ``"2026Q2"``（跨年 ``"2026Q4"`` → ``"2027Q1"``）。
+
+    供 /ask 判斷「請求季是否為最新已公布季的下一季」（剛結束、財報未出的當季）。
+    """
+    year, quarter = _qtuple(period)
+    return _fmt(*_next(year, quarter))
+
+
 def _recent(anchor: str, n: int) -> list[str]:
     year, quarter = _qtuple(anchor)
     out: list[str] = []
@@ -135,4 +148,4 @@ def parse_period(query: str, *, anchor: str = DEFAULT_ANCHOR) -> PeriodSpec:
     return PeriodSpec(hint="", kind="none", quarters=[])
 
 
-__all__ = ["parse_period", "active_anchor", "DEFAULT_ANCHOR"]
+__all__ = ["parse_period", "active_anchor", "next_quarter", "DEFAULT_ANCHOR"]

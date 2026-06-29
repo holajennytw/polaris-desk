@@ -145,6 +145,29 @@ def _real_contexts(
     return contexts
 
 
+def _maybe_pivot_unreported_quarter(
+    period: Any, quarters: list[str] | None
+) -> tuple[list[str] | None, str]:
+    """未公布季退回：顯式問「最新已公布季的下一季」（剛結束、財報未出的當季，如已公布到
+    2026Q1 時問 2026Q2）時，補上最新已公布季一起檢索，並回 note 讓 writer 誠實說明。
+
+    只退回「下一季」這一種——更遠的未來季（如 2030Q1）維持誠實「資料不足」、不硬退回到
+    無關的舊季。回 ``(quarters, note)``；不觸發時 note 為空字串、quarters 原樣。
+    """
+    if not (period and getattr(period, "kind", None) == "quarter" and quarters):
+        return quarters, ""
+    anchor = temporal.active_anchor()
+    if temporal.next_quarter(anchor) not in quarters:
+        return quarters, ""
+    next_q = temporal.next_quarter(anchor)
+    augmented = quarters + ([anchor] if anchor not in quarters else [])
+    note = (
+        f"使用者詢問的 {next_q} 財報尚未公布（最新已公布季為 {anchor}）。"
+        f"請在回答開頭明確說明 {next_q} 尚未公布，再以 {anchor} 等已公布資料回覆。"
+    )
+    return augmented, note
+
+
 @traced("retriever", retries=2)
 def retriever(state: dict[str, Any]) -> dict[str, Any]:
     """依 Temporal Anchoring 解析的季別取語料。
@@ -162,14 +185,16 @@ def retriever(state: dict[str, Any]) -> dict[str, Any]:
     quarters = list(period.quarters) if period and period.quarters else None
     viewer = state.get("viewer", PUBLIC_VIEWER)
 
+    quarters, note = _maybe_pivot_unreported_quarter(period, quarters)
+
     real = active_retriever()
     if real is None:
         stub_quarters = quarters or [_DEFAULT_QUARTER]
         contexts = [_STUB_CORPUS[q] for q in stub_quarters if q in _STUB_CORPUS]
-        return {"contexts": contexts}
+        return {"contexts": contexts, "period_note": note}
 
     contexts = _real_contexts(real, state.get("query", ""), quarters, viewer)
-    return {"contexts": contexts}
+    return {"contexts": contexts, "period_note": note}
 
 
 @traced("calculator", retries=2)
@@ -194,7 +219,9 @@ def writer(state: dict[str, Any]) -> dict[str, Any]:
     """
     query = state.get("query", "")
     contexts = state.get("contexts", [])
-    draft, citations = writer_agent.make_draft(query, contexts, active_llm())
+    # 未公布季退回提醒（retriever 設）：帶進草稿，讓答案誠實告知該季尚未公布。
+    note = state.get("period_note", "")
+    draft, citations = writer_agent.make_draft(query, contexts, active_llm(), note=note)
     return {"draft": draft, "citations": citations}
 
 
