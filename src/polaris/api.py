@@ -620,6 +620,13 @@ def alerts() -> list[AlertResponse]:
 _structured_store = StructuredStore(settings)
 
 
+class PeriodInfo(BaseModel):
+    """期別資訊：period = YYYYQn，has_eps = 是否已公布完整財報。"""
+
+    period: str
+    has_eps: bool
+
+
 class CompanyResponse(BaseModel):
     """company_dim 一列（ticker→公司/產業，join key=ticker）。"""
 
@@ -761,10 +768,10 @@ def companies() -> list[CompanyResponse]:
     return [CompanyResponse(**row) for row in _structured_store.list_companies()]
 
 
-@app.get("/periods", response_model=list[str], tags=["structured"])
-def periods() -> list[str]:
-    """BQ 中實際存在的 fiscal_period 清單，倒序排列（如 2026Q1, 2025Q4 …）。前端期別選單動態來源。"""
-    return _structured_store.list_periods()
+@app.get("/periods", response_model=list[PeriodInfo], tags=["structured"])
+def periods() -> list[PeriodInfo]:
+    """BQ 中實際存在的 fiscal_period 清單，倒序排列；含 has_eps 旗標供前端標示「已公布財報 / 僅月營收」。"""
+    return [PeriodInfo(**row) for row in _structured_store.list_periods()]
 
 
 @app.get("/financials", response_model=list[FinancialMetricResponse], tags=["structured"])

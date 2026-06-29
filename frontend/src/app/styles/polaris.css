@@ -541,6 +541,11 @@ select.inp { cursor: pointer; appearance: none; background-image: url("data:imag
 .ptb-a { font-family: var(--sans); font-weight: 700; font-size: 18px; color: rgb(var(--foreground)); }
 .ptb-x { font-size: 14px; color: rgb(var(--muted)); padding: 0 10px; flex-shrink: 0; }
 .ptb-bsel { display: inline-flex; gap: 3px; padding: 3px; background: rgb(var(--muted-bg)); border-radius: var(--radius-sm); }
+.ptb-period { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid rgb(var(--border)); width: 100%; }
+.ptb-period-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.ptb-period-btn { font-family: var(--sans); font-size: 13px; font-weight: 500; color: rgb(var(--muted)); background: rgb(var(--muted-bg)); border: 1px solid rgb(var(--border)); border-radius: var(--radius-sm); padding: 4px 11px; cursor: pointer; transition: all .14s; white-space: nowrap; }
+.ptb-period-btn:hover { color: rgb(var(--foreground)); border-color: rgb(var(--primary) / .4); }
+.ptb-period-btn.active { color: rgb(var(--primary)); background: rgb(var(--primary) / .08); border-color: rgb(var(--primary) / .45); font-weight: 700; }
 .bsel-opt { white-space: nowrap; font-family: var(--sans); font-size: 15.5px; font-weight: 600; color: rgb(var(--muted)); background: none; border: none; border-radius: var(--radius-xs); padding: 6px 13px; cursor: pointer; transition: all .14s; }
 .bsel-opt:hover { color: rgb(var(--foreground)); }
 .bsel-opt.active { color: rgb(var(--foreground)); background: rgb(var(--card)); box-shadow: var(--shadow-sm); }

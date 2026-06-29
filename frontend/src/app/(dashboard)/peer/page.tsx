@@ -430,7 +430,7 @@ function PeerPageInner() {
       // 只有一家或都沒有：顯示有資料的期別（聯集）
       result = [...new Set([...aPeriods, ...bPeriods])].sort().reverse();
     }
-    return result.length > 0 ? result : dbPeriods;
+    return result.length > 0 ? result : dbPeriods.map(p => p.period);
   })();
 
   // 年/季/月拆分 derived values
@@ -440,6 +440,7 @@ function PeerPageInner() {
   const availableQuartersForYear = [...new Set(
     availablePeriods.filter(p => p.startsWith(fiscalYear)).map(p => p.slice(4))
   )].sort().reverse();
+  const periodInfoMap = new Map(dbPeriods.map(p => [p.period, p]));
   // 月份從 BQ 實際資料推導（只顯示有資料的月份），不 hardcode
   const availableMonthsForPeriod = (() => {
     const aMonths = new Set(
@@ -535,7 +536,7 @@ function PeerPageInner() {
   // 初始化：dbPeriods 從 BQ 載入後，若 fiscalPeriod 還是空（未選過）就設成最新期別
   useEffect(() => {
     if (dbPeriods.length > 0 && !fiscalPeriod) {
-      setFiscalPeriod(dbPeriods[0]);
+      setFiscalPeriod(dbPeriods[0].period);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbPeriods]);
@@ -789,6 +790,28 @@ function PeerPageInner() {
                   <span key={i} className="parse-chip warn"><Icon name="alert" size={12}/>未識別：{n}</span>
                 ))}
               </div>
+              {availableYears.length > 0 && (
+                <div className="ptb-period">
+                  <div className="ptb-period-row">
+                    {availableYears.map(y => (
+                      <button key={y} className={"ptb-period-btn" + (y === fiscalYear ? " active" : "")}
+                        onClick={() => changeYear(y)}>{y}</button>
+                    ))}
+                  </div>
+                  <div className="ptb-period-row">
+                    {availableQuartersForYear.map(q => {
+                      const info = periodInfoMap.get(`${fiscalYear}${q}`);
+                      const label = info
+                        ? (info.has_eps ? `${q}（已公布財報）` : `${q}（僅月營收）`)
+                        : q;
+                      return (
+                        <button key={q} className={"ptb-period-btn" + (q === fiscalQuarter ? " active" : "")}
+                          onClick={() => changeQuarter(q)}>{label}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Comparison content */}
