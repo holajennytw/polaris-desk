@@ -486,6 +486,55 @@ class TestPeerCompare:
 
         return _Store()
 
+    def test_calls_period_flags_law_call_fallback_quarter(self, client, monkeypatch):
+        """法說退回時（請求 2026Q2，季底剛過無法說 → 退回 2026Q1），回應帶 calls_period
+        標示法說實際來源季，讓前端明示『法說看法來自 2026Q1』、不誤導為請求季。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+
+        monkeypatch.setattr(api, "_structured_store", self._peer_store())
+        # 模擬 _search_peer_calls 內部已退回：請求 2026Q2，回傳的引用卻是 2026Q1。
+        monkeypatch.setattr(
+            api,
+            "_search_peer_calls",
+            lambda t, p, q: [
+                Citation(
+                    source_id=f"c-{t}",
+                    snippet="資本支出指引",
+                    origin="embedding",
+                    company=t,
+                    doc_type="transcript",
+                    fiscal_period="2026Q1",
+                )
+            ],
+        )
+        r = client.post(
+            "/peer-compare",
+            json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q2", "question": "資本支出"},
+        )
+        assert r.status_code == 200
+        assert r.json()["calls_period"] == "2026Q1"
+
+    def test_calls_period_none_when_law_call_matches_requested(self, client, monkeypatch):
+        """法說就是請求季時 calls_period 為 None（前端不顯示退回提示）。"""
+        from polaris import api
+        from polaris.graph.state import Citation
+
+        monkeypatch.setattr(api, "_structured_store", self._peer_store())
+        monkeypatch.setattr(
+            api,
+            "_search_peer_calls",
+            lambda t, p, q: [
+                Citation(source_id=f"c-{t}", snippet="原文", origin="embedding", company=t, doc_type="transcript", fiscal_period=p)
+            ],
+        )
+        r = client.post(
+            "/peer-compare",
+            json={"a_ticker": "2330", "b_ticker": "2454", "fiscal_period": "2026Q1", "question": "比較毛利率"},
+        )
+        assert r.status_code == 200
+        assert r.json()["calls_period"] is None
+
     def test_llm_summary_normalized_to_clean_bullets(self, client, monkeypatch):
         """LLM 即使回傳帶「・」前綴的多行，後端會去前綴並保留多行（前端自加項目符號）。"""
         from polaris import api

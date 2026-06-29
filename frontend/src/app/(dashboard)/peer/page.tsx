@@ -157,6 +157,9 @@ function PeerCallMatrix({ result, aName, bName }: { result: PeerCompareResult; a
   if (!rows.length) return null;
   const aLabel = aName || result.a_ticker;
   const bLabel = bName || result.b_ticker;
+  // 法說退回提示：請求季（如 2026Q2）季底剛過尚無法說，後端退回最新已公布季（如 2026Q1）。
+  // calls_period 有值且 ≠ 請求季時，明示法說實際來源季，避免誤以為法說也是請求季。
+  const callsFromOtherQuarter = result.calls_period && result.calls_period !== result.fiscal_period;
   return (
     <div className="panel">
       <div className="panel-head">
@@ -164,6 +167,11 @@ function PeerCallMatrix({ result, aName, bName }: { result: PeerCompareResult; a
           <Icon name="quote" size={14} style={{ color: "rgb(var(--primary))", verticalAlign: "-2px", marginRight: 6 }}/>
           法說會看法
         </span>
+        {callsFromOtherQuarter && (
+          <span className="panel-meta" title={`${result.fiscal_period} 尚無法說會資料，改用最新已公布季 ${result.calls_period}`}>
+            法說來源：{result.calls_period}
+          </span>
+        )}
       </div>
       <div className="panel-body">
         <div className="cmatrix">

@@ -910,6 +910,10 @@ class PeerCompareResponse(BaseModel):
     kpis: list[_PeerKpi]
     financial: list[_PeerFinancialRow]
     calls: list[_PeerCall]
+    # 法說實際來源季：請求季尚無法說、_search_peer_calls 退回最新已公布季時 ≠ fiscal_period
+    # （如請求 2026Q2、法說退回 2026Q1）；與請求季相同或無法說 → None。前端據此明示
+    # 「法說看法來自 {calls_period}」，避免使用者誤以為法說也是請求季。
+    calls_period: str | None = None
     trend: list[_PeerTrendRow]
     valuation: list[_PeerValuationRow]
     summary: str
@@ -1169,6 +1173,16 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
     a_cites = _search_peer_calls(req.a_ticker, req.fiscal_period, req.question)
     b_cites = _search_peer_calls(req.b_ticker, req.fiscal_period, req.question)
 
+    # 法說退回偵測：_search_peer_calls 在請求季無法說時會退回最新已公布季，引用因此標的
+    # 是「實際來源季」而非請求季。若所有法說引用同屬一個 ≠ 請求季的季別 → 標記 calls_period，
+    # 讓前端明示「法說看法來自 {calls_period}」（如請求 2026Q2、法說退回 2026Q1）。
+    call_periods = {c.fiscal_period for c in (*a_cites, *b_cites) if c.fiscal_period}
+    calls_period = (
+        next(iter(call_periods))
+        if len(call_periods) == 1 and req.fiscal_period not in call_periods
+        else None
+    )
+
     calls: list[_PeerCall] = []
     for index in range(max(len(a_cites), len(b_cites))):
         ac = a_cites[index] if index < len(a_cites) else None
@@ -1309,6 +1323,7 @@ def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
         kpis=kpis,
         financial=financial,
         calls=calls,
+        calls_period=calls_period,
         trend=trend,
         valuation=[],
         summary=final_summary,
