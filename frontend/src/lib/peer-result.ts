@@ -106,6 +106,7 @@ export function normalizePeerCompare(raw: BackendPeerCompareResponse): PeerCompa
       a: { stance: c.a.stance, tone: c.a.tone, quote: c.a.quote, cite: c.a.cite },
       b: { stance: c.b.stance, tone: c.b.tone, quote: c.b.quote, cite: c.b.cite },
     })),
+    calls_period: raw.calls_period ?? null,
     trend: raw.trend,
     valuation: raw.valuation,
     summary: raw.summary,

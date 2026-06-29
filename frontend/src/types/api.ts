@@ -241,6 +241,7 @@ export interface BackendPeerCompareResponse {
   kpis:              BackendPeerKpiRaw[];
   financial:         BackendPeerFinancialRow[];
   calls:             BackendPeerCallRaw[];
+  calls_period?:     string | null;  // 法說退回時的實際來源季（≠ fiscal_period）；否則 null
   trend:             PeerCompareTrendPoint[];
   valuation:         unknown[];
   summary:           string;
@@ -285,6 +286,7 @@ export interface PeerCompareResult {
   kpis:              PeerKpiNorm[];
   financial:         PeerFinancialNorm[];
   calls:             PeerCallNorm[];
+  calls_period:      string | null;  // 法說退回時的實際來源季（≠ fiscal_period）；否則 null
   trend:             PeerCompareTrendPoint[];
   valuation:         unknown[];
   summary:           string;
