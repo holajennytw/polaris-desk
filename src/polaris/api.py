@@ -799,8 +799,8 @@ def events(
 _VALUATION_METRICS = {"pe_ratio", "pb_ratio", "ps_ratio"}
 
 
-def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation]:
-    """法說 RAG 搜尋：優先逐字稿，無逐字稿時退回法說簡報。注入 seam for tests.
+def _search_peer_calls_in_period(ticker: str, period: str, question: str) -> list[Citation]:
+    """單一季別的法說 RAG：優先逐字稿，無逐字稿時退回法說簡報。注入 seam for tests.
 
     台股多數公司不提供法說逐字稿（目前僅 4/20 家入庫），但全 20 家都有法說簡報
     （presentation）。逐字稿查空時退回簡報，避免那些公司的同業比較回空引用。
@@ -815,6 +815,29 @@ def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation
         cites = search(question)
         if cites:
             return cites
+    return []
+
+
+def _search_peer_calls(ticker: str, period: str, question: str) -> list[Citation]:
+    """法說 RAG：先查請求季，查不到時退回最新『已公布』季再查一次。
+
+    季底剛過的季（如 2026-06 時的 2026Q2）只有月營收 / 重大訊息、**尚無法說**
+    （逐字稿 / 簡報都還沒開），但法說質性內容（資本支出指引、產能策略、毛利展望等）
+    落在最新已公布季（如 2026Q1）。若不退回，問「2026 資本支出」這類題目時整段
+    法說看法會落空（issue：同業比較查不到資本支出）。
+
+    僅在「請求季比最新已公布季新」時退回——避免拿較新季的法說混充某個真的無法說
+    的歷史季（那種情況誠實回空）。
+    """
+    cites = _search_peer_calls_in_period(ticker, period, question)
+    if cites:
+        return cites
+
+    from polaris.graph.temporal import active_anchor
+
+    anchor = active_anchor()
+    if anchor and period > anchor:
+        return _search_peer_calls_in_period(ticker, anchor, question)
     return []
 
 
