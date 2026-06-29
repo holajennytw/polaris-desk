@@ -35,8 +35,9 @@ def make_item(**overrides) -> EvalItem:
 class TestDataset:
     def test_load_questions(self):
         items = load_dataset(DATASET)
-        # R5 canonical v1 = 130；+ 本案接地觸點題 Q131–Q139（9 題）。
-        assert len(items) == 139
+        # R5 canonical v1 = 130；+ 接地觸點題 Q131–Q139（9 題）；+ 時間錨定/未公布季/法說退回
+        # 回歸題 Q140–Q142（3 題，鎖住 #63/#68/#70 已修行為）。
+        assert len(items) == 142
         assert all(isinstance(i, EvalItem) for i in items)
 
     def test_ids_unique(self):
@@ -55,6 +56,8 @@ class TestDataset:
         items = load_dataset(DATASET)
         assert sum(i.gate_subset == "scenario4_gate" for i in items) == 10
         assert sum(i.gate_subset == "prose_faithfulness" for i in items) == 4
+        # 本案回歸題：時間錨定 + 未公布季退回（Q140/Q141）
+        assert sum(i.gate_subset == "temporal_anchor" for i in items) == 2
 
     def test_scenarios_present(self):
         scenarios = {i.scenario for i in load_dataset(DATASET)}
