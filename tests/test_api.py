@@ -685,6 +685,55 @@ class TestPeerCompare:
         assert result == presentation
         assert seen == ["transcript", "presentation"]  # 先逐字稿、空了才退簡報
 
+    def test_peer_call_falls_back_to_latest_reported_quarter_for_unreported_period(
+        self, monkeypatch
+    ):
+        """季底剛過的季（如 2026Q2 只有月營收/新聞、尚無法說）查不到法說時，退回最新
+        已公布季（2026Q1）再查——避免同業比較『法說質性看法』整段落空（如查不到資本支出）。"""
+        from polaris import api
+        from polaris.graph import temporal
+        from polaris.graph.state import Citation
+        from polaris.retrieval import retriever as retriever_module
+
+        monkeypatch.setattr(temporal, "active_anchor", lambda: "2026Q1")
+        q1_cite = [
+            Citation(
+                source_id="call-2317-q1",
+                snippet="資本支出預計仍將較去年增加三成以上",
+                origin="embedding",
+                fiscal_period="2026Q1",
+            )
+        ]
+
+        def fake_factory(*, viewer, filters):  # noqa: ARG001
+            # 只有 2026Q1 逐字稿有料；請求季 2026Q2 兩種 doc_type 都查空。
+            if filters["period"] == "2026Q1" and filters["doc_type"] == "transcript":
+                return lambda _q: q1_cite
+            return lambda _q: []
+
+        monkeypatch.setattr(retriever_module, "make_retriever_search_fn", fake_factory)
+
+        assert api._search_peer_calls("2317", "2026Q2", "資本支出") == q1_cite
+
+    def test_peer_call_no_fallback_when_period_not_newer_than_anchor(self, monkeypatch):
+        """請求季不比最新已公布季新（如查歷史季 2025Q4 真的無法說）→ 不退回較新季、回空，
+        不拿較新季的法說混充舊季。"""
+        from polaris import api
+        from polaris.graph import temporal
+        from polaris.retrieval import retriever as retriever_module
+
+        monkeypatch.setattr(temporal, "active_anchor", lambda: "2026Q1")
+        seen_periods: list[str] = []
+
+        def fake_factory(*, viewer, filters):  # noqa: ARG001
+            seen_periods.append(filters["period"])
+            return lambda _q: []
+
+        monkeypatch.setattr(retriever_module, "make_retriever_search_fn", fake_factory)
+
+        assert api._search_peer_calls("2317", "2025Q4", "資本支出") == []
+        assert "2026Q1" not in seen_periods  # 不會退回比請求季新的季
+
 
 class TestRouting:
     def test_unknown_path_404(self, client):
