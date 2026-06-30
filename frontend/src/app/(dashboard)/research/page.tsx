@@ -20,9 +20,6 @@ import { useCompanies } from "@/hooks/useCompanies";
 import { useFinancials, inferTickerFromQuery, financialsToKpis } from "@/hooks/useFinancials";
 import { isFinancialQuery } from "@/lib/queryRelevance";
 import { hasValue } from "@/lib/fieldUtils";
-import { ViewModeToggle, type ViewMode } from "@/components/ui/ViewModeToggle";
-import { ResearchBarChart, ResearchTrendChart } from "@/components/polaris/FinancialChart";
-import { canSingleBarChart, toSingleBarData } from "@/lib/chartUtils";
 import { fmtFinNum } from "@/lib/formatters";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import type { KpiVM } from "@/types/viewmodel";
@@ -36,24 +33,6 @@ const PRESETS = ["台積電 2026Q1 法說會營運重點","聯發科 AI 邊緣�
 
 
 
-function Chart({ data }: { data: Array<{label:string;value:number}> }) {
-  const max = Math.max(...data.map(d=>d.value));
-  const min = Math.min(...data.map(d=>d.value)) - 1.5;
-  return (
-    <div className="chart">
-      {data.map((d,i) => {
-        const h = ((d.value-min)/(max-min))*100;
-        return (
-          <div className="chart-col" key={i}>
-            <div className="chart-val font-mono">{d.value}%</div>
-            <div className="chart-bar" style={{height:h+"%",animationDelay:i*80+"ms"}} data-last={i===data.length-1} />
-            <div className="chart-label font-mono">{d.label}</div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 const TOUR_MOCK_RESULT = {
   query: "台積電 2026Q1 法說會重點",
@@ -138,7 +117,6 @@ function ResearchPageInner() {
   const [isListening, setIsListening] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(true);
-  const [kpiViewMode, setKpiViewMode] = useState<ViewMode>("table");
   const [kpiShowAll, setKpiShowAll] = useState(false);
 
   // B 級還原：從 history 頁點進來時，讀 sessionStorage 直接復原結果
@@ -181,7 +159,6 @@ function ResearchPageInner() {
   const displayData = restoredData ?? data;
   const kpis = displayData?.kpis ?? [];
   const summary = displayData?.summary ?? [];
-  const chart = displayData?.chart ?? [];
   const reactSteps = displayData?.react ?? [];
   const citations = displayData?.citations ?? [];
 
@@ -380,41 +357,32 @@ function ResearchPageInner() {
                 {(isMutating || isLoadingFinancials) ? <KpiSkeleton/> : (
                   sortedKpis.length > 0 && (
                     <div className="kpi-list-wrap">
-                      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
-                        <ViewModeToggle mode={kpiViewMode} onToggle={setKpiViewMode} disabled={!canSingleBarChart(sortedKpis)}/>
+                      <div className="kpi-list">
+                        {(kpiShowAll ? sortedKpis : sortedKpis.slice(0, 5)).map((k, i) => (
+                          <button key={i} className="kpi-row" onClick={() => handleOpenDoc(k.cite)}>
+                            <span className="kr-label">{k.label}</span>
+                            {k.period && <span className="kr-period">{k.period}</span>}
+                            <span className="kr-value">
+                              <span className="kr-num">{fmtFinNum(k.value)}</span>
+                              {k.unit && <span className="kr-unit">{k.unit}</span>}
+                            </span>
+                            {k.delta && (
+                              <span className={"kr-delta " + k.trend}>
+                                <Icon name={k.trend === "up" ? "arrowUp" : "arrowDown"} size={12}/>
+                                {k.delta}
+                              </span>
+                            )}
+                          </button>
+                        ))}
                       </div>
-                      {kpiViewMode === "chart" ? (
-                        <ResearchBarChart data={toSingleBarData(sortedKpis)}/>
-                      ) : (
-                        <>
-                          <div className="kpi-list">
-                            {(kpiShowAll ? sortedKpis : sortedKpis.slice(0, 5)).map((k, i) => (
-                              <button key={i} className="kpi-row" onClick={() => handleOpenDoc(k.cite)}>
-                                <span className="kr-label">{k.label}</span>
-                                {k.period && <span className="kr-period">{k.period}</span>}
-                                <span className="kr-value">
-                                  <span className="kr-num">{fmtFinNum(k.value)}</span>
-                                  {k.unit && <span className="kr-unit">{k.unit}</span>}
-                                </span>
-                                {k.delta && (
-                                  <span className={"kr-delta " + k.trend}>
-                                    <Icon name={k.trend === "up" ? "arrowUp" : "arrowDown"} size={12}/>
-                                    {k.delta}
-                                  </span>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                          {sortedKpis.length > 5 && (
-                            <button
-                              className="btn ghost"
-                              style={{ fontSize: 13, padding: "3px 12px", marginTop: 4 }}
-                              onClick={() => setKpiShowAll(v => !v)}
-                            >
-                              {kpiShowAll ? `收起 · 顯示前 5 項` : `其他 ${sortedKpis.length - 5} 項指標`}
-                            </button>
-                          )}
-                        </>
+                      {sortedKpis.length > 5 && (
+                        <button
+                          className="btn ghost"
+                          style={{ fontSize: 13, padding: "3px 12px", marginTop: 4 }}
+                          onClick={() => setKpiShowAll(v => !v)}
+                        >
+                          {kpiShowAll ? `收起 · 顯示前 5 項` : `其他 ${sortedKpis.length - 5} 項指標`}
+                        </button>
                       )}
                     </div>
                   )
@@ -446,19 +414,7 @@ function ResearchPageInner() {
                       )}
                     </div>
                   </div>
-                  {chart.length >= 2 && (
-                    <div className="panel">
-                      <div className="panel-head">
-                        <span className="panel-title"><Icon name="target" size={15} style={{color:"rgb(var(--primary))",verticalAlign:"-3px",marginRight:6}}/>指標走勢</span>
-                        <span className="panel-meta">{chart[0].label} – {chart[chart.length-1].label}</span>
-                      </div>
-                      <div className="panel-body">
-                        <div className="fchart-wrap">
-                          <ResearchTrendChart data={chart}/>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+
                 </div>
               </>
             )}

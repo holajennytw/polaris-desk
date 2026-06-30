@@ -124,17 +124,35 @@ class StructuredStore:
         """
         return self._run_query(sql, params)
 
-    def list_periods(self) -> list[str]:
-        """回傳 v_financial_metrics_semantic 中所有不重複的 fiscal_period，倒序排列。"""
+    def list_periods(self) -> list[dict]:
+        """回傳所有不重複的 fiscal_period，倒序排列；每筆含 has_eps 旗標。
+
+        has_eps=True 表示該季已公布完整財報（financial_metrics 有 eps 值），
+        has_eps=False 表示季底剛過、僅有月營收等資料。
+        """
         sql = f"""
-        SELECT DISTINCT fiscal_period
-        FROM `{self._dataset()}.v_financial_metrics_semantic`
-        WHERE fiscal_period IS NOT NULL
-        ORDER BY fiscal_period DESC
-        LIMIT 20
+        WITH periods AS (
+          SELECT DISTINCT fiscal_period
+          FROM `{self._dataset()}.v_financial_metrics_semantic`
+          WHERE fiscal_period IS NOT NULL
+          ORDER BY fiscal_period DESC
+          LIMIT 20
+        ),
+        eps_periods AS (
+          SELECT DISTINCT fiscal_period
+          FROM `{self._dataset()}.financial_metrics`
+          WHERE metric_id = 'eps' AND value IS NOT NULL AND fiscal_period LIKE '%Q%'
+        )
+        SELECT p.fiscal_period, (e.fiscal_period IS NOT NULL) AS has_eps
+        FROM periods p
+        LEFT JOIN eps_periods e ON p.fiscal_period = e.fiscal_period
+        ORDER BY p.fiscal_period DESC
         """
         rows = self._run_query(sql, {})
-        return [r["fiscal_period"] for r in rows if r.get("fiscal_period")]
+        return [
+            {"period": r["fiscal_period"], "has_eps": bool(r.get("has_eps", False))}
+            for r in rows if r.get("fiscal_period")
+        ]
 
     def latest_reported_quarter(self) -> str | None:
         """最新『已完整公布財報』的季別，供 Temporal Anchoring 動態 anchor 用。

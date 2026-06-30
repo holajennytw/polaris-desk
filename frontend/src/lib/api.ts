@@ -9,7 +9,7 @@ import {
 import type { ContraAlert } from "@/lib/contraAlertStore";
 import { historyStore } from "./historyStore";
 import { getSession } from "next-auth/react";
-import type { ChunkRaw, FinancialRow, BackendPeerCompareResponse, PeerCompareResult, ContradictionResponse, SuggestionsResponse } from "@/types/api";
+import type { ChunkRaw, FinancialRow, BackendPeerCompareResponse, PeerCompareResult, ContradictionResponse, SuggestionsResponse, PeriodInfo } from "@/types/api";
 import type { DocContent } from "@/components/polaris/DocViewer";
 import { normalizePeerCompare } from "@/lib/peer-result";
 
@@ -219,8 +219,8 @@ export const api = {
     }
   },
 
-  async periods(): Promise<string[]> {
-    const raw = await get("/periods") as string[];
+  async periods(): Promise<PeriodInfo[]> {
+    const raw = await get("/periods") as PeriodInfo[];
     return Array.isArray(raw) ? raw : [];
   },
 

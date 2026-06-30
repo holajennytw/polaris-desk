@@ -5,6 +5,11 @@
 
 // ── 共用基礎型別 ─────────────────────────────────────────────
 
+export interface PeriodInfo {
+  period: string;
+  has_eps: boolean;
+}
+
 export type Severity = "alert" | "watch" | "info";
 
 export interface CitationRaw {

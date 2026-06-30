@@ -216,6 +216,13 @@ class _StubStructuredStore:
              "published_at": "2026-01-16"},
         ]
 
+    def list_periods(self):
+        return [
+            {"period": "2026Q2", "has_eps": False},
+            {"period": "2026Q1", "has_eps": True},
+            {"period": "2025Q4", "has_eps": True},
+        ]
+
     def list_events(self, *, ticker=None, event_type=None, limit=None):
         self.calls.append(("events", ticker, event_type, limit))
         return [
@@ -255,6 +262,26 @@ class TestCompanies:
         assert {"ticker", "company_name", "english_name", "industry_name",
                 "is_financial", "aliases"} <= body[0].keys()
         assert body[0]["ticker"] == "2330"
+
+
+class TestPeriods:
+    def test_returns_period_info_shape(self, client, stub_store):
+        r = client.get("/periods")
+        assert r.status_code == 200
+        body = r.json()
+        assert isinstance(body, list) and len(body) == 3
+        assert {"period", "has_eps"} <= body[0].keys()
+
+    def test_has_eps_flags_correct(self, client, stub_store):
+        body = client.get("/periods").json()
+        by_period = {row["period"]: row["has_eps"] for row in body}
+        assert by_period["2026Q2"] is False
+        assert by_period["2026Q1"] is True
+
+    def test_descending_order(self, client, stub_store):
+        body = client.get("/periods").json()
+        periods = [row["period"] for row in body]
+        assert periods == sorted(periods, reverse=True)
 
 
 class TestFinancials:
