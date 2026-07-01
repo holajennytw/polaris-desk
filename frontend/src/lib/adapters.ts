@@ -88,8 +88,13 @@ function findInlineCitation<T extends { source_id: string }>(
 ): T | undefined {
   const m = text.match(INLINE_SOURCE_RE);
   if (!m) return undefined;
-  const sid = m[1].trim();
-  return pool.find((c) => c.source_id === sid);
+  // LLM 有時在同一個標記塞多個 source_id（逗號/頓號分隔），逐一比對取第一個命中。
+  const candidates = m[1].split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+  for (const sid of candidates) {
+    const hit = pool.find((c) => c.source_id === sid);
+    if (hit) return hit;
+  }
+  return undefined;
 }
 
 function askCitationToTracker(c: AskCitationRaw, i: number): CitationTrackerVM {
