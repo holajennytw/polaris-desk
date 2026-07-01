@@ -77,6 +77,21 @@ function nodeTracesToSteps(traces: NodeTraceRaw[]): TraceStepVM[] {
   }));
 }
 
+// bullet 內文可能夾帶 inline 來源標記（後端兩種慣例並存：
+// 「(source_id: XXX)」/ 全形「（來源：XXX）」），用它精準對回 citation，
+// 避免用陣列位置猜（見 #75：多期別/公司混答時位置對應會連錯 chunk）。
+const INLINE_SOURCE_RE = /[（(](?:source_id|來源)[：:]\s*([^)）]+)[)）]/;
+
+function findInlineCitation<T extends { source_id: string }>(
+  text: string,
+  pool: T[],
+): T | undefined {
+  const m = text.match(INLINE_SOURCE_RE);
+  if (!m) return undefined;
+  const sid = m[1].trim();
+  return pool.find((c) => c.source_id === sid);
+}
+
 function askCitationToTracker(c: AskCitationRaw, i: number): CitationTrackerVM {
   const label = c.company ?? c.source_id;
   const detail = c.snippet.length > 60 ? c.snippet.slice(0, 60) + "…" : c.snippet;
@@ -85,11 +100,10 @@ function askCitationToTracker(c: AskCitationRaw, i: number): CitationTrackerVM {
 
 export function normalizeAsk(raw: AskResponse, query: string): AskVM {
   const bullets = splitAnswer(raw.answer);
-  const summary: SummaryItemVM[] = bullets.map((text, i) => ({
-    text,
-    cite: raw.citations[i]?.source_id ?? raw.citations[0]?.source_id ?? "",
-    page: "",
-  }));
+  const summary: SummaryItemVM[] = bullets.map((text, i) => {
+    const cite = findInlineCitation(text, raw.citations) ?? raw.citations[i];
+    return { text, cite: cite?.source_id ?? "", page: "" };
+  });
   const retrieval_degraded =
     raw.citations.length === 0 ||
     raw.citations.every((c) => c.origin === "bm25" || c.origin === "stub");
@@ -307,7 +321,7 @@ export function normalizeResearch(raw: ResearchResponse, query: string): AskVM {
   const answerText = finishInput || raw.final_answer || "";
   const bullets = splitAnswer(answerText);
   const summary: SummaryItemVM[] = bullets.map((text, i) => {
-    const ev = raw.evidence[i] ?? raw.evidence[0];
+    const ev = findInlineCitation(text, raw.evidence) ?? raw.evidence[i];
     return {
       text,
       cite: ev?.source_id ?? "",
