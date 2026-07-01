@@ -258,11 +258,16 @@ const _ORIGIN_LABEL: Record<ResearchCitationRaw["origin"], string> = {
 };
 
 // #13 新欄位：source_key / event_key → 中文標籤
+// 注意：PRIMARY_COMPANY_IR / SECONDARY_NEWS_MEDIA 是 polaris_core 實際使用的值
+// （見 #77：舊的 PRIMARY_EC_PRESENTATION / PRIMARY_NEWS 在真實 BQ 資料中從未出現，
+// 導致 presentation / news chunk 的 badge 顯示原始英文 key）。
 const _SOURCE_KEY_LABEL: Record<string, string> = {
   PRIMARY_EC_TRANSCRIPT:   "法說逐字稿",
   PRIMARY_EC_PRESENTATION: "法說簡報",
+  PRIMARY_COMPANY_IR:      "法說簡報",
   PRIMARY_MOPS:            "重大訊息",
   PRIMARY_NEWS:            "新聞",
+  SECONDARY_NEWS_MEDIA:    "新聞",
 };
 const _EVENT_KEY_LABEL: Record<string, string> = {
   earnings_call:        "法說會",
