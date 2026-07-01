@@ -273,10 +273,17 @@ def run_deep_research(
 
     ``viewer`` 是存取控制身分（issue #32），透傳進 ``active_search_fn(viewer)``；
     注入自訂 search fn 時 viewer 由呼叫端透過 closure 帶入（見 :func:`make_retriever_search_fn`）。
+
+    修 issue #77 跨公司檢索污染：從**使用者原始問題**（``question``，非 ReAct 每輪
+    自己下的 tool_input——那可能已被 LLM 拆解成不含公司名的短語，例如「毛利率」）
+    偵測公司名／代號，透過 closure 綁進預設 search fn，讓每一輪檢索都硬過濾在
+    正確公司範圍內；未偵測到公司 → 不加過濾，維持原行為。
     """
     if search is None:
+        from polaris.ontology import detect_tickers
         from polaris.retrieval.retriever import active_search_fn as _active_search_fn
-        search = _active_search_fn(viewer)
+
+        search = _active_search_fn(viewer, companies=detect_tickers(question))
     if client is None:
         client = active_llm()
     state: dict = {
