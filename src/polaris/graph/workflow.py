@@ -27,6 +27,35 @@ def _route(state: dict[str, Any]) -> str:
     return "terminal" if state.get("halt") else "continue"
 
 
+#: L3「查無足夠來源」對外固定訊息（input_gate flag 開時，calculator 後 contexts 仍空 → 短路）。
+NO_EVIDENCE_MESSAGE = (
+    "查無足夠的可靠來源可回答此問題。可能是尚未收錄相關公司 / 期別的資料，"
+    "請調整問題範圍或改問其他已收錄的標的。"
+)
+
+
+def _route_evidence(state: dict[str, Any]) -> str:
+    """calculator 後的條件邊（僅 INPUT_GATE 開時掛上）。
+
+    halt → terminal；retriever + calculator 都沒補進任何 context → no_evidence（不讓
+    writer 從空脈絡生成、避免幻覺）；否則正常續接 writer。
+    """
+    if state.get("halt"):
+        return "terminal"
+    if not state.get("contexts"):
+        return "no_evidence"
+    return "continue"
+
+
+def _no_evidence(state: dict[str, Any]) -> dict[str, Any]:
+    """查無足夠來源的收尾節點：回固定訊息、無引用、compliance_status=unknown。"""
+    return {
+        "answer": NO_EVIDENCE_MESSAGE,
+        "compliance_status": "unknown",
+        "citations": [],
+    }
+
+
 def _terminal(state: dict[str, Any]) -> dict[str, Any]:
     """Halt 路徑的收尾節點：產出固定錯誤訊息、標 compliance_status=unknown。
 
@@ -90,9 +119,21 @@ def build_workflow():
     )
     # visual_reader never halts → 直接續接 calculator（best-effort，無條件邊）。
     g.add_edge("visual_reader", "calculator")
-    g.add_conditional_edges(
-        "calculator", _route, {"continue": "writer", "terminal": "terminal"}
-    )
+    # calculator 後：INPUT_GATE_NO_EVIDENCE 開 → 多一條「查無足夠來源」短路邊（L3）；關 → wiring 不變。
+    from polaris.config import settings
+
+    if settings.input_gate_no_evidence:
+        g.add_node("no_evidence", _no_evidence)
+        g.add_conditional_edges(
+            "calculator",
+            _route_evidence,
+            {"continue": "writer", "terminal": "terminal", "no_evidence": "no_evidence"},
+        )
+        g.add_edge("no_evidence", END)
+    else:
+        g.add_conditional_edges(
+            "calculator", _route, {"continue": "writer", "terminal": "terminal"}
+        )
     g.add_conditional_edges(
         "writer", _route, {"continue": "compliance", "terminal": "terminal"}
     )

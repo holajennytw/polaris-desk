@@ -77,6 +77,21 @@ class Settings(BaseSettings):
     # 設 0 = 關閉。配合 Cloud Run --max-instances → 全域成本天花板有界。
     rate_limit_per_min: int = 20
 
+    # --- 輸入端守門（防止使用者亂問；2026-07-02）---
+    # 四層各自獨立開關，支援分階段上線（低風險層先開、範圍層驗過 false-block 再開）：
+    #   • INPUT_GATE_INJECTION（L1）：確定性 prompt-injection / jailbreak 攔截。零誤判風險，可先開。
+    #   • INPUT_GATE_SCOPE（L2）：範圍分流（floor 正向放行 + Gemini Flash 分類離題）。上線前
+    #     先跑 tests/test_input_gate_eval.py 確認 floor 覆蓋率，避免 LLM 誤擋真問題。
+    #   • INPUT_GATE_NO_EVIDENCE（L3）：calculator 後 contexts 仍空 → 短路回固定訊息、不生成。
+    #   • DAILY_QUESTION_QUOTA（L0）：見下；數值即開關（>0 啟用），本身就是獨立閘。
+    # 全部預設關 → prod / CI / eval 行為零變動（同 VISION_EXTRACTION 慣例）。
+    input_gate_injection: bool = False
+    input_gate_scope: bool = False
+    input_gate_no_evidence: bool = False
+    # L0 每人每日提問配額（成本 / 洗版護欄）。0 = 關閉（預設）。keyed on 登入身分 sub，
+    # 匿名 keyed on client IP。**只在 app_env=="cloud" 生效**（同 rate_limit_per_min）。
+    daily_question_quota: int = 0
+
     # --- Vision-OCR ingestion（圖表/掃描頁→文字，spec 2026-06-23）---
     # 預設關：active_vision_extractor() 回 None → CI 0 外呼、不 import genai/pymupdf。
     # 設 VISION_EXTRACTION=1 + 裝 .[vision] 才啟用（離線 ingestion 用）。

@@ -51,6 +51,15 @@ WRITER_SYSTEM_PROMPT = (
     + UNTRUSTED_CONTENT_CLAUSE
 )
 
+#: 輸入端範圍分流（非生成型偵測器，input_gate 用）：判斷使用者問題是否屬台股投研範疇。
+#: 只回單一 token，永不生成內容 → 零 prompt-injection surface（同 Compliance）。
+SCOPE_SYSTEM_PROMPT = (
+    "你是台灣資本市場投研系統的問題分流器。判斷使用者的問題是否屬於台股上市櫃公司的"
+    "投資研究範疇（財報、營收獲利、法說會、產業與同業比較、股價相關的事實查詢等）。"
+    "與台股投研無關的閒聊、常識、翻譯、寫作、其他國家或其他領域的問題都算範圍外。"
+    "只輸出一個詞：IN_SCOPE（屬於投研範疇）或 OFF_TOPIC（範圍外），不要解釋。"
+)
+
 #: Compliance 是**偵測器**（非生成型）：判斷輸入文字是否含買賣建議，框架與上面不同。
 COMPLIANCE_SYSTEM_PROMPT = (
     "你是台灣證券法遵審查者。判斷文字是否包含任何投資買賣建議——"
@@ -133,6 +142,7 @@ __all__ = [
     "UNTRUSTED_CONTENT_CLAUSE",
     "PLANNER_SYSTEM_PROMPT",
     "WRITER_SYSTEM_PROMPT",
+    "SCOPE_SYSTEM_PROMPT",
     "COMPLIANCE_SYSTEM_PROMPT",
     "REACT_SYSTEM_PROMPT",
     "WATCHDOG_SYSTEM_PROMPT",

@@ -51,6 +51,7 @@ from polaris.auth import current_user
 from polaris.config import settings
 from polaris.graph.deep_research.agent import run_deep_research
 from polaris.graph.deep_research.state import ReActStep
+from polaris.graph.input_gate import screen_query
 from polaris.graph.state import Citation, NodeTrace
 from polaris.graph.watchdog import load_mock_events, run_watchdog
 from polaris.graph.workflow import build_workflow
@@ -151,6 +152,8 @@ def require_producer(
 # /api/* 代轉」這條——後端 current_user 可選、匿名照樣跑 LLM。這個 guard 補上那 30 分。
 # 單一進程內存（見 polaris.ratelimit 的侷限說明）；配合 Cloud Run --max-instances 成本天花板有界。
 _RESEARCH_LIMITER = RateLimiter(window_s=60.0)
+# L0 每人每日提問配額（input_gate 的一環；成本 / 洗版護欄）。24h 固定視窗、key 依身分分桶。
+_DAILY_LIMITER = RateLimiter(window_s=86_400.0)
 
 
 def _client_key(request: Request) -> str:
@@ -184,6 +187,31 @@ def enforce_rate_limit(request: Request) -> None:
             status_code=429,
             detail="請求過於頻繁，請稍後再試。",
             headers={"Retry-After": "60"},
+        )
+
+
+def enforce_daily_quota(
+    request: Request,
+    user=Depends(current_user),
+) -> None:
+    """``/ask`` ``/research`` 每人每日提問配額（L0；``INPUT_GATE`` 週邊的成本 / 洗版護欄）。
+
+    僅 ``app_env=="cloud"`` 且 ``daily_question_quota>0`` 生效（local / CI / demo 放行、
+    設 0 關閉）。分桶 key：登入者用 Google ``sub``；匿名用 client IP（``anon:`` 前綴，
+    與登入者分開計數）。超限 → 429 + ``Retry-After: 3600``。
+    """
+    if settings.app_env != "cloud":
+        return
+    quota = settings.daily_question_quota
+    if quota <= 0:
+        return
+    viewer = _viewer_for(user)
+    key = viewer if viewer != PUBLIC_VIEWER else f"anon:{_client_key(request)}"
+    if not _DAILY_LIMITER.hit(key, quota):
+        raise HTTPException(
+            status_code=429,
+            detail="今日提問次數已達上限，請明日再試。",
+            headers={"Retry-After": "3600"},
         )
 
 
@@ -299,13 +327,22 @@ def healthz() -> dict[str, str]:
 def ask(
     req: AskRequest,
     _rl: None = Depends(enforce_rate_limit),
+    _dq: None = Depends(enforce_daily_quota),
     user=Depends(current_user),
 ) -> AskResponse:
     """跑 5 節點 workflow，回帶引用 + 合規狀態 + 每節點 trace 的答案。
 
     ``viewer`` 由登入身分（Google ``sub``）推導後透傳進 workflow state（issue #32 /
     security review #1）：retriever 依此做 owner-scoped 過濾。匿名 → 只看公開文件。
+
+    輸入端守門（``INPUT_GATE`` 開時生效）：注入 / 離題的問題直接回固定訊息、**不進
+    workflow**（省 LLM / 檢索成本）。flag 關 → :func:`screen_query` 一律放行。
     """
+    gate = screen_query(req.query)
+    if not gate.allowed:
+        return AskResponse(
+            answer=gate.message, compliance_status="blocked", citations=[], trace=[]
+        )
     viewer = _viewer_for(user)
     result = build_workflow().invoke({"query": req.query, "viewer": viewer})
     return AskResponse(
@@ -320,13 +357,26 @@ def ask(
 def research(
     req: ResearchRequest,
     _rl: None = Depends(enforce_rate_limit),
+    _dq: None = Depends(enforce_daily_quota),
     user=Depends(current_user),
 ) -> ResearchResponse:
     """跑 Deep Research ReAct loop（≤6 迴圈 / ≥3 引用 / 過合規），回結論 + 證據 + 步驟。
 
     ``viewer`` 由登入身分推導後透傳進 run_deep_research（issue #32 / security review #1）：
     R4 真實 search fn 接入後依此做 owner-scoped 過濾；stub_search 無 owner 欄位，目前為 no-op。
+
+    輸入端守門（``INPUT_GATE`` 開時生效）：注入 / 離題的問題直接回固定訊息、**不進
+    ReAct loop**（省 LLM / 檢索成本）。flag 關 → :func:`screen_query` 一律放行。
     """
+    gate = screen_query(req.question)
+    if not gate.allowed:
+        return ResearchResponse(
+            final_answer=gate.message,
+            evidence=[],
+            react_steps=[],
+            status="blocked",
+            compliance_status="blocked",
+        )
     viewer = _viewer_for(user)
     r = run_deep_research(req.question, viewer=viewer)
     return ResearchResponse(
@@ -1123,7 +1173,25 @@ def _peer_synthesis(base: str, *, client) -> tuple[str, str]:
 
 @app.post("/peer-compare", response_model=PeerCompareResponse, tags=["research"])
 def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
-    """同業比較：真實財務指標 + 法說 RAG 引用；PE/PB 目前無資料回 []，不造假。"""
+    """同業比較：真實財務指標 + 法說 RAG 引用；PE/PB 目前無資料回 []，不造假。
+
+    輸入端守門只跑**注入層**（``check_scope=False``）：a_ticker / b_ticker 已是 canonical
+    標的、天生 in-scope，範圍分類對此無意義且有誤擋風險。``INPUT_GATE_INJECTION`` 關 → 放行。
+    """
+    gate = screen_query(req.question, check_scope=False)
+    if not gate.allowed:
+        return PeerCompareResponse(
+            a_ticker=req.a_ticker,
+            b_ticker=req.b_ticker,
+            fiscal_period=req.fiscal_period,
+            kpis=[],
+            financial=[],
+            calls=[],
+            trend=[],
+            valuation=[],
+            summary=gate.message,
+            compliance_status="blocked",
+        )
     a_rows = _structured_store.list_financials(ticker=req.a_ticker, period=req.fiscal_period)
     b_rows = _structured_store.list_financials(ticker=req.b_ticker, period=req.fiscal_period)
 
