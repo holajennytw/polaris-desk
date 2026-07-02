@@ -336,18 +336,20 @@ class TestStructuredEarlyExit:
 
     @staticmethod
     def _fake_store(rows):
-        class _S:
-            def __init__(self, *a, **k):
-                pass
+        # 用 autospec 綁真 StructuredStore 簽章：誤傳未知 kwarg 會 raise TypeError，讓
+        # 「捷徑因 list_financials 簽章漂移而靜默失效」這類 bug 在 CI 就炸出來。
+        from unittest.mock import create_autospec
 
-            def list_financials(self, *, ticker=None, period=None, metric=None, granularity=None):
-                return rows
+        from polaris.structured_store import StructuredStore
 
-        return _S
+        mock_cls = create_autospec(StructuredStore)
+        mock_cls.return_value.list_financials.return_value = rows
+        return mock_cls
 
+    # 真表（v_financial_metrics_semantic）無 metric_name 欄位 → 走 _METRIC_LABELS 映射。
     _ROW = {
         "metric_id": "revenue", "value": 8386000, "unit": "新台幣千元",
-        "metric_name": "營業收入", "source_id": "2330_2026-03-31_finmind_fs",
+        "source_id": "2330_2026-03-31_finmind_fs",
     }
 
     def test_seed_single_company_metric(self, monkeypatch):
@@ -359,6 +361,16 @@ class TestStructuredEarlyExit:
         assert seeds and seeds[0].source_id == "2330_2026-03-31_finmind_fs"
         assert seeds[0].company == "台積電"
 
+    def test_seed_formats_number_and_maps_label(self, monkeypatch):
+        # 大整數 → 千分位（非科學記號 8.386e+06）；無 metric_name → 中文標籤映射
+        import polaris.llm.gemini as gem
+        import polaris.structured_store as ss
+        monkeypatch.setattr(gem, "available", lambda: True)
+        monkeypatch.setattr(ss, "StructuredStore", self._fake_store([self._ROW]))
+        snippet = ag._structured_seed("台積電 2026Q1 營業收入", ag.PUBLIC_VIEWER)[0].snippet
+        assert "8,386,000" in snippet and "e+" not in snippet
+        assert "營業收入" in snippet and "revenue" not in snippet
+
     def test_seed_skips_comparison(self, monkeypatch):
         import polaris.llm.gemini as gem
         import polaris.structured_store as ss
@@ -366,6 +378,19 @@ class TestStructuredEarlyExit:
         monkeypatch.setattr(ss, "StructuredStore", self._fake_store([self._ROW]))
         # ≥2 家 → 不早停（避免只拿到單邊就收尾弄壞比較）
         assert ag._structured_seed("比較台積電與聯發科 2026Q1 營業收入", ag.PUBLIC_VIEWER) == []
+
+    def test_seed_skips_when_a_metric_missing(self, monkeypatch):
+        # 問營收+毛利率但只查得到營收 → 不給半套答案，退回 ReAct 補齊
+        import polaris.llm.gemini as gem
+        import polaris.structured_store as ss
+        monkeypatch.setattr(gem, "available", lambda: True)
+        monkeypatch.setattr(ss, "StructuredStore", self._fake_store([self._ROW]))
+        assert ag._structured_seed("台積電 2026Q1 營收與毛利率", ag.PUBLIC_VIEWER) == []
+
+    def test_wanted_metrics_longest_match(self):
+        # 「毛利率」不可同時誤命中子字串「毛利」（否則完整性守門永遠不早停）
+        assert ag._wanted_metrics("台積電 2026q1 毛利率") == {"gross_margin"}
+        assert ag._wanted_metrics("台積電 2026q1 營業利益率") == {"operating_margin"}
 
     def test_seed_skips_non_metric_question(self, monkeypatch):
         import polaris.llm.gemini as gem

@@ -312,11 +312,44 @@ _STRUCTURED_METRIC_HINTS: dict[str, str] = {
     "稅後淨利": "net_income", "淨利": "net_income",
 }
 
+# metric_id → 中文標籤：list_financials 正常會回 metric_name，此為其缺漏時的 fallback，
+# 避免 snippet 落成英文 key（如 "revenue"）。
+_METRIC_LABELS: dict[str, str] = {
+    "revenue": "營業收入", "gross_profit": "毛利", "gross_margin": "毛利率",
+    "operating_income": "營業利益", "operating_margin": "營業利益率",
+    "operating_expense": "營業費用", "eps": "每股盈餘",
+    "pretax_income": "稅前淨利", "net_income": "稅後淨利",
+}
+
+
+def _wanted_metrics(question_lc: str) -> set[str]:
+    """問題命中的 metric_id 集合。長關鍵字優先並吃掉其字元範圍，避免「毛利率」同時
+    誤命中子字串「毛利」（gross_profit）——否則完整性守門（見下）會因查不到多出來的
+    指標而永遠不早停。"""
+    q = question_lc
+    wanted: set[str] = set()
+    for hint in sorted(_STRUCTURED_METRIC_HINTS, key=len, reverse=True):
+        idx = q.find(hint.lower())
+        if idx != -1:
+            wanted.add(_STRUCTURED_METRIC_HINTS[hint])
+            q = q[:idx] + " " + q[idx + len(hint):]  # 消耗已命中範圍
+    return wanted
+
+
+def _fmt_num(value) -> str:
+    """數字轉可讀字串：整數（如營收千元）→ 千分位無小數；非整數（毛利率/EPS）→ 保 2 位。
+
+    原 ``:,g`` 會把大整數落成科學記號（8386000 → 8.386e+06），失去可讀性。"""
+    if isinstance(value, float) and not value.is_integer():
+        return f"{value:,.2f}"
+    return f"{value:,.0f}"
+
 
 def _structured_seed(question: str, viewer: str) -> list[Citation]:
     """單一公司財務數字題 → financial_metrics 種子證據（帶 source_id）；不適用回 []。
 
-    守則：僅 ``len(tickers)==1`` 才走（比較題不早停）；需命中指標關鍵字與季別；
+    守則：僅 ``len(tickers)==1`` 才走（比較題不早停）；需命中指標關鍵字與季別；且問題
+    要的**每個**指標都要查得到值才早停（缺一 → 回 [] 退回 ReAct 補齊，不給半套答案）；
     無金鑰 / BQ 失敗 → 回 []，退回正常 ReAct 流程（不中斷）。
     """
     from polaris.llm.gemini import available
@@ -329,8 +362,7 @@ def _structured_seed(question: str, viewer: str) -> list[Citation]:
     tickers = detect_tickers(question)
     if len(tickers) != 1:  # 比較題 / 未指名公司 → 不走捷徑
         return []
-    q = (question or "").lower()
-    wanted = {mid for hint, mid in _STRUCTURED_METRIC_HINTS.items() if hint.lower() in q}
+    wanted = _wanted_metrics((question or "").lower())
     if not wanted:  # 非財務數字題 → 不走捷徑
         return []
     quarters = list(temporal.parse_period(question, anchor=temporal.active_anchor()).quarters)
@@ -344,24 +376,31 @@ def _structured_seed(question: str, viewer: str) -> list[Citation]:
         ticker = tickers[0]
         name = company_name(ticker) or ticker
         cites: list[Citation] = []
+        found: set[str] = set()
         for period in quarters:
             for r in store.list_financials(ticker=ticker, period=period, granularity="quarter"):
-                if r.get("metric_id") not in wanted or r.get("value") is None:
+                mid = r.get("metric_id")
+                if mid not in wanted or r.get("value") is None:
                     continue
-                label = r.get("metric_name") or r.get("metric_id")
+                found.add(mid)
+                label = r.get("metric_name") or _METRIC_LABELS.get(mid) or mid
                 unit = r.get("unit") or ""
                 cites.append(
                     Citation(
-                        source_id=str(
-                            r.get("source_id") or f"fm-{ticker}-{period}-{r.get('metric_id')}"
-                        ),
-                        snippet=f"{name} {period} {label} {r['value']:,g} {unit}".strip(),
+                        source_id=str(r.get("source_id") or f"fm-{ticker}-{period}-{mid}"),
+                        snippet=f"{name} {period} {label} {_fmt_num(r['value'])} {unit}".strip(),
                         origin="bm25",
                         company=name,
                     )
                 )
+        if wanted - found:  # 有指標查無值 → 不早停，讓 ReAct 補齊（不給半套答案）
+            return []
         return cites
-    except Exception:  # noqa: BLE001 — BQ 失敗退回 ReAct 流程，不中斷 workflow
+    except (TypeError, AttributeError, NameError):
+        # 介面/簽章錯用是 programming bug，不可被當成 BQ 失敗默默吞掉
+        # （否則像 list_financials 誤傳 kwarg 這類錯會讓整條捷徑靜默失效）。
+        raise
+    except Exception:  # noqa: BLE001 — BQ/網路失敗退回 ReAct 流程，不中斷 workflow
         log.info("deep_research.structured_seed failed; fall back to ReAct", exc_info=True)
         return []
 
