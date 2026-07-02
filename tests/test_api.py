@@ -337,6 +337,18 @@ class TestChunk:
         # security review #1: anonymous caller is the public sentinel, NOT any owner
         assert stub_store.calls[-1] == ("chunk", "chunk-2330-q1", PUBLIC_VIEWER)
 
+    def test_page_derived_from_chunk_id(self, client, stub_store):
+        """issue #83：頁碼藏在 chunk_id（``-pNNN-cNNN``），/chunk 需還原成 page。"""
+        r = client.get("/chunk/2330-2026Q1-p010-c001")
+        assert r.status_code == 200
+        assert r.json()["page"] == "第 10 頁"
+
+    def test_no_page_for_news_chunk_id(self, client, stub_store):
+        """新聞 ``news_<hex>`` / 重大訊息 ``mops_<hex>`` 無頁碼 → page 維持 None。"""
+        r = client.get("/chunk/news_4032075d31852a5b")
+        assert r.status_code == 200
+        assert r.json()["page"] is None
+
     def test_ignores_client_supplied_viewer_query(self, client, stub_store):
         """security review #1: ``?viewer=`` 不再是 ACL principal——被忽略，仍走公開身分。"""
         client.get("/chunk/chunk-2330-q1?viewer=analyst_A")
