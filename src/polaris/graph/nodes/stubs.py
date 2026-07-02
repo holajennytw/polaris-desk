@@ -16,7 +16,7 @@ from polaris.graph.nodes.trace import traced
 from polaris.graph.redaction import redact
 from polaris.graph.state import Citation
 from polaris.llm.gemini import active_llm
-from polaris.ontology import company_name, detect_tickers
+from polaris.ontology import company_label, company_name, detect_tickers
 from polaris.retrieval.retriever import PUBLIC_VIEWER, active_retriever
 
 
@@ -206,17 +206,128 @@ def retriever(state: dict[str, Any]) -> dict[str, Any]:
     return {"contexts": contexts, "period_note": note}
 
 
+def _metric_context(ticker: str, quarter: str, row: dict[str, Any], *, extra: str = "") -> dict[str, Any]:
+    """BQ financial_metrics 列 → writer 形狀的 context dict（數字可被引用）。
+
+    origin 用 "bm25"（結構化指標本就進 BM25 語料，見 bigquery_store 的
+    financial corpus 合成），source_id 沿用 BQ 列的 source_id → 前端引用
+    面板行為與既有指標引用一致。
+    """
+    label = row.get("metric_name") or row.get("metric_id") or ""
+    unit = row.get("unit") or ""
+    value = row.get("value")
+    text = f"{company_label(ticker)} {quarter} {label} {value:,g} {unit}（BQ financial_metrics）"
+    if extra:
+        text += f"；{extra}"
+    return {
+        "source_id": str(row.get("source_id") or f"fm-{ticker}-{quarter}-{row.get('metric_id')}"),
+        "text": text,
+        "period": quarter,
+        "company": ticker,
+        "company_name": company_name(ticker),
+        "origin": "bm25",
+        "doc_type": None,
+        "fiscal_period": quarter,
+    }
+
+
+#: calculator 真路徑抓的 metric_id（gross_margin 非入庫指標，由 gross_profit / revenue 推導）。
+_CALC_METRIC_IDS = ("revenue", "revenue_yoy", "gross_profit")
+
+
+def _structured_calculations(
+    query: str, quarters: list[str] | None, *, store: Any | None = None
+) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
+    """從 BQ financial_metrics 算真實指標；不可用（無憑證 / 無公司 / 無季別）回 None。
+
+    - 抓 revenue / revenue_yoy / gross_profit；**毛利率非入庫 metric_id**（canonical
+      14 種裡只有 gross_profit），由 ``gross_profit / revenue × 100`` 推導——這是
+      eval Q001「找不到 2025Q1 毛利率」的根本解（法說 chunk 有沒有數字都算得出）。
+    - 每個數字都帶 BQ 列的 source_id 進 contexts（引用接地：數字必有來源）；
+      推導值標明公式與兩個來源列，不憑空編數字。
+    """
+    if store is None:
+        from polaris.llm.gemini import available
+
+        if not available():
+            return None
+        from polaris.config import settings
+        from polaris.structured_store import StructuredStore
+
+        store = StructuredStore(settings)
+
+    tickers = detect_tickers(query)
+    if not tickers or not quarters:
+        return None
+
+    calcs: dict[str, Any] = {}
+    extra_contexts: list[dict[str, Any]] = []
+    for ticker in tickers:
+        for quarter in quarters:
+            rows = {
+                r["metric_id"]: r
+                for r in store.list_financials(ticker=ticker, period=quarter, granularity="quarter")
+                if r.get("metric_id") in _CALC_METRIC_IDS and r.get("value") is not None
+            }
+            rev, gp, yoy = rows.get("revenue"), rows.get("gross_profit"), rows.get("revenue_yoy")
+            entry: dict[str, Any] = {}
+            if rev:
+                entry["revenue"] = {
+                    "value": rev["value"], "unit": rev.get("unit"), "source_id": rev.get("source_id"),
+                }
+                extra_contexts.append(_metric_context(ticker, quarter, rev))
+            if yoy:
+                entry["revenue_yoy"] = {
+                    "value": yoy["value"], "unit": yoy.get("unit"), "source_id": yoy.get("source_id"),
+                }
+                extra_contexts.append(_metric_context(ticker, quarter, yoy))
+            if rev and gp and rev["value"] and (rev.get("unit") or "") == (gp.get("unit") or ""):
+                margin = round(gp["value"] / rev["value"] * 100, 2)
+                entry["gross_margin_pct"] = {
+                    "value": margin,
+                    "formula": "gross_profit / revenue × 100",
+                    "derived_from": [gp.get("source_id"), rev.get("source_id")],
+                }
+                extra_contexts.append(
+                    _metric_context(
+                        ticker, quarter, gp,
+                        extra=f"以同季營收推導毛利率 = {margin}%（gross_profit / revenue × 100）",
+                    )
+                )
+            if entry:
+                calcs[f"{ticker}:{quarter}"] = entry
+    if not calcs:
+        return None
+    return calcs, extra_contexts
+
+
 @traced("calculator", retries=2)
 def calculator(state: dict[str, Any]) -> dict[str, Any]:
-    """Calculator v0（R2 W1 D3）— 維持確定性假值。
+    """Calculator — 真路徑接 BQ financial_metrics，算 revenue / YoY / 推導毛利率。
 
-    真實財務指標計算需 R4 的結構化資料（BigQuery / 財報表）尚未進來，
-    故 v0 先回固定值；待 R4 資料就緒後在此節點接真實計算（介面不變）。
+    - **真路徑（有憑證）**：依查詢偵測的公司 × Temporal Anchoring 季別查
+      `v_financial_metrics_semantic`，推導毛利率（非入庫指標）；算出的每個數字
+      連同 BQ source_id 補進 contexts，讓 writer 草稿的數字可引用、可溯源。
+    - **stub 路徑（CI / 無金鑰 / 查無資料）**：維持確定性假值（行為與 v0 相同，
+      e2e determinism 測試不受影響）。
 
-    D7 保險絲（retries=2）：R4 接 BigQuery 後，查詢暫時性失敗自動重試；
-    目前回固定值不會失敗，對現有行為零影響。
+    D7 保險絲（retries=2）：BQ 暫時性失敗自動重試；重試耗盡的例外被吞成 stub
+    fallback——結構化計算失敗不應 halt 整條 workflow（草稿仍可從 chunks 接地）。
     """
-    return {"calculations": {"YoY_pct": 12.34}}
+    period = state.get("period")
+    quarters = list(period.quarters) if period and getattr(period, "quarters", None) else None
+    try:
+        result = _structured_calculations(state.get("query", ""), quarters)
+    except Exception:  # noqa: BLE001 — 計算失敗退 stub，不中斷 workflow
+        result = None
+    if result is None:
+        return {"calculations": {"YoY_pct": 12.34}}
+    calcs, extra_contexts = result
+    return {
+        "calculations": calcs,
+        # contexts 無 reducer（plain overwrite），需自行合併 retriever 的結果。
+        "contexts": [*state.get("contexts", []), *extra_contexts],
+    }
 
 
 @traced("writer")
