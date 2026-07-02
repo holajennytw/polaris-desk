@@ -639,20 +639,32 @@ def make_research_search_fn(
     viewer: str = PUBLIC_VIEWER,
     filters: dict | None = None,
     doc_type_quotas: Mapping[str, int] = RESEARCH_DOC_TYPE_QUOTAS,
+    companies: list[str] | None = None,
 ) -> "Callable[[str], list]":
-    """Build Deep Research search with per-source quotas and one final rerank."""
+    """Build Deep Research search with per-source quotas and one final rerank.
+
+    ``companies``（修 issue #77 跨公司檢索污染）：呼叫端從**使用者原始問題**（而非
+    ReAct 每輪自己下的 query，那可能已被 LLM 拆解成不含公司名的短語）偵測到的
+    ticker 清單。給定時對每個 ticker 各自加 ``filters["company"]`` 硬過濾再合併，
+    避免語意相近的公司（聯電/聯詠、鴻海/台積電）純靠向量相似度混進來；
+    未偵測到公司（``None`` 或空清單）→ 不加過濾，維持原行為。
+    """
     from polaris.graph.state import Citation
 
     r = retriever if retriever is not None else HybridRetriever()
     common_filters = {**(filters or {}), "viewer": viewer}
+    company_list: list[str | None] = list(companies) if companies else [None]
 
     def _search(query: str) -> list:
         candidates: list[SearchResult] = []
-        for doc_type, quota in doc_type_quotas.items():
-            source_filters = {"doc_type": doc_type, **common_filters}
-            candidates.extend(
-                r.retrieve_candidates(query, filters=source_filters, top_k=quota)
-            )
+        for company in company_list:
+            for doc_type, quota in doc_type_quotas.items():
+                source_filters = {"doc_type": doc_type, **common_filters}
+                if company:
+                    source_filters["company"] = company
+                candidates.extend(
+                    r.retrieve_candidates(query, filters=source_filters, top_k=quota)
+                )
 
         merged = _merge_results(candidates)
         if not merged and r.embedding_fn is None:
@@ -678,7 +690,9 @@ def active_retriever() -> "HybridRetriever | None":
     return HybridRetriever() if available() else None
 
 
-def active_search_fn(viewer: str = PUBLIC_VIEWER) -> "Callable[[str], list]":
+def active_search_fn(
+    viewer: str = PUBLIC_VIEWER, *, companies: list[str] | None = None
+) -> "Callable[[str], list]":
     """Active search fn for Deep Research: BM25 + vector + Cohere Rerank.
 
     Mirrors :func:`~polaris.llm.gemini.active_llm` and
@@ -687,5 +701,7 @@ def active_search_fn(viewer: str = PUBLIC_VIEWER) -> "Callable[[str], list]":
     - CI / no credentials: BM25-only from fallback corpus, fully deterministic
     - Production: BM25 + vector (``VECTOR_BACKEND``) + Cohere Rerank if key set
     - viewer forwarded to store for owner-scoped filtering (issue #32)
+    - ``companies`` forwarded to :func:`make_research_search_fn` for the hard
+      ticker filter that fixes issue #77 cross-company pollution.
     """
-    return make_research_search_fn(viewer=viewer)
+    return make_research_search_fn(viewer=viewer, companies=companies)

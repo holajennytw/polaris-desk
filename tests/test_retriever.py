@@ -539,6 +539,84 @@ def test_research_search_uses_per_doc_type_quotas_then_reranks_once():
     ]
 
 
+def test_research_search_applies_hard_company_filter_per_doc_type():
+    """issue #77：跨公司檢索污染——``companies`` 給定時，每個 doc_type 的查詢都要
+    加上 ``filters["company"]`` 硬過濾，不能只靠向量相似度排序（會讓語意相近的
+    公司如聯電/聯詠、鴻海/台積電混進來）。
+    """
+    from polaris.retrieval.retriever import HybridRetriever, make_research_search_fn
+    from polaris.vectorstore.base import SearchResult as SR
+
+    store_calls: list[dict] = []
+
+    class FakeStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):  # noqa: ARG002
+            store_calls.append(dict(filters))
+            return [
+                SR(
+                    id=f"{filters['doc_type']}-1",
+                    content="evidence",
+                    score=0.9,
+                    company=filters.get("company", "unknown"),
+                    period="2025Q1",
+                    metadata={"doc_type": filters["doc_type"], "fiscal_period": "2025Q1"},
+                )
+            ]
+
+        def health_check(self):
+            return True
+
+    retriever = HybridRetriever(
+        top_k=8,
+        store=FakeStore(),
+        embedding_fn=lambda _query: [0.1],
+        rerank_fn=lambda _query, results, _top_k: results,
+    )
+
+    citations = make_research_search_fn(retriever, companies=["2330"])("台積電法說會重點")
+
+    assert store_calls  # vector search 有被呼叫
+    assert all(c["company"] == "2330" for c in store_calls)
+    assert citations and all(c.company == "台積電" for c in citations)
+
+
+def test_research_search_without_companies_keeps_original_behaviour():
+    """未偵測到公司（``companies=None``）→ 不加 company 過濾，維持原行為。"""
+    from polaris.retrieval.retriever import HybridRetriever, make_research_search_fn
+    from polaris.vectorstore.base import SearchResult as SR
+
+    store_calls: list[dict] = []
+
+    class FakeStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):  # noqa: ARG002
+            store_calls.append(dict(filters))
+            return [
+                SR(
+                    id=f"{filters['doc_type']}-1",
+                    content="evidence",
+                    score=0.9,
+                    company="2330",
+                    period="2025Q1",
+                    metadata={"doc_type": filters["doc_type"], "fiscal_period": "2025Q1"},
+                )
+            ]
+
+        def health_check(self):
+            return True
+
+    retriever = HybridRetriever(
+        top_k=8,
+        store=FakeStore(),
+        embedding_fn=lambda _query: [0.1],
+        rerank_fn=lambda _query, results, _top_k: results,
+    )
+
+    make_research_search_fn(retriever)("半導體展望")
+
+    assert store_calls
+    assert all("company" not in c for c in store_calls)
+
+
 def test_research_citations_expose_document_metadata():
     """R7 needs real document metadata instead of guessing labels and quarters."""
     from datetime import date

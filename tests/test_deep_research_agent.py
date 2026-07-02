@@ -137,6 +137,48 @@ class TestClientAutoWiring:
         assert r.iterations >= 3
 
 
+class TestSearchAutoWiring:
+    """issue #77：跨公司檢索污染修復——run_deep_research 沒收到 search 時，必須從
+    使用者原始問題偵測公司並透傳給 active_search_fn，讓每輪 ReAct 檢索都硬過濾在
+    正確公司範圍內（不管 LLM 那輪自己下的 tool_input 有沒有帶公司名）。"""
+
+    def test_autowires_active_search_fn_with_companies_detected_from_question(
+        self, monkeypatch
+    ):
+        calls: list[dict] = []
+
+        def fake_active_search_fn(viewer, *, companies=None):
+            calls.append({"viewer": viewer, "companies": companies})
+            return ag.stub_search
+
+        from polaris.retrieval import retriever as retriever_module
+
+        monkeypatch.setattr(retriever_module, "active_search_fn", fake_active_search_fn)
+        monkeypatch.setattr(ag, "active_llm", lambda: None)
+
+        ag.run_deep_research("台積電 2025Q1 法說會重點")
+
+        assert len(calls) == 1
+        assert calls[0]["companies"] == ["2330"]
+
+    def test_no_company_detected_passes_none(self, monkeypatch):
+        calls: list[dict] = []
+
+        def fake_active_search_fn(viewer, *, companies=None):
+            calls.append({"viewer": viewer, "companies": companies})
+            return ag.stub_search
+
+        from polaris.retrieval import retriever as retriever_module
+
+        monkeypatch.setattr(retriever_module, "active_search_fn", fake_active_search_fn)
+        monkeypatch.setattr(ag, "active_llm", lambda: None)
+
+        ag.run_deep_research("半導體產業展望如何？")
+
+        assert len(calls) == 1
+        assert calls[0]["companies"] == []
+
+
 class TestCompliance:
     def test_advisory_finish_blocked(self):
         from polaris.graph.compliance import SAFE_MESSAGE
