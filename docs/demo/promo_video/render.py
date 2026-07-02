@@ -6,7 +6,7 @@ import imageio_ffmpeg
 HERE = pathlib.Path(__file__).parent
 FRAMES = HERE / "frames"
 FRAMES.mkdir(exist_ok=True)
-FPS, DUR = 24, 46.0
+FPS, DUR = 24, 48.0
 N = int(FPS * DUR)
 
 t0 = time.time()
@@ -25,7 +25,7 @@ with sync_playwright() as p:
 print(f"capture done in {time.time()-t0:.0f}s", flush=True)
 
 ff = imageio_ffmpeg.get_ffmpeg_exe()
-out = HERE / "polaris_工作紀實_v1.mp4"
+out = HERE / "polaris_工作紀實_v2.mp4"
 cmd = [ff, "-y", "-framerate", str(FPS), "-i", str(FRAMES / "f%05d.jpg"),
        "-c:v", "libx264", "-preset", "slow", "-crf", "19",
        "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)]

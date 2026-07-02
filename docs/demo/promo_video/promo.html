@@ -132,15 +132,63 @@
 <body>
 <div id="stage">
 
-  <section class="scene" id="title">
-    <div class="stars" id="stars1"></div>
-    <div class="northstar" style="left:72%;top:22%"></div>
-    <div class="titlewrap">
-      <div id="t-name">POLARIS</div>
-      <div id="t-rule"></div>
-      <div id="t-sub">工 作 紀 實</div>
-      <div id="t-sub2">A WORK MONTAGE · 2026</div>
-    </div>
+  <section class="scene" id="work">
+    <svg width="1920" height="1080" viewBox="0 0 1920 1080">
+      <!-- flat-illustration back view: same persona (black blazer, undercut), orange/tan/charcoal geometry -->
+      <rect width="1920" height="1080" fill="#e8d5b5"/>
+      <circle cx="620" cy="430" r="470" fill="#e0913f"/>
+      <polygon points="1180,0 1920,0 1920,1080 1560,1080" fill="#33302b"/>
+      <polygon points="1180,0 1290,0 1670,1080 1560,1080" fill="#c9a875" opacity="0.35"/>
+      <g fill="#e0913f" id="dotgrid"></g>
+      <!-- monitor -->
+      <g id="monitor">
+        <rect x="1250" y="840" width="26" height="60" fill="#14120f"/>
+        <rect x="1160" y="895" width="210" height="18" rx="9" fill="#14120f"/>
+        <rect x="960" y="240" width="640" height="610" rx="22" fill="#14120f"/>
+        <rect x="988" y="268" width="584" height="524" rx="10" fill="#171c26"/>
+        <rect x="988" y="268" width="584" height="34" rx="10" fill="#232a38"/>
+        <circle cx="1010" cy="285" r="6" fill="#e66767"/><circle cx="1030" cy="285" r="6" fill="#c98500"/>
+        <circle cx="1050" cy="285" r="6" fill="#0ca30c"/>
+        <g id="screencode"></g>
+        <rect id="scursor" x="1010" y="740" width="46" height="10" rx="3" fill="#e8d5b5"/>
+      </g>
+      <!-- desk -->
+      <rect x="0" y="880" width="1920" height="200" fill="#241f19"/>
+      <rect x="0" y="880" width="1920" height="8" fill="#3a332a"/>
+      <!-- coffee -->
+      <g id="mug">
+        <path id="steam1" d="M0,0 q10,-18 0,-36 q-10,-18 0,-36" stroke="#f4e9d4" stroke-width="7"
+          fill="none" stroke-linecap="round" transform="translate(1708,838)"/>
+        <path id="steam2" d="M0,0 q-9,-15 0,-30 q9,-15 0,-30" stroke="#f4e9d4" stroke-width="6"
+          fill="none" stroke-linecap="round" transform="translate(1742,846)"/>
+        <rect x="1680" y="850" width="86" height="72" rx="12" fill="#f0e3c8"/>
+        <path d="M1766,864 q34,4 0,44" stroke="#f0e3c8" stroke-width="13" fill="none"/>
+        <rect x="1680" y="850" width="86" height="14" rx="7" fill="#d9c8a4"/>
+      </g>
+      <!-- person: back view -->
+      <g id="person">
+        <g id="arms">
+          <path d="M700,760 q-30,90 -10,120 l90,0 q-14,-70 10,-124 z" fill="#171310"/>
+          <path d="M1105,760 q30,90 10,120 l-90,0 q14,-70 -10,-124 z" fill="#171310"/>
+          <rect x="770" y="866" width="74" height="26" rx="13" fill="#d9a06f"/>
+          <rect x="985" y="866" width="74" height="26" rx="13" fill="#d9a06f"/>
+        </g>
+        <g id="torso">
+          <path d="M902,470 q190,0 232,140 q40,140 44,270 l-548,0 q4,-130 44,-270 q42,-140 228,-140 z" fill="#191613"/>
+          <path d="M903,530 l0,350" stroke="#0f0d0a" stroke-width="7"/>
+          <path d="M700,760 q90,-36 203,-36 q113,0 203,36 l6,26 q-100,-34 -209,-34 q-109,0 -209,34 z" fill="#0f0d0a" opacity="0.55"/>
+          <rect x="864" y="452" width="80" height="46" rx="16" fill="#d9a06f"/>
+        </g>
+        <g id="head">
+          <ellipse cx="903" cy="356" rx="108" ry="118" fill="#15120e"/>
+          <path d="M795,340 q-6,-96 108,-102 q114,6 108,102 q-40,-44 -108,-44 q-68,0 -108,44 z" fill="#211c15"/>
+          <path d="M795,356 q-14,10 -10,26 q10,14 22,8 z" fill="#d9a06f"/>
+          <path d="M1011,356 q14,10 10,26 q-10,14 -22,8 z" fill="#d9a06f"/>
+        </g>
+      </g>
+      <!-- keyboard -->
+      <rect x="790" y="900" width="290" height="20" rx="8" fill="#3d362c"/>
+    </svg>
   </section>
 
   <section class="scene" id="term">
@@ -213,15 +261,6 @@
     </div>
   </section>
 
-  <section class="scene" id="end">
-    <div class="stars" id="stars2"></div>
-    <div class="northstar" style="left:50%;top:24%"></div>
-    <div class="titlewrap">
-      <div id="e-name">POLARIS</div>
-      <div id="e-sub">2026 · 專題報告</div>
-    </div>
-  </section>
-
   <div id="vignette"></div>
   <div id="rec"><span class="rd" id="recdot"></span><span id="rectime">REC 00:00:00</span></div>
   <div id="fade"></div>
@@ -240,21 +279,53 @@ function fade(t,t0,t1,fi,fo){ // scene opacity with cross-fades
   return Math.min(smooth((t-t0)/fi),smooth((t1-t)/fo));
 }
 
-/* ---------- starfields ---------- */
-function buildStars(el,n,seed){
+/* ---------- work scene (back view) ---------- */
+(function(){ // orange dot grid, top-right
   let h="";
-  for(let i=0;i<n;i++){
-    const x=rnd(i+seed)*100,y=rnd(i*3+seed+7)*100,s=1+rnd(i*7+seed)*2.2;
-    h+=`<span class="star" data-i="${i}" style="left:${x}%;top:${y}%;width:${s}px;height:${s}px"></span>`;
+  for(let r=0;r<5;r++)for(let c=0;c<6;c++)
+    h+=`<circle cx="${1620+c*46}" cy="${90+r*46}" r="7"/>`;
+  $("dotgrid").innerHTML=h;
+})();
+const SROWS=[]; // deterministic code rows for the monitor
+for(let i=0;i<60;i++){
+  const segs=[];let x=0;
+  const n=1+Math.floor(rnd(i*13+3)*3);
+  for(let s=0;s<n;s++){
+    const w=40+rnd(i*7+s*31)*150, gap=14+rnd(i*3+s*17)*30;
+    const cpick=rnd(i*11+s*5);
+    const col=cpick<0.62?"#727d92":cpick<0.78?"#e0913f":cpick<0.9?"#7fb4e8":"#86c88f";
+    segs.push([x+(i%3===0&&s===0?0:26),w,col]);x+=w+gap+(i%3===0&&s===0?0:26);
   }
-  el.innerHTML=h;
+  SROWS.push(segs);
 }
-buildStars($("stars1"),90,1); buildStars($("stars2"),70,55);
-function twinkle(el,t){
-  el.querySelectorAll(".star").forEach(s=>{
-    const i=+s.dataset.i;
-    s.style.opacity=(0.25+0.55*(0.5+0.5*Math.sin(t*(0.8+rnd(i)*1.6)+i))).toFixed(3);
-  });
+const SC_TOP=320,SC_LH=26,SC_CAP=16,SC_X=1010,SC_MAXW=540;
+function renderScreen(t){
+  const total=Math.floor(t*2.6)+6;             // rows "written" so far
+  const first=Math.max(0,total-SC_CAP);
+  let h="";
+  for(let i=first;i<total;i++){
+    const y=SC_TOP+(i-first)*SC_LH;
+    for(const [x,w,col] of SROWS[i%60])
+      h+=`<rect x="${SC_X+x}" y="${y}" width="${Math.min(w,SC_MAXW-x)}" height="11" rx="5" fill="${col}"/>`;
+  }
+  $("screencode").innerHTML=h;
+  const cy=SC_TOP+Math.min(total-first,SC_CAP)*SC_LH;
+  $("scursor").setAttribute("y",cy);
+  $("scursor").setAttribute("opacity",Math.floor(t*2)%2===0?1:0.15);
+}
+function renderWork(t,tau){
+  renderScreen(t);
+  $("head").setAttribute("transform",`translate(0,${(2*Math.sin(t*0.9)).toFixed(2)})`);
+  $("torso").setAttribute("transform",`translate(0,${(1.4*Math.sin(t*1.15+0.7)).toFixed(2)})`);
+  $("arms").setAttribute("transform",`translate(0,${(1.8*Math.sin(t*6.3)).toFixed(2)})`);
+  const rise=(t*16)%46;
+  $("steam1").setAttribute("transform",`translate(1708,${838-rise})`);
+  $("steam1").setAttribute("opacity",(0.75*(1-rise/46)).toFixed(2));
+  const rise2=(t*13+20)%40;
+  $("steam2").setAttribute("transform",`translate(1742,${846-rise2})`);
+  $("steam2").setAttribute("opacity",(0.6*(1-rise2/40)).toFixed(2));
+  $("work").querySelector("svg").style.transform=`scale(${1+tau*0.004})`;
+  $("work").querySelector("svg").style.transformOrigin="60% 45%";
 }
 
 /* ---------- S2 terminal script ---------- */
@@ -404,25 +475,22 @@ function renderStats(tau){
   $("statfoot").style.opacity=smooth((tau-3.2)/0.8);
 }
 
-/* ---------- timeline ---------- */
+/* ---------- timeline (v2: no title/end cards, back-view bookends) ---------- */
 const SC={
-  title:[0.0,5.6], term:[5.0,15.6], edit:[15.0,25.6],
-  gh:[25.0,34.6], stats:[34.0,41.2], end:[40.6,46.0]
+  term:[7.0,17.6], edit:[17.0,27.6],
+  gh:[27.0,36.6], stats:[36.0,42.6]
 };
+const WORK_A=[0.0,7.5], WORK_B=[42.0,48.0];
 function SEEK(t){
   for(const [id,[a,b]] of Object.entries(SC))
     $(id).style.opacity=fade(t,a,b,0.6,0.6).toFixed(3);
+  $("work").style.opacity=Math.max(
+    fade(t,WORK_A[0],WORK_A[1],0.4,0.6),
+    fade(t,WORK_B[0],WORK_B[1],0.6,1.0)).toFixed(3);
 
-  // S1
-  if(t<SC.title[1]){
-    twinkle($("stars1"),t);
-    const p=easeOut(t/3);
-    $("t-name").style.letterSpacing=lerp(0.62,0.26,p)+"em";
-    $("t-name").style.opacity=smooth(t/1.3);
-    $("t-rule").style.width=lerp(0,560,easeOut((t-1.0)/1.6))+"px";
-    $("t-sub").style.opacity=smooth((t-1.6)/1.0);
-    $("t-sub2").style.opacity=smooth((t-2.3)/1.0);
-  }
+  // back-view work scene (opening + reprise)
+  if(t<WORK_A[1]||t>WORK_B[0]-0.7)
+    renderWork(t,t<20?t:t-WORK_B[0]);
   // S2
   if(t>SC.term[0]&&t<SC.term[1]){
     const tau=t-SC.term[0];
@@ -441,21 +509,15 @@ function SEEK(t){
   if(t>SC.gh[0]&&t<SC.gh[1])renderGh(t-SC.gh[0]);
   // S5
   if(t>SC.stats[0]&&t<SC.stats[1])renderStats(t-SC.stats[0]);
-  // S6
-  if(t>SC.end[0]){
-    twinkle($("stars2"),t);
-    const tau=t-SC.end[0];
-    $("e-name").style.opacity=smooth((tau-0.5)/1.2);
-    $("e-sub").style.opacity=smooth((tau-1.3)/1.2);
-  }
-  // REC overlay during work scenes
-  const recOn=fade(t,5.4,34.2,0.6,0.6);
+
+  // REC overlay: work + terminal/editor/github scenes
+  const recOn=Math.max(fade(t,0.4,36.4,0.6,0.6),fade(t,42.3,47.4,0.6,0.8));
   $("rec").style.opacity=recOn.toFixed(3);
   $("recdot").style.opacity=(Math.floor(t*1.6)%2===0)?1:0.25;
-  const rt=Math.max(0,t-5.4),hh=0,mm=Math.floor(rt/60),ss=Math.floor(rt%60);
+  const hh=0,mm=Math.floor(t/60),ss=Math.floor(t%60);
   $("rectime").textContent=`REC 0${hh}:${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
   // final fade to black
-  $("fade").style.opacity=smooth((t-44.6)/1.4);
+  $("fade").style.opacity=smooth((t-46.6)/1.4);
 }
 window.SEEK=SEEK;
 SEEK(0);
