@@ -102,10 +102,15 @@ export default function NewsPage() {
                 </div>
               );
 
-              return item.url ? (
+              // 只信任 http(s) 連結：source_url 來自外部 ingestion（新聞/事件），
+              // 若含 javascript:/data: 等 scheme 直接渲染到 href 會造成 stored XSS。
+              const safeUrl =
+                item.url && /^https?:\/\//i.test(item.url) ? item.url : undefined;
+
+              return safeUrl ? (
                 <a
                   key={item.id}
-                  href={item.url}
+                  href={safeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ textDecoration: "none", color: "inherit", display: "block" }}
