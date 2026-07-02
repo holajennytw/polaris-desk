@@ -44,11 +44,23 @@ def test_comparison_query_filters_each_company():
     assert "2330" in companies and "2454" in companies   # 兩家都查，比較題不漏
 
 
-def test_earnings_call_query_adds_doc_type_transcript():
+def test_earnings_call_query_covers_transcript_and_presentation():
+    """法說題要 transcript + presentation 都查：R4 ingest 的簡報是
+    doc_type="presentation"，某季只有簡報入庫時，只查 transcript 會誤回「資料不足」
+    （同 PR #34 在 /research 修過的缺漏，這裡是 /ask 路徑）。"""
     fake = _FakeRetriever()
     _real_contexts(fake, "台積電 法說會 營運重點", quarters=["2026Q1"], viewer=PUBLIC_VIEWER)
     assert fake.filters_seen == [
-        {"viewer": PUBLIC_VIEWER, "company": "2330", "period": "2026Q1", "doc_type": "transcript"}
+        {"viewer": PUBLIC_VIEWER, "company": "2330", "period": "2026Q1", "doc_type": "transcript"},
+        {"viewer": PUBLIC_VIEWER, "company": "2330", "period": "2026Q1", "doc_type": "presentation"},
+    ]
+
+
+def test_non_earnings_call_query_has_no_doc_type_filter():
+    fake = _FakeRetriever()
+    _real_contexts(fake, "台積電 毛利率", quarters=["2026Q1"], viewer=PUBLIC_VIEWER)
+    assert fake.filters_seen == [
+        {"viewer": PUBLIC_VIEWER, "company": "2330", "period": "2026Q1"}
     ]
 
 

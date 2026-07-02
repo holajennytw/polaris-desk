@@ -86,8 +86,13 @@ def _citation_origin(raw: str | None) -> str:
     return raw if raw in _CITATION_ORIGINS else "bm25"
 
 
-#: 查法說會意圖 → 只取 transcript（doc_type 過濾），避免抓到新聞 / 重大訊息（修 R6 #2）。
+#: 查法說會意圖 → 只取法說會證據（doc_type 過濾），避免抓到新聞 / 重大訊息（修 R6 #2）。
 _EARNINGS_CALL_HINTS = ("法說", "法人說明會", "earnings call", "逐字稿", "conference call")
+
+#: 法說會證據的 canonical doc_type 有兩種：逐字稿（transcript）與簡報（presentation，
+#: ingest_ticker.py 入庫用的值）。兩種都要查——某季只有簡報入庫時，只查 transcript
+#: 會誤回「資料不足」（同 PR #34 在 /research 修過的缺漏，這裡是 /ask 路徑）。
+_EARNINGS_CALL_DOC_TYPES: tuple[str, ...] = ("transcript", "presentation")
 
 
 def _wants_earnings_call(query: str) -> bool:
@@ -103,45 +108,49 @@ def _real_contexts(
     依查詢偵測到的公司 ticker × anchored 季別逐一查詢：
     - **公司過濾（修 R6 #1）**：問單一公司只取該公司；比較題涵蓋多家、citation 落在
       正確公司；未偵測到公司 → 不加公司過濾（維持原行為）。
-    - **doc_type 過濾（修 R6 #2）**：問法說會時加 ``doc_type=transcript``，不抓新聞 / 重大訊息。
+    - **doc_type 過濾（修 R6 #2）**：問法說會時限定法說會 doc_type（transcript +
+      presentation 各查一次、依 id 去重合併），不抓新聞 / 重大訊息。
     - viewer 透傳做 owner-scoped 過濾（issue #32）。
     """
     contexts: list[dict[str, Any]] = []
     seen: set[str] = set()
     tickers = detect_tickers(query) or [None]
-    want_call = _wants_earnings_call(query)
+    doc_types: tuple[str | None, ...] = (
+        _EARNINGS_CALL_DOC_TYPES if _wants_earnings_call(query) else (None,)
+    )
     for ticker in tickers:
         for q in quarters or [None]:
-            filters: dict[str, Any] = {"viewer": viewer}
-            if ticker:
-                filters["company"] = ticker
-            if q:
-                filters["period"] = q
-            if want_call:
-                filters["doc_type"] = "transcript"
-            for r in retriever_obj.retrieve(query, filters=filters):
-                if r.id in seen:
-                    continue
-                seen.add(r.id)
-                meta = r.metadata or {}
-                contexts.append(
-                    {
-                        "source_id": r.id,
-                        "text": r.content,
-                        "period": r.period,
-                        "company": r.company,  # ticker
-                        "company_name": company_name(r.company),  # canonical 中文名 / None
-                        "origin": _citation_origin(meta.get("origin")),
-                        # v_chunk_semantic 欄位透傳到 /ask citation（缺值 → None，不編造）。
-                        "event_key": meta.get("event_key"),
-                        "source_key": meta.get("source_key"),
-                        "published_yyyymm": meta.get("published_yyyymm"),
-                        "doc_type": meta.get("doc_type"),
-                        "fiscal_period": meta.get("fiscal_period") or r.period,
-                        "page_num": meta.get("page_num"),
-                        "source_file": meta.get("source_file"),
-                    }
-                )
+            for doc_type in doc_types:
+                filters: dict[str, Any] = {"viewer": viewer}
+                if ticker:
+                    filters["company"] = ticker
+                if q:
+                    filters["period"] = q
+                if doc_type:
+                    filters["doc_type"] = doc_type
+                for r in retriever_obj.retrieve(query, filters=filters):
+                    if r.id in seen:
+                        continue
+                    seen.add(r.id)
+                    meta = r.metadata or {}
+                    contexts.append(
+                        {
+                            "source_id": r.id,
+                            "text": r.content,
+                            "period": r.period,
+                            "company": r.company,  # ticker
+                            "company_name": company_name(r.company),  # canonical 中文名 / None
+                            "origin": _citation_origin(meta.get("origin")),
+                            # v_chunk_semantic 欄位透傳到 /ask citation（缺值 → None，不編造）。
+                            "event_key": meta.get("event_key"),
+                            "source_key": meta.get("source_key"),
+                            "published_yyyymm": meta.get("published_yyyymm"),
+                            "doc_type": meta.get("doc_type"),
+                            "fiscal_period": meta.get("fiscal_period") or r.period,
+                            "page_num": meta.get("page_num"),
+                            "source_file": meta.get("source_file"),
+                        }
+                    )
     return contexts
 
 
