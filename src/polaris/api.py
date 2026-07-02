@@ -761,6 +761,16 @@ _DOC_TYPE_LABELS = {
     "presentation": "法說簡報",
 }
 
+# 法說簡報/逐字稿的 chunk_id 內嵌頁碼：{ticker}-{period}-p{page:03d}-c{seq:03d}。
+# 新聞 news_<hex> / 重大訊息 mops_<hex> 無頁碼 → 回 None（前端顯示「頁碼未提供」，正確）。
+_PAGE_IN_CHUNK_ID_RE = re.compile(r"-p(\d+)-c\d+$")
+
+
+def _page_label(chunk_id: str | None) -> str | None:
+    """從 chunk_id 還原頁碼標籤（issue #83）；無頁碼來源回 None。"""
+    m = _PAGE_IN_CHUNK_ID_RE.search(chunk_id or "")
+    return f"第 {int(m.group(1))} 頁" if m else None
+
 
 @app.get("/companies", response_model=list[CompanyResponse], tags=["structured"])
 def companies() -> list[CompanyResponse]:
@@ -1368,6 +1378,7 @@ def chunk(
         ticker=ticker,
         fiscal_period=fiscal_period,
         published_at=row.get("published_at"),
+        page=_page_label(row.get("chunk_id") or source_id),
         content=content,
         highlight=content,
     )
