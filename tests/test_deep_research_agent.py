@@ -183,6 +183,41 @@ class TestSearchAutoWiring:
         assert calls[0]["periods"] == ["2025Q1", "2024Q4"]
 
 
+class TestCoverageNote:
+    """issue #85 Q035：比較題含未收錄公司（如和碩）時，不能只回籠統「資料不足」，
+    要誠實說明資料覆蓋範圍——使用者才分得清「沒資料」與「系統不收錄這家」。"""
+
+    def test_comparison_with_uncovered_company_gets_note(self):
+        text = ag._synthesize("請比較鴻海與和碩 2025Q1 的 EMS 代工營收來源", [])
+        assert "資料不足" in text
+        assert "僅「鴻海」為本系統收錄公司" in text
+        assert "20 家" in text
+
+    def test_note_also_added_when_single_side_has_evidence(self):
+        ev = [Citation(source_id="c-2317", snippet="鴻海片段", origin="stub")]
+        text = ag._synthesize("請比較鴻海與和碩 2025Q1 的 EMS 代工營收來源", ev)
+        assert "c-2317" in text
+        assert "僅「鴻海」為本系統收錄公司" in text
+
+    def test_cross_quarter_comparison_not_flagged(self):
+        """單一公司 + 多季別（Q007 型）是合法題型，不得誤觸覆蓋提示。"""
+        text = ag._synthesize("台積電 2025Q1 相比 2024Q4 營收變化", [])
+        assert "收錄公司" not in text
+
+    def test_two_covered_companies_not_flagged(self):
+        ev = [
+            Citation(source_id="c-2330", snippet="台積電片段", origin="stub"),
+            Citation(source_id="c-2454", snippet="聯發科片段", origin="stub"),
+        ]
+        text = ag._synthesize("比較台積電與聯發科的毛利率", ev)
+        assert "收錄公司" not in text
+
+    def test_non_comparison_question_not_flagged(self):
+        text = ag._synthesize("和碩 2025Q1 營收如何", [])
+        # 非比較題不觸發（單問未收錄公司仍回一般「資料不足」，不誤導）
+        assert "收錄公司" not in text
+
+
 class TestCompliance:
     def test_advisory_finish_blocked(self):
         from polaris.graph.compliance import SAFE_MESSAGE
