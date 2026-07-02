@@ -169,14 +169,52 @@ def _synthesize_comparison(
     return text
 
 
+#: 比較意圖關鍵字（用於資料覆蓋提示，見 :func:`_coverage_note`）。
+_COMPARISON_HINTS = ("比較", "對比", " vs ", "vs.", "孰優", "誰的")
+
+
+def _coverage_note(question: str, tickers: Sequence[str]) -> str:
+    """比較題只解析到 <2 家收錄公司 → 誠實說明資料覆蓋範圍（issue #85 Q035）。
+
+    「和碩」這類不在 canonical 20 家名單的公司，實體解析會靜默忽略，使用者只看到
+    籠統的「資料不足」、分不清是「沒資料」還是「系統不收錄這家」。此註記把原因
+    講明。**跨季比較題不觸發**（如「2025Q1 相比 2024Q4」：單一公司 + 多季別是
+    合法題型），故要求問題中解析出的季別 ≤1 才提示。
+    """
+    q = (question or "").lower()
+    if not any(h in q for h in _COMPARISON_HINTS):
+        return ""
+    if len(tickers) >= 2:
+        return ""
+    from polaris.graph import temporal
+
+    if len(temporal.parse_period(question).quarters) >= 2:
+        return ""  # 跨季比較（單公司多季）是合法題型，不提示
+    resolved = "、".join(f"{company_name_or_ticker(t)}" for t in tickers) or "（無）"
+    return (
+        f"\n（註：比較對象中僅「{resolved}」為本系統收錄公司；"
+        "本系統目前僅收錄 20 家 0050 成分公司，未收錄的公司無法提供資料與引用。）"
+    )
+
+
+def company_name_or_ticker(ticker: str) -> str:
+    from polaris.ontology import company_name
+
+    return company_name(ticker) or ticker
+
+
 def _synthesize(question: str, evidence: Sequence[Citation], *, exhausted: bool = False) -> str:
     """確定性收尾結論（不含買賣建議；引用不足誠實標註）。
 
     偵測到比較型問題（≥2 檔代號）→ 改走依公司分組的同業比較格式。
+    比較題出現未收錄公司 → 附資料覆蓋說明（:func:`_coverage_note`）。
     """
-    if not evidence:
-        return f"關於「{question}」目前找不到可溯源的引用，資料不足、無法形成結論。"
     tickers = _extract_tickers(question)
+    if not evidence:
+        return (
+            f"關於「{question}」目前找不到可溯源的引用，資料不足、無法形成結論。"
+            + _coverage_note(question, tickers)
+        )
     if len(tickers) >= 2:
         return _synthesize_comparison(question, evidence, tickers, exhausted=exhausted)
     # 逐點：一條 evidence 一個 bullet + 來源標記 → 句句可溯源 by construction（D16）。
@@ -188,7 +226,7 @@ def _synthesize(question: str, evidence: Sequence[Citation], *, exhausted: bool 
     )
     if exhausted and len(evidence) < 3:
         text += "\n（註：引用不足 3 條，結論暫定、待補證據。）"
-    return text
+    return text + _coverage_note(question, tickers)
 
 
 def _polish_synthesize(
@@ -283,16 +321,23 @@ def run_deep_research(
     ``viewer`` 是存取控制身分（issue #32），透傳進 ``active_search_fn(viewer)``；
     注入自訂 search fn 時 viewer 由呼叫端透過 closure 帶入（見 :func:`make_retriever_search_fn`）。
 
-    修 issue #77 跨公司檢索污染：從**使用者原始問題**（``question``，非 ReAct 每輪
-    自己下的 tool_input——那可能已被 LLM 拆解成不含公司名的短語，例如「毛利率」）
-    偵測公司名／代號，透過 closure 綁進預設 search fn，讓每一輪檢索都硬過濾在
-    正確公司範圍內；未偵測到公司 → 不加過濾，維持原行為。
+    修 issue #77 跨公司檢索污染 + 期別錯配：從**使用者原始問題**（``question``，非
+    ReAct 每輪自己下的 tool_input——那可能已被 LLM 拆解成不含公司名/季別的短語，
+    例如「毛利率」）偵測公司名／代號與季別（Temporal Anchoring），透過 closure 綁進
+    預設 search fn，讓每一輪檢索都硬過濾在正確公司與季別範圍內；未偵測到 → 不加
+    對應過濾，維持原行為（時間中性 / 未指名公司的問題仍全域檢索）。
     """
     if search is None:
+        from polaris.graph import temporal
         from polaris.ontology import detect_tickers
         from polaris.retrieval.retriever import active_search_fn as _active_search_fn
 
-        search = _active_search_fn(viewer, companies=detect_tickers(question))
+        period = temporal.parse_period(question, anchor=temporal.active_anchor())
+        search = _active_search_fn(
+            viewer,
+            companies=detect_tickers(question),
+            periods=list(period.quarters) or None,
+        )
     if client is None:
         client = active_llm()
     state: dict = {

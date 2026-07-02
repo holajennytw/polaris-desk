@@ -138,45 +138,84 @@ class TestClientAutoWiring:
 
 
 class TestSearchAutoWiring:
-    """issue #77：跨公司檢索污染修復——run_deep_research 沒收到 search 時，必須從
-    使用者原始問題偵測公司並透傳給 active_search_fn，讓每輪 ReAct 檢索都硬過濾在
-    正確公司範圍內（不管 LLM 那輪自己下的 tool_input 有沒有帶公司名）。"""
+    """issue #77：跨公司檢索污染 + 期別錯配修復——run_deep_research 沒收到 search
+    時，必須從使用者原始問題偵測公司與季別並透傳給 active_search_fn，讓每輪 ReAct
+    檢索都硬過濾在正確範圍內（不管 LLM 那輪自己下的 tool_input 有沒有帶）。"""
 
-    def test_autowires_active_search_fn_with_companies_detected_from_question(
-        self, monkeypatch
-    ):
+    @staticmethod
+    def _capture_active_search_fn(monkeypatch) -> list[dict]:
         calls: list[dict] = []
 
-        def fake_active_search_fn(viewer, *, companies=None):
-            calls.append({"viewer": viewer, "companies": companies})
+        def fake_active_search_fn(viewer, *, companies=None, periods=None):
+            calls.append({"viewer": viewer, "companies": companies, "periods": periods})
             return ag.stub_search
 
         from polaris.retrieval import retriever as retriever_module
 
         monkeypatch.setattr(retriever_module, "active_search_fn", fake_active_search_fn)
         monkeypatch.setattr(ag, "active_llm", lambda: None)
+        return calls
+
+    def test_autowires_companies_and_periods_detected_from_question(self, monkeypatch):
+        calls = self._capture_active_search_fn(monkeypatch)
 
         ag.run_deep_research("台積電 2025Q1 法說會重點")
 
         assert len(calls) == 1
         assert calls[0]["companies"] == ["2330"]
+        assert calls[0]["periods"] == ["2025Q1"]
 
-    def test_no_company_detected_passes_none(self, monkeypatch):
-        calls: list[dict] = []
-
-        def fake_active_search_fn(viewer, *, companies=None):
-            calls.append({"viewer": viewer, "companies": companies})
-            return ag.stub_search
-
-        from polaris.retrieval import retriever as retriever_module
-
-        monkeypatch.setattr(retriever_module, "active_search_fn", fake_active_search_fn)
-        monkeypatch.setattr(ag, "active_llm", lambda: None)
+    def test_no_company_or_period_detected_passes_empty(self, monkeypatch):
+        calls = self._capture_active_search_fn(monkeypatch)
 
         ag.run_deep_research("半導體產業展望如何？")
 
         assert len(calls) == 1
         assert calls[0]["companies"] == []
+        assert calls[0]["periods"] is None  # 時間中性 → 不加期別過濾
+
+    def test_relative_period_resolved_via_anchor(self, monkeypatch):
+        calls = self._capture_active_search_fn(monkeypatch)
+
+        ag.run_deep_research("台積電最近兩季的毛利率")
+
+        # CI 無憑證 → anchor 為 DEFAULT_ANCHOR（2025Q1），最近兩季 = 2025Q1 + 2024Q4
+        assert calls[0]["periods"] == ["2025Q1", "2024Q4"]
+
+
+class TestCoverageNote:
+    """issue #85 Q035：比較題含未收錄公司（如和碩）時，不能只回籠統「資料不足」，
+    要誠實說明資料覆蓋範圍——使用者才分得清「沒資料」與「系統不收錄這家」。"""
+
+    def test_comparison_with_uncovered_company_gets_note(self):
+        text = ag._synthesize("請比較鴻海與和碩 2025Q1 的 EMS 代工營收來源", [])
+        assert "資料不足" in text
+        assert "僅「鴻海」為本系統收錄公司" in text
+        assert "20 家" in text
+
+    def test_note_also_added_when_single_side_has_evidence(self):
+        ev = [Citation(source_id="c-2317", snippet="鴻海片段", origin="stub")]
+        text = ag._synthesize("請比較鴻海與和碩 2025Q1 的 EMS 代工營收來源", ev)
+        assert "c-2317" in text
+        assert "僅「鴻海」為本系統收錄公司" in text
+
+    def test_cross_quarter_comparison_not_flagged(self):
+        """單一公司 + 多季別（Q007 型）是合法題型，不得誤觸覆蓋提示。"""
+        text = ag._synthesize("台積電 2025Q1 相比 2024Q4 營收變化", [])
+        assert "收錄公司" not in text
+
+    def test_two_covered_companies_not_flagged(self):
+        ev = [
+            Citation(source_id="c-2330", snippet="台積電片段", origin="stub"),
+            Citation(source_id="c-2454", snippet="聯發科片段", origin="stub"),
+        ]
+        text = ag._synthesize("比較台積電與聯發科的毛利率", ev)
+        assert "收錄公司" not in text
+
+    def test_non_comparison_question_not_flagged(self):
+        text = ag._synthesize("和碩 2025Q1 營收如何", [])
+        # 非比較題不觸發（單問未收錄公司仍回一般「資料不足」，不誤導）
+        assert "收錄公司" not in text
 
 
 class TestCompliance:
