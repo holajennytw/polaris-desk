@@ -77,6 +77,15 @@ class Settings(BaseSettings):
     # 設 0 = 關閉。配合 Cloud Run --max-instances → 全域成本天花板有界。
     rate_limit_per_min: int = 20
 
+    # --- 輸入端守門（防止使用者亂問；2026-07-02）---
+    # 預設關：screen_query() 一律放行、workflow no-evidence 邊不掛 → prod / CI 行為零變動。
+    # 設 INPUT_GATE=1 才啟用：L1 注入攔截 + L2 範圍分流（floor + Gemini Flash smart）
+    # + L3「查無足夠來源」短路（calculator 後 contexts 仍空 → 不生成、回固定訊息）。
+    input_gate: bool = False
+    # L0 每人每日提問配額（成本 / 洗版護欄）。0 = 關閉（預設）。keyed on 登入身分 sub，
+    # 匿名 keyed on client IP。**只在 app_env=="cloud" 生效**（同 rate_limit_per_min）。
+    daily_question_quota: int = 0
+
     # --- Vision-OCR ingestion（圖表/掃描頁→文字，spec 2026-06-23）---
     # 預設關：active_vision_extractor() 回 None → CI 0 外呼、不 import genai/pymupdf。
     # 設 VISION_EXTRACTION=1 + 裝 .[vision] 才啟用（離線 ingestion 用）。
