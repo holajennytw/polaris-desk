@@ -297,12 +297,120 @@ def _act(question: str, state: dict, action: ReActAction, search: SearchFn) -> N
     state["iteration"] += 1
 
 
+# ── 結構化數字題早停（降 /research 延遲）──────────────────────────────────────
+# 單一公司 + 季別 + 財務指標關鍵字 → 直接查 financial_metrics 取現成值當種子證據並
+# 提早收尾，省掉多輪 ReAct 檢索與 LLM 呼叫（實測單題 ~37s→~15–22s；限流時避免跑滿
+# 迴圈的 >90s 尾巴）。**比較題（≥2 家）不觸發**——避免只拿到單邊就早停弄壞比較；
+# 質化題（無指標關鍵字）不觸發——維持原 ReAct 流程。
+_STRUCTURED_METRIC_HINTS: dict[str, str] = {
+    "營業收入": "revenue", "營收": "revenue",
+    "毛利率": "gross_margin", "毛利": "gross_profit",
+    "營業利益率": "operating_margin", "營業利益": "operating_income",
+    "營業費用": "operating_expense",
+    "每股盈餘": "eps", "eps": "eps",
+    "稅前淨利": "pretax_income",
+    "稅後淨利": "net_income", "淨利": "net_income",
+}
+
+# metric_id → 中文標籤：list_financials 正常會回 metric_name，此為其缺漏時的 fallback，
+# 避免 snippet 落成英文 key（如 "revenue"）。
+_METRIC_LABELS: dict[str, str] = {
+    "revenue": "營業收入", "gross_profit": "毛利", "gross_margin": "毛利率",
+    "operating_income": "營業利益", "operating_margin": "營業利益率",
+    "operating_expense": "營業費用", "eps": "每股盈餘",
+    "pretax_income": "稅前淨利", "net_income": "稅後淨利",
+}
+
+
+def _wanted_metrics(question_lc: str) -> set[str]:
+    """問題命中的 metric_id 集合。長關鍵字優先並吃掉其字元範圍，避免「毛利率」同時
+    誤命中子字串「毛利」（gross_profit）——否則完整性守門（見下）會因查不到多出來的
+    指標而永遠不早停。"""
+    q = question_lc
+    wanted: set[str] = set()
+    for hint in sorted(_STRUCTURED_METRIC_HINTS, key=len, reverse=True):
+        idx = q.find(hint.lower())
+        if idx != -1:
+            wanted.add(_STRUCTURED_METRIC_HINTS[hint])
+            q = q[:idx] + " " + q[idx + len(hint):]  # 消耗已命中範圍
+    return wanted
+
+
+def _fmt_num(value) -> str:
+    """數字轉可讀字串：整數（如營收千元）→ 千分位無小數；非整數（毛利率/EPS）→ 保 2 位。
+
+    原 ``:,g`` 會把大整數落成科學記號（8386000 → 8.386e+06），失去可讀性。"""
+    if isinstance(value, float) and not value.is_integer():
+        return f"{value:,.2f}"
+    return f"{value:,.0f}"
+
+
+def _structured_seed(question: str, viewer: str) -> list[Citation]:
+    """單一公司財務數字題 → financial_metrics 種子證據（帶 source_id）；不適用回 []。
+
+    守則：僅 ``len(tickers)==1`` 才走（比較題不早停）；需命中指標關鍵字與季別；且問題
+    要的**每個**指標都要查得到值才早停（缺一 → 回 [] 退回 ReAct 補齊，不給半套答案）；
+    無金鑰 / BQ 失敗 → 回 []，退回正常 ReAct 流程（不中斷）。
+    """
+    from polaris.llm.gemini import available
+
+    if not available():
+        return []
+    from polaris.graph import temporal
+    from polaris.ontology import company_name, detect_tickers
+
+    tickers = detect_tickers(question)
+    if len(tickers) != 1:  # 比較題 / 未指名公司 → 不走捷徑
+        return []
+    wanted = _wanted_metrics((question or "").lower())
+    if not wanted:  # 非財務數字題 → 不走捷徑
+        return []
+    quarters = list(temporal.parse_period(question, anchor=temporal.active_anchor()).quarters)
+    if not quarters:
+        return []
+    try:
+        from polaris.config import settings
+        from polaris.structured_store import StructuredStore
+
+        store = StructuredStore(settings)
+        ticker = tickers[0]
+        name = company_name(ticker) or ticker
+        cites: list[Citation] = []
+        found: set[str] = set()
+        for period in quarters:
+            for r in store.list_financials(ticker=ticker, period=period, granularity="quarter"):
+                mid = r.get("metric_id")
+                if mid not in wanted or r.get("value") is None:
+                    continue
+                found.add(mid)
+                label = r.get("metric_name") or _METRIC_LABELS.get(mid) or mid
+                unit = r.get("unit") or ""
+                cites.append(
+                    Citation(
+                        source_id=str(r.get("source_id") or f"fm-{ticker}-{period}-{mid}"),
+                        snippet=f"{name} {period} {label} {_fmt_num(r['value'])} {unit}".strip(),
+                        origin="bm25",
+                        company=name,
+                    )
+                )
+        if wanted - found:  # 有指標查無值 → 不早停，讓 ReAct 補齊（不給半套答案）
+            return []
+        return cites
+    except (TypeError, AttributeError, NameError):
+        # 介面/簽章錯用是 programming bug，不可被當成 BQ 失敗默默吞掉
+        # （否則像 list_financials 誤傳 kwarg 這類錯會讓整條捷徑靜默失效）。
+        raise
+    except Exception:  # noqa: BLE001 — BQ/網路失敗退回 ReAct 流程，不中斷 workflow
+        log.info("deep_research.structured_seed failed; fall back to ReAct", exc_info=True)
+        return []
+
+
 def run_deep_research(
     question: str,
     *,
     client=None,
     search: SearchFn | None = None,
-    max_loops: int = 6,
+    max_loops: int = 4,
     min_citations: int = 3,
     viewer: str = PUBLIC_VIEWER,
 ) -> DeepResearchResult:
@@ -348,6 +456,17 @@ def run_deep_research(
         "final_answer": "",
         "viewer": viewer,  # available for search fn wiring when real store is connected
     }
+    # 結構化數字題早停：命中 financial_metrics 現成值 → 以種子證據收尾，跳過 ReAct 迴圈
+    # （省 decide×N + search×N；見 :func:`_structured_seed`）。比較題不會命中（守則已擋）。
+    _seed = _structured_seed(question, viewer)
+    if _seed:
+        state["evidence"] = _seed
+        state["final_answer"] = _synthesize(question, _seed)
+        state["status"] = "answered"
+        state["iteration"] = 1
+        state["react_steps"].append(
+            ReActStep(thought="財務數字題命中結構化資料，直接收尾", action="finish")
+        )
     while should_continue(state, max_loops=max_loops):
         action = _decide(question, state, client, min_citations)
         _act(question, state, action, search)
