@@ -186,6 +186,9 @@ function ResearchPageInner() {
   };
 
   const run = async (q?: string) => {
+    // 防止上一題還在跑時被 Enter / chip 再次觸發：較慢的舊請求晚回來會蓋掉新結果，
+    // 造成畫面顯示的引用來源其實是上一題的（見 R6 台積電/聯發科混淆報告）。
+    if (phase === "running") return;
     timers.current.forEach(clearTimeout); timers.current = [];
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
 

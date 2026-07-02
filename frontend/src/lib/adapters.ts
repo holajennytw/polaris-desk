@@ -77,6 +77,59 @@ function nodeTracesToSteps(traces: NodeTraceRaw[]): TraceStepVM[] {
   }));
 }
 
+// bullet 內文可能夾帶 inline 來源標記（LLM 產出格式不只一種：
+// 「(source_id: XXX)」/「(source: XXX)」/ 全形「（來源：XXX）」/「[source_id:XXX]」），
+// 用它精準對回 citation，避免用陣列位置猜（見 #75：多期別/公司混答時位置對應會連錯 chunk）。
+// 見 issue #77 後續排查：根因是後端 GROUNDING_CLAUSE 沒鎖死輸出格式，LLM 產出格式持續
+// 出現新變體（source_id/source/來源/方括號都出現過），前端這裡只能做保守防線、非治本。
+const OPEN_BR = "[（(\\[]";
+const CLOSE_BR = "[)）\\]]";
+const INLINE_SOURCE_RE = new RegExp(
+  `${OPEN_BR}(?:source_id|source|來源)[：:]\\s*([^)）\\]]+)${CLOSE_BR}`,
+);
+const INLINE_SOURCE_RE_G = new RegExp(INLINE_SOURCE_RE.source, "g");
+
+// 保守防線：LLM 偶爾連「source:」/「來源：」前綴都不加，直接把 chunk id 裸放括號。
+// 只在括號內容「整段都長得像已知 id 格式」才視為標記，避免誤吃一般中文句子裡的
+// 括號附註（如單位、註解）。
+const ID_TOKEN =
+  "(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" + // UUID
+  "|\\d{2,6}-\\d{4}Q[1-4]-p\\d+-c\\d+" + // ticker-yyyyQn-p頁-c塊
+  "|news_[0-9a-f]+)"; // news_<hex>
+const BARE_ID_RE = new RegExp(
+  `${OPEN_BR}(${ID_TOKEN}(?:[,，、]\\s*${ID_TOKEN})*)${CLOSE_BR}`,
+  "i",
+);
+const BARE_ID_RE_G = new RegExp(BARE_ID_RE.source, "gi");
+
+function matchInlineMarker(text: string): RegExpMatchArray | null {
+  return text.match(INLINE_SOURCE_RE) ?? text.match(BARE_ID_RE);
+}
+
+function findInlineCitation<T extends { source_id: string }>(
+  text: string,
+  pool: T[],
+): T | undefined {
+  const m = matchInlineMarker(text);
+  if (!m) return undefined;
+  // LLM 有時在同一個標記塞多個 source_id（逗號/頓號分隔），逐一比對取第一個命中。
+  const candidates = m[1].split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+  for (const sid of candidates) {
+    const hit = pool.find((c) => c.source_id === sid);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+// 摘要 bullet 用來對回 citation 後，標記本身不該留在畫面上——旁邊已經有引用 chip 顯示來源。
+function stripInlineSource(text: string): string {
+  return text
+    .replace(INLINE_SOURCE_RE_G, "")
+    .replace(BARE_ID_RE_G, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+}
+
 function askCitationToTracker(c: AskCitationRaw, i: number): CitationTrackerVM {
   const label = c.company ?? c.source_id;
   const detail = c.snippet.length > 60 ? c.snippet.slice(0, 60) + "…" : c.snippet;
@@ -85,11 +138,10 @@ function askCitationToTracker(c: AskCitationRaw, i: number): CitationTrackerVM {
 
 export function normalizeAsk(raw: AskResponse, query: string): AskVM {
   const bullets = splitAnswer(raw.answer);
-  const summary: SummaryItemVM[] = bullets.map((text, i) => ({
-    text,
-    cite: raw.citations[i]?.source_id ?? raw.citations[0]?.source_id ?? "",
-    page: "",
-  }));
+  const summary: SummaryItemVM[] = bullets.map((text, i) => {
+    const cite = findInlineCitation(text, raw.citations) ?? raw.citations[i];
+    return { text: stripInlineSource(text), cite: cite?.source_id ?? "", page: "" };
+  });
   const retrieval_degraded =
     raw.citations.length === 0 ||
     raw.citations.every((c) => c.origin === "bm25" || c.origin === "stub");
@@ -239,11 +291,16 @@ const _ORIGIN_LABEL: Record<ResearchCitationRaw["origin"], string> = {
 };
 
 // #13 新欄位：source_key / event_key → 中文標籤
+// 注意：PRIMARY_COMPANY_IR / SECONDARY_NEWS_MEDIA 是 polaris_core 實際使用的值
+// （見 #77：舊的 PRIMARY_EC_PRESENTATION / PRIMARY_NEWS 在真實 BQ 資料中從未出現，
+// 導致 presentation / news chunk 的 badge 顯示原始英文 key）。
 const _SOURCE_KEY_LABEL: Record<string, string> = {
   PRIMARY_EC_TRANSCRIPT:   "法說逐字稿",
   PRIMARY_EC_PRESENTATION: "法說簡報",
+  PRIMARY_COMPANY_IR:      "法說簡報",
   PRIMARY_MOPS:            "重大訊息",
   PRIMARY_NEWS:            "新聞",
+  SECONDARY_NEWS_MEDIA:    "新聞",
 };
 const _EVENT_KEY_LABEL: Record<string, string> = {
   earnings_call:        "法說會",
@@ -307,9 +364,9 @@ export function normalizeResearch(raw: ResearchResponse, query: string): AskVM {
   const answerText = finishInput || raw.final_answer || "";
   const bullets = splitAnswer(answerText);
   const summary: SummaryItemVM[] = bullets.map((text, i) => {
-    const ev = raw.evidence[i] ?? raw.evidence[0];
+    const ev = findInlineCitation(text, raw.evidence) ?? raw.evidence[i];
     return {
-      text,
+      text: stripInlineSource(text),
       cite: ev?.source_id ?? "",
       page: "",
       doc_type_label: ev ? citationLabel(ev) : undefined,
