@@ -580,6 +580,47 @@ def test_research_search_applies_hard_company_filter_per_doc_type():
     assert citations and all(c.company == "台積電" for c in citations)
 
 
+def test_research_search_applies_hard_period_filter_per_doc_type():
+    """issue #77 期別錯配——``periods`` 給定時每個 doc_type 查詢都要加
+    ``filters["period"]``：查 2025Q1 不混進 2025Q4 / 2026Q1 的 chunk。"""
+    from polaris.retrieval.retriever import HybridRetriever, make_research_search_fn
+    from polaris.vectorstore.base import SearchResult as SR
+
+    store_calls: list[dict] = []
+
+    class FakeStore:
+        def search(self, query_embedding, top_k=8, *, filters=None):  # noqa: ARG002
+            store_calls.append(dict(filters))
+            return [
+                SR(
+                    id=f"{filters['doc_type']}-{filters['period']}",
+                    content="evidence",
+                    score=0.9,
+                    company="2330",
+                    period=filters["period"],
+                    metadata={"doc_type": filters["doc_type"], "fiscal_period": filters["period"]},
+                )
+            ]
+
+        def health_check(self):
+            return True
+
+    retriever = HybridRetriever(
+        top_k=8,
+        store=FakeStore(),
+        embedding_fn=lambda _query: [0.1],
+        rerank_fn=lambda _query, results, _top_k: results,
+    )
+
+    make_research_search_fn(retriever, companies=["2330"], periods=["2025Q1", "2024Q4"])(
+        "台積電 2025Q1 相比 2024Q4"
+    )
+
+    assert store_calls
+    assert all(c["company"] == "2330" for c in store_calls)
+    assert {c["period"] for c in store_calls} == {"2025Q1", "2024Q4"}
+
+
 def test_research_search_without_companies_keeps_original_behaviour():
     """未偵測到公司（``companies=None``）→ 不加 company 過濾，維持原行為。"""
     from polaris.retrieval.retriever import HybridRetriever, make_research_search_fn

@@ -640,6 +640,7 @@ def make_research_search_fn(
     filters: dict | None = None,
     doc_type_quotas: Mapping[str, int] = RESEARCH_DOC_TYPE_QUOTAS,
     companies: list[str] | None = None,
+    periods: list[str] | None = None,
 ) -> "Callable[[str], list]":
     """Build Deep Research search with per-source quotas and one final rerank.
 
@@ -648,23 +649,32 @@ def make_research_search_fn(
     ticker 清單。給定時對每個 ticker 各自加 ``filters["company"]`` 硬過濾再合併，
     避免語意相近的公司（聯電/聯詠、鴻海/台積電）純靠向量相似度混進來；
     未偵測到公司（``None`` 或空清單）→ 不加過濾，維持原行為。
+
+    ``periods``（修 issue #77 期別錯配）：同樣從原始問題經 Temporal Anchoring 解析
+    的季別清單（如 ``["2025Q1"]``；「最近兩季 / 2024 全年」也已展開成具體季別）。
+    給定時每季各自加 ``filters["period"]`` 硬過濾——查 2025Q1 不再混進 2025Q4 /
+    2026Q1 的 chunk。未解析出季別 → 不加過濾（時間中性問題維持全期檢索）。
     """
     from polaris.graph.state import Citation
 
     r = retriever if retriever is not None else HybridRetriever()
     common_filters = {**(filters or {}), "viewer": viewer}
     company_list: list[str | None] = list(companies) if companies else [None]
+    period_list: list[str | None] = list(periods) if periods else [None]
 
     def _search(query: str) -> list:
         candidates: list[SearchResult] = []
         for company in company_list:
-            for doc_type, quota in doc_type_quotas.items():
-                source_filters = {"doc_type": doc_type, **common_filters}
-                if company:
-                    source_filters["company"] = company
-                candidates.extend(
-                    r.retrieve_candidates(query, filters=source_filters, top_k=quota)
-                )
+            for period in period_list:
+                for doc_type, quota in doc_type_quotas.items():
+                    source_filters = {"doc_type": doc_type, **common_filters}
+                    if company:
+                        source_filters["company"] = company
+                    if period:
+                        source_filters["period"] = period
+                    candidates.extend(
+                        r.retrieve_candidates(query, filters=source_filters, top_k=quota)
+                    )
 
         merged = _merge_results(candidates)
         if not merged and r.embedding_fn is None:
@@ -691,7 +701,10 @@ def active_retriever() -> "HybridRetriever | None":
 
 
 def active_search_fn(
-    viewer: str = PUBLIC_VIEWER, *, companies: list[str] | None = None
+    viewer: str = PUBLIC_VIEWER,
+    *,
+    companies: list[str] | None = None,
+    periods: list[str] | None = None,
 ) -> "Callable[[str], list]":
     """Active search fn for Deep Research: BM25 + vector + Cohere Rerank.
 
@@ -701,7 +714,8 @@ def active_search_fn(
     - CI / no credentials: BM25-only from fallback corpus, fully deterministic
     - Production: BM25 + vector (``VECTOR_BACKEND``) + Cohere Rerank if key set
     - viewer forwarded to store for owner-scoped filtering (issue #32)
-    - ``companies`` forwarded to :func:`make_research_search_fn` for the hard
-      ticker filter that fixes issue #77 cross-company pollution.
+    - ``companies`` / ``periods`` forwarded to :func:`make_research_search_fn`
+      for the hard ticker / fiscal-period filters that fix issue #77
+      cross-company and cross-quarter pollution.
     """
-    return make_research_search_fn(viewer=viewer, companies=companies)
+    return make_research_search_fn(viewer=viewer, companies=companies, periods=periods)
