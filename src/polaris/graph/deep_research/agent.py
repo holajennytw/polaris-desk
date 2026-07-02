@@ -297,12 +297,81 @@ def _act(question: str, state: dict, action: ReActAction, search: SearchFn) -> N
     state["iteration"] += 1
 
 
+# ── 結構化數字題早停（降 /research 延遲）──────────────────────────────────────
+# 單一公司 + 季別 + 財務指標關鍵字 → 直接查 financial_metrics 取現成值當種子證據並
+# 提早收尾，省掉多輪 ReAct 檢索與 LLM 呼叫（實測單題 ~37s→~15–22s；限流時避免跑滿
+# 迴圈的 >90s 尾巴）。**比較題（≥2 家）不觸發**——避免只拿到單邊就早停弄壞比較；
+# 質化題（無指標關鍵字）不觸發——維持原 ReAct 流程。
+_STRUCTURED_METRIC_HINTS: dict[str, str] = {
+    "營業收入": "revenue", "營收": "revenue",
+    "毛利率": "gross_margin", "毛利": "gross_profit",
+    "營業利益率": "operating_margin", "營業利益": "operating_income",
+    "營業費用": "operating_expense",
+    "每股盈餘": "eps", "eps": "eps",
+    "稅前淨利": "pretax_income",
+    "稅後淨利": "net_income", "淨利": "net_income",
+}
+
+
+def _structured_seed(question: str, viewer: str) -> list[Citation]:
+    """單一公司財務數字題 → financial_metrics 種子證據（帶 source_id）；不適用回 []。
+
+    守則：僅 ``len(tickers)==1`` 才走（比較題不早停）；需命中指標關鍵字與季別；
+    無金鑰 / BQ 失敗 → 回 []，退回正常 ReAct 流程（不中斷）。
+    """
+    from polaris.llm.gemini import available
+
+    if not available():
+        return []
+    from polaris.graph import temporal
+    from polaris.ontology import company_name, detect_tickers
+
+    tickers = detect_tickers(question)
+    if len(tickers) != 1:  # 比較題 / 未指名公司 → 不走捷徑
+        return []
+    q = (question or "").lower()
+    wanted = {mid for hint, mid in _STRUCTURED_METRIC_HINTS.items() if hint.lower() in q}
+    if not wanted:  # 非財務數字題 → 不走捷徑
+        return []
+    quarters = list(temporal.parse_period(question, anchor=temporal.active_anchor()).quarters)
+    if not quarters:
+        return []
+    try:
+        from polaris.config import settings
+        from polaris.structured_store import StructuredStore
+
+        store = StructuredStore(settings)
+        ticker = tickers[0]
+        name = company_name(ticker) or ticker
+        cites: list[Citation] = []
+        for period in quarters:
+            for r in store.list_financials(ticker=ticker, period=period, granularity="quarter"):
+                if r.get("metric_id") not in wanted or r.get("value") is None:
+                    continue
+                label = r.get("metric_name") or r.get("metric_id")
+                unit = r.get("unit") or ""
+                cites.append(
+                    Citation(
+                        source_id=str(
+                            r.get("source_id") or f"fm-{ticker}-{period}-{r.get('metric_id')}"
+                        ),
+                        snippet=f"{name} {period} {label} {r['value']:,g} {unit}".strip(),
+                        origin="bm25",
+                        company=name,
+                    )
+                )
+        return cites
+    except Exception:  # noqa: BLE001 — BQ 失敗退回 ReAct 流程，不中斷 workflow
+        log.info("deep_research.structured_seed failed; fall back to ReAct", exc_info=True)
+        return []
+
+
 def run_deep_research(
     question: str,
     *,
     client=None,
     search: SearchFn | None = None,
-    max_loops: int = 6,
+    max_loops: int = 4,
     min_citations: int = 3,
     viewer: str = PUBLIC_VIEWER,
 ) -> DeepResearchResult:
@@ -348,6 +417,17 @@ def run_deep_research(
         "final_answer": "",
         "viewer": viewer,  # available for search fn wiring when real store is connected
     }
+    # 結構化數字題早停：命中 financial_metrics 現成值 → 以種子證據收尾，跳過 ReAct 迴圈
+    # （省 decide×N + search×N；見 :func:`_structured_seed`）。比較題不會命中（守則已擋）。
+    _seed = _structured_seed(question, viewer)
+    if _seed:
+        state["evidence"] = _seed
+        state["final_answer"] = _synthesize(question, _seed)
+        state["status"] = "answered"
+        state["iteration"] = 1
+        state["react_steps"].append(
+            ReActStep(thought="財務數字題命中結構化資料，直接收尾", action="finish")
+        )
     while should_continue(state, max_loops=max_loops):
         action = _decide(question, state, client, min_citations)
         _act(question, state, action, search)

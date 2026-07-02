@@ -325,3 +325,69 @@ class TestComparisonMode:
         r = ag.run_deep_research("台積電 2025Q1 體質", search=ag.stub_search)
         assert "同業比較" not in r.final_answer
         assert "研究摘要" in r.final_answer
+
+
+class TestStructuredEarlyExit:
+    """降 /research 延遲：單一公司財務數字題直接查 financial_metrics 早停（issue：單題 >90s）。
+
+    守則：只有單一公司 + 指標關鍵字 + 季別才早停；比較題（≥2 家）與質化題不觸發；
+    無金鑰時整個捷徑停用（維持 CI 確定性）。
+    """
+
+    @staticmethod
+    def _fake_store(rows):
+        class _S:
+            def __init__(self, *a, **k):
+                pass
+
+            def list_financials(self, *, ticker=None, period=None, metric=None, granularity=None):
+                return rows
+
+        return _S
+
+    _ROW = {
+        "metric_id": "revenue", "value": 8386000, "unit": "新台幣千元",
+        "metric_name": "營業收入", "source_id": "2330_2026-03-31_finmind_fs",
+    }
+
+    def test_seed_single_company_metric(self, monkeypatch):
+        import polaris.llm.gemini as gem
+        import polaris.structured_store as ss
+        monkeypatch.setattr(gem, "available", lambda: True)
+        monkeypatch.setattr(ss, "StructuredStore", self._fake_store([self._ROW]))
+        seeds = ag._structured_seed("台積電 2026Q1 營業收入", ag.PUBLIC_VIEWER)
+        assert seeds and seeds[0].source_id == "2330_2026-03-31_finmind_fs"
+        assert seeds[0].company == "台積電"
+
+    def test_seed_skips_comparison(self, monkeypatch):
+        import polaris.llm.gemini as gem
+        import polaris.structured_store as ss
+        monkeypatch.setattr(gem, "available", lambda: True)
+        monkeypatch.setattr(ss, "StructuredStore", self._fake_store([self._ROW]))
+        # ≥2 家 → 不早停（避免只拿到單邊就收尾弄壞比較）
+        assert ag._structured_seed("比較台積電與聯發科 2026Q1 營業收入", ag.PUBLIC_VIEWER) == []
+
+    def test_seed_skips_non_metric_question(self, monkeypatch):
+        import polaris.llm.gemini as gem
+        monkeypatch.setattr(gem, "available", lambda: True)
+        # 無指標關鍵字（質化題）→ 不早停
+        assert ag._structured_seed("台積電 2026Q1 法說會重點", ag.PUBLIC_VIEWER) == []
+
+    def test_seed_disabled_without_key(self, monkeypatch):
+        import polaris.llm.gemini as gem
+        monkeypatch.setattr(gem, "available", lambda: False)
+        assert ag._structured_seed("台積電 2026Q1 營業收入", ag.PUBLIC_VIEWER) == []
+
+    def test_run_deep_research_early_exits_and_skips_loop(self, monkeypatch):
+        seed = [Citation(source_id="fm-2330-2026Q1-revenue",
+                         snippet="台積電 2026Q1 營業收入 838.6 十億元", origin="bm25", company="台積電")]
+        monkeypatch.setattr(ag, "_structured_seed", lambda q, v: seed)
+        searched: list[str] = []
+        r = ag.run_deep_research(
+            "台積電 2026Q1 營業收入", client="UNUSED",
+            search=lambda q: (searched.append(q) or []),
+        )
+        assert r.status == "answered"
+        assert r.iterations == 1
+        assert searched == []  # 早停 → 完全沒進 ReAct 檢索迴圈
+        assert any(c.source_id == "fm-2330-2026Q1-revenue" for c in r.evidence)
