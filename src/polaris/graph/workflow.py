@@ -119,10 +119,10 @@ def build_workflow():
     )
     # visual_reader never halts → 直接續接 calculator（best-effort，無條件邊）。
     g.add_edge("visual_reader", "calculator")
-    # calculator 後：INPUT_GATE 開 → 多一條「查無足夠來源」短路邊（L3）；關 → wiring 不變。
+    # calculator 後：INPUT_GATE_NO_EVIDENCE 開 → 多一條「查無足夠來源」短路邊（L3）；關 → wiring 不變。
     from polaris.config import settings
 
-    if settings.input_gate:
+    if settings.input_gate_no_evidence:
         g.add_node("no_evidence", _no_evidence)
         g.add_conditional_edges(
             "calculator",

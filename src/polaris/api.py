@@ -1173,7 +1173,25 @@ def _peer_synthesis(base: str, *, client) -> tuple[str, str]:
 
 @app.post("/peer-compare", response_model=PeerCompareResponse, tags=["research"])
 def peer_compare(req: PeerCompareRequest) -> PeerCompareResponse:
-    """同業比較：真實財務指標 + 法說 RAG 引用；PE/PB 目前無資料回 []，不造假。"""
+    """同業比較：真實財務指標 + 法說 RAG 引用；PE/PB 目前無資料回 []，不造假。
+
+    輸入端守門只跑**注入層**（``check_scope=False``）：a_ticker / b_ticker 已是 canonical
+    標的、天生 in-scope，範圍分類對此無意義且有誤擋風險。``INPUT_GATE_INJECTION`` 關 → 放行。
+    """
+    gate = screen_query(req.question, check_scope=False)
+    if not gate.allowed:
+        return PeerCompareResponse(
+            a_ticker=req.a_ticker,
+            b_ticker=req.b_ticker,
+            fiscal_period=req.fiscal_period,
+            kpis=[],
+            financial=[],
+            calls=[],
+            trend=[],
+            valuation=[],
+            summary=gate.message,
+            compliance_status="blocked",
+        )
     a_rows = _structured_store.list_financials(ticker=req.a_ticker, period=req.fiscal_period)
     b_rows = _structured_store.list_financials(ticker=req.b_ticker, period=req.fiscal_period)
 

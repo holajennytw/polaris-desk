@@ -110,6 +110,11 @@ _SCOPE_KEYWORDS: tuple[str, ...] = (
     # 產業 / 營運
     "產能", "訂單", "出貨", "供應鏈", "產業", "同業", "競爭", "展望", "指引",
     "法說", "法人說明會", "法人", "外資", "投信", "董事會", "並購", "增資", "減資",
+    # 產業別語彙（涵蓋非 canonical 標的的正當投研題，如航運 / 塑化 / 面板 / 電信 / 租賃）。
+    # 都是強財務 / 產業指涉、幾乎不會出現在真正離題閒聊 → 只放行真問題，不放行離題。
+    "收入", "運價", "櫃量", "吞吐量", "艙位", "航運", "航線", "貨運", "客運",
+    "租賃", "售電", "石化", "塑化", "利差", "建材", "水泥", "面板", "電信",
+    "用戶數", "鏡頭", "模組", "晶圓", "封測", "材料成本", "營業成本", "成本結構",
     # 英文
     "revenue", "margin", "earnings", "guidance", "eps",
     "capex", "valuation", "dividend", "market share", "gross profit",
@@ -194,43 +199,60 @@ def classify_off_topic(query: str, client: _LLM) -> bool:
 # 主流程
 # ---------------------------------------------------------------------------
 
-def screen(query: str, client: _LLM | None = None) -> GateDecision:
+def screen(
+    query: str,
+    client: _LLM | None = None,
+    *,
+    check_injection: bool = True,
+    check_scope: bool = True,
+) -> GateDecision:
     """輸入端守門主流程。回 :class:`GateDecision`。
 
     順序（fail-fast）：L1 注入 floor（命中即擋、不諮詢 LLM）→ L2 範圍 floor（正向放行、
     省 LLM）→ L2b 範圍 smart（LLM 分類；失敗 fail-open）。空白 query 直接放行，交由既有
     ``_reject_blank`` / planner 的空輸入處理，不在此重複。
+
+    ``check_injection`` / ``check_scope`` 讓呼叫端逐層開關（對應 config 的獨立 flag）；
+    結構化端點（peer-compare）天生帶 canonical ticker → 傳 ``check_scope=False`` 只留注入層。
     """
     q = (query or "").strip()
     if not q:
         return GateDecision(True, "ok", "")
-    if flags_injection(q):
+    if check_injection and flags_injection(q):
         return GateDecision(False, "injection", INJECTION_MESSAGE)
-    if looks_in_scope(q):
-        return GateDecision(True, "ok", "")
-    if client is not None:
-        try:
-            off_topic = call_with_retry(lambda: classify_off_topic(q, client))
-        except Exception:  # noqa: BLE001 — LLM 任何失敗都 fail-open（不誤擋真問題）
-            off_topic = False
-        if off_topic:
-            return GateDecision(False, "off_topic", OFF_TOPIC_MESSAGE)
+    if check_scope:
+        if looks_in_scope(q):
+            return GateDecision(True, "ok", "")
+        if client is not None:
+            try:
+                off_topic = call_with_retry(lambda: classify_off_topic(q, client))
+            except Exception:  # noqa: BLE001 — LLM 任何失敗都 fail-open（不誤擋真問題）
+                off_topic = False
+            if off_topic:
+                return GateDecision(False, "off_topic", OFF_TOPIC_MESSAGE)
     return GateDecision(True, "ok", "")
 
 
-def screen_query(query: str) -> GateDecision:
-    """API 入口用薄包裝：尊重 ``INPUT_GATE`` flag。
+def screen_query(query: str, *, check_scope: bool = True) -> GateDecision:
+    """API 入口用薄包裝：尊重 ``INPUT_GATE_INJECTION`` / ``INPUT_GATE_SCOPE`` 獨立 flag。
 
-    - flag 關（預設）→ 一律放行（prod / CI 行為零變動，需顯式 ``INPUT_GATE=1`` 才生效）。
-    - flag 開 → 跑 :func:`screen`，LLM smart 層帶入 :func:`active_llm`（無金鑰 → floor-only）。
+    - 兩 flag 皆關（預設）→ 一律放行（prod / CI 行為零變動，需顯式開啟才生效）。
+    - 範圍層啟用才建 LLM client（:func:`active_llm`；無金鑰 → floor-only）→ 不必要時 0 成本。
+    - ``check_scope=False``：結構化端點只跑注入層（範圍層對已帶 ticker 的請求無意義且有誤擋風險）。
     """
     from polaris.config import settings
 
-    if not settings.input_gate:
+    inj = settings.input_gate_injection
+    scope = settings.input_gate_scope and check_scope
+    if not (inj or scope):
         return GateDecision(True, "ok", "")
-    from polaris.llm.gemini import active_llm
+    if scope:
+        from polaris.llm.gemini import active_llm
 
-    return screen(query, active_llm())
+        client = active_llm()
+    else:
+        client = None
+    return screen(query, client, check_injection=inj, check_scope=scope)
 
 
 __all__ = [
