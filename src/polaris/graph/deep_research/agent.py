@@ -68,17 +68,17 @@ def stub_search(query: str) -> list[Citation]:
     ]
 
 
-#: 台股代號：4 碼數字。用於偵測「比較型」問題（≥2 檔）並逐檔檢索。
-_TICKER_RE = re.compile(r"\d{4}")
-
-
 def _extract_tickers(question: str) -> list[str]:
-    """從問題抽出去重保序的 4 碼代號清單（≥2 檔 → 視為比較型問題）。"""
-    out: list[str] = []
-    for code in _TICKER_RE.findall(question or ""):
-        if code not in out:
-            out.append(code)
-    return out
+    """從問題抽出去重保序的 ticker 清單（≥2 檔 → 視為比較型問題）。
+
+    走 :func:`polaris.ontology.detect_tickers` 實體解析（canonical 中文名或
+    已知 4 碼代號），而非裸 ``\\d{4}`` 正則——後者會把「2025Q1」的年份誤抓成
+    公司代號，造成跨季比較題（如 Q007「2025Q1 相比 2024Q4」）被誤判為比較型、
+    用假代號「2025」「2024」分組（issue #77 R4 排查點名的 bug）。
+    """
+    from polaris.ontology import detect_tickers
+
+    return detect_tickers(question)
 
 
 def _deterministic_action(question: str, state: dict, min_citations: int) -> ReActAction:
@@ -87,9 +87,14 @@ def _deterministic_action(question: str, state: dict, min_citations: int) -> ReA
     tickers = _extract_tickers(question)
     if len(tickers) >= 2:
         # 比較型：輪流為每檔做檢索（代號前綴偏置 retriever），確保兩家都有證據、
-        # 不會一面倒；保留原問題語意（如「AI 需求」）而非換成 _FACETS。
+        # 不會一面倒；保留原問題語意（如「AI 需求」）。每輪完整輪替一圈公司後再換
+        # facet——查詢字串每輪都不同，避免固定兩句查詢重複命中同批結果、去重後
+        # 證據累積不到 min_citations 就 exhausted。
         ticker = tickers[state["iteration"] % len(tickers)]
-        return ReActAction(tool="search", tool_input=f"{ticker} {question}", is_finish=False)
+        facet = _FACETS[(state["iteration"] // len(tickers)) % len(_FACETS)]
+        return ReActAction(
+            tool="search", tool_input=f"{ticker} {question} {facet}", is_finish=False
+        )
     facet = _FACETS[state["iteration"] % len(_FACETS)]
     return ReActAction(tool="search", tool_input=f"{question} {facet}", is_finish=False)
 
@@ -120,9 +125,13 @@ def _summarize(found: Sequence[Citation]) -> str:
 def _belongs_to_ticker(citation: Citation, ticker: str) -> bool:
     """引用是否歸屬某檔：優先 company 欄；退而求其次 source_id / snippet 內含代號。
 
-    真實 retriever 會帶 ``company``；stub / 部分來源無 company，故以代號子字串補強。
+    真實 retriever 的 ``company`` 欄放 canonical 中文名（見 ``_result_to_citation``），
+    故同時比對 ticker 與中文名；stub / 部分來源無 company，以代號子字串補強。
     """
-    if (citation.company or "") == ticker:
+    from polaris.ontology import company_name
+
+    company = citation.company or ""
+    if company == ticker or (company and company == company_name(ticker)):
         return True
     return ticker in (citation.source_id or "") or ticker in (citation.snippet or "")
 

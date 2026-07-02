@@ -244,7 +244,14 @@ class TestComparisonMode:
     def test_extract_tickers_finds_distinct_codes_in_order(self):
         assert ag._extract_tickers("比較 2330 與 2454 對 AI 需求的看法") == ["2330", "2454"]
         assert ag._extract_tickers("2330 2330 體質") == ["2330"]  # 去重保序
-        assert ag._extract_tickers("台積電體質如何") == []
+        # 實體解析：中文名也解析得出 ticker（issue #77 R4 排查建議）
+        assert ag._extract_tickers("台積電體質如何") == ["2330"]
+        assert ag._extract_tickers("比較台積電與聯發科的毛利率") == ["2330", "2454"]
+
+    def test_extract_tickers_ignores_years_and_quarters(self):
+        """裸 \\d{4} 會把年份誤抓成代號 → 跨季比較題被誤判為比較型（issue #77）。"""
+        assert ag._extract_tickers("台積電 2025Q1 相比 2024Q4 營收變化") == ["2330"]
+        assert ag._extract_tickers("2024 全年四季的營收趨勢") == []
 
     def test_comparison_question_groups_evidence_by_ticker(self):
         import re
